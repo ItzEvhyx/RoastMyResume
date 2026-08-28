@@ -1,6 +1,9 @@
+// src/rb_components/sample.web.tsx
 'use client';
 
+import Image from 'next/image';
 import { Poppins } from 'next/font/google';
+import localFont from 'next/font/local';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -8,44 +11,84 @@ const poppins = Poppins({
   variable: '--font-poppins',
 });
 
-// Same fallback stack as Hero.tsx / About.tsx / Features.tsx
-const futuraStack = "'Futura', 'Century Gothic', 'Poppins', sans-serif";
+const futuraDisplay = localFont({
+  src: '../../../../../public/assets/fonts/futura_display/Futura Display.ttf',
+  variable: '--font-futura-display',
+  display: 'swap',
+});
+
+const futuraStack = 'var(--font-futura-display), sans-serif';
 
 export default function Sample() {
   return (
     <section
-      className={`relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center gap-12 px-6 py-24 md:flex-row md:items-center md:gap-16 ${poppins.variable}`}
+      className={`relative z-10 mx-auto w-full max-w-7xl px-6 py-24 ${poppins.variable} ${futuraDisplay.variable}`}
     >
-      {/* Left — heading + copy */}
-      <div className="flex w-full flex-col md:w-1/2">
-        <h2
-          className="mb-4 text-5xl leading-none text-white md:text-6xl"
-          style={{ fontFamily: futuraStack, fontWeight: 800 }}
-        >
-          See a sample
-        </h2>
+      {/* Eyebrow */}
+      <p
+        className="mb-1 text-lg italic text-white/60"
+        style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
+      >
+        - One tool, does two things
+      </p>
 
-        <p
-          className="mb-8 text-base leading-relaxed text-white/80 md:text-lg"
-          style={{ fontFamily: 'var(--font-poppins)', fontWeight: 300 }}
-        >
-          Not sure what to expect? Take a look at a real resume that went
-          through the wringer. Below is the before, the AI&apos;s honest
-          breakdown, and the cleaned-up after — so you know exactly what kind
-          of feedback you&apos;re signing up for.
-        </p>
+      {/* Headline */}
+      <h2
+        className="mb-6 text-5xl leading-[1.05] text-white md:text-6xl"
+        style={{ fontFamily: futuraStack, fontWeight: 800 }}
+      >
+        Design it your way.
+        <br />
+        Review it your way.
+      </h2>
 
-        <button
-          className="w-fit rounded-full bg-white px-8 py-3 text-base text-black transition-transform hover:-translate-y-0.5"
-          style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}
-        >
-          View sample &gt;
-        </button>
-      </div>
+      {/* Two containers */}
+      <div className="flex flex-col gap-6 md:flex-row">
 
-      {/* Right — sample resume placeholder */}
-      <div className="flex w-full shrink-0 justify-center md:w-1/2 md:justify-end">
-        <div data-speed="0.85" className="aspect-[1414/2000] w-full max-w-sm bg-white" />
+        {/* ---------------- BUILD CARD (white) ---------------- */}
+        <div className="relative flex-1 rounded-2xl bg-white pt-28">
+          {/* Notch pill — inside the container, near the top */}
+          <div className="absolute left-1/2 top-6 flex -translate-x-1/2 items-center gap-3 rounded-full bg-black px-6 py-3">
+            <span
+              className="text-2xl tracking-widest text-white"
+              style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
+            >
+              Build
+            </span>
+            <Image
+              src="/assets/icons/build_resume_icon.svg"
+              alt=""
+              width={40}
+              height={40}
+            />
+          </div>
+
+          {/* Card body — content TBD */}
+          <div className="min-h-[420px] p-8" />
+        </div>
+
+        {/* ---------------- REVIEW CARD (dark) ---------------- */}
+        <div className="relative flex-1 rounded-2xl border-[3px] border-white bg-[#171717] pt-28">
+          {/* Notch pill — inside the container, near the top */}
+          <div className="absolute left-1/2 top-6 flex -translate-x-1/2 items-center gap-3 rounded-full bg-white px-6 py-3">
+            <span
+              className="text-2xl tracking-widest text-black"
+              style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
+            >
+              Review
+            </span>
+            <Image
+              src="/assets/icons/review_resume_icon.svg"
+              alt=""
+              width={40}
+              height={40}
+            />
+          </div>
+
+          {/* Card body — content TBD */}
+          <div className="min-h-[420px] p-8" />
+        </div>
+
       </div>
     </section>
   );

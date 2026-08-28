@@ -132,17 +132,18 @@ export default function DragDropFeature({ className = '' }: { className?: string
         <HiCursorArrowRays className="h-8 w-8 drop-shadow" />
       </div>
 
-      {/* Final content — icon on the LEFT, text stacked to its right */}
-      <div data-content className="absolute inset-0 z-10 flex w-full items-center justify-start gap-5 px-8 text-left">
-        <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-black text-white">
-          <HiCursorArrowRays className="h-9 w-9" />
+      {/* Final content — icon on the LEFT, text stacked to its right.
+          Sizes scale up at md: so desktop is unchanged while mobile fits. */}
+      <div data-content className="absolute inset-0 z-10 flex w-full items-center justify-start gap-3 px-5 text-left md:gap-5 md:px-8">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-black text-white md:h-16 md:w-16 md:rounded-2xl">
+          <HiCursorArrowRays className="h-6 w-6 md:h-9 md:w-9" />
         </span>
-        <div className="flex flex-col gap-2">
-          <h3 className="text-4xl leading-none text-black" style={{ fontFamily: futuraStack, fontWeight: 800 }}>
+        <div className="flex flex-col gap-1 md:gap-2">
+          <h3 className="text-xl leading-none text-black md:text-4xl" style={{ fontFamily: futuraStack, fontWeight: 800 }}>
             Drag and drop
           </h3>
           <p
-            className="text-lg leading-snug text-neutral-600"
+            className="text-xs leading-snug text-neutral-600 md:text-lg"
             style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
           >
             Place every section exactly where you want it — no rigid forms, no

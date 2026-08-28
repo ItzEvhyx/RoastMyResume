@@ -4,6 +4,8 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import DragDropFeature from '@/rb_components/drag_drop_feature';
 import AiAnalyzeFeature from '@/rb_components/ai_analyze_feature';
+import ApplyChangesFeature from '@/rb_components/apply_changes_feature';
+import ExportPdfFeature from '@/rb_components/export_pdf_feature';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -57,9 +59,9 @@ export default function Features() {
           <AiAnalyzeFeature />
         </div>
 
-        {/* right-3 — Apply changes placeholder */}
-        <div className="grid place-items-center rounded-2xl bg-white">
-          <span className="text-lg font-semibold text-neutral-400">Apply changes</span>
+        {/* right-3 — Apply changes animation */}
+        <div className="overflow-hidden rounded-2xl bg-white">
+          <ApplyChangesFeature />
         </div>
 
         {/* left-bottom — tools snapshot placeholder */}
@@ -67,9 +69,9 @@ export default function Features() {
           <span className="text-lg font-semibold text-neutral-400">Tools snapshot</span>
         </div>
 
-        {/* right-4 — Export to pdf placeholder */}
-        <div className="grid place-items-center rounded-2xl bg-white">
-          <span className="text-lg font-semibold text-neutral-400">Export to pdf</span>
+        {/* right-4 — Export to pdf animation */}
+        <div className="overflow-hidden rounded-2xl bg-white">
+          <ExportPdfFeature />
         </div>
       </div>
     </section>

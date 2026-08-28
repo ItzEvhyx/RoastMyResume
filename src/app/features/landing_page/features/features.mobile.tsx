@@ -4,6 +4,8 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import DragDropFeature from '@/rb_components/drag_drop_feature';
 import AiAnalyzeFeature from '@/rb_components/ai_analyze_feature';
+import ApplyChangesFeature from '@/rb_components/apply_changes_feature';
+import ExportPdfFeature from '@/rb_components/export_pdf_feature';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -39,18 +41,18 @@ export default function FeaturesMobile() {
         </div>
 
         {/* Drag & drop animation */}
-        <div className="aspect-[16/10] w-full overflow-hidden rounded-2xl bg-white">
+        <div className="aspect-[16/11] w-full overflow-hidden rounded-2xl bg-white">
           <DragDropFeature />
         </div>
 
         {/* Let AI analyze animation */}
-        <div className="aspect-[16/10] w-full overflow-hidden rounded-2xl bg-white">
+        <div className="aspect-[16/11] w-full overflow-hidden rounded-2xl bg-white">
           <AiAnalyzeFeature />
         </div>
 
-        {/* Apply changes placeholder */}
-        <div className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
-          <span className="text-base font-semibold text-neutral-400">Apply changes</span>
+        {/* Apply changes animation */}
+        <div className="aspect-[16/11] w-full overflow-hidden rounded-2xl bg-white">
+          <ApplyChangesFeature />
         </div>
 
         {/* Tools snapshot placeholder */}
@@ -58,9 +60,9 @@ export default function FeaturesMobile() {
           <span className="text-base font-semibold text-neutral-400">Tools snapshot</span>
         </div>
 
-        {/* Export to pdf placeholder */}
-        <div className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
-          <span className="text-base font-semibold text-neutral-400">Export to pdf</span>
+        {/* Export to pdf animation */}
+        <div className="aspect-[16/11] w-full overflow-hidden rounded-2xl bg-white">
+          <ExportPdfFeature />
         </div>
       </div>
     </section>
