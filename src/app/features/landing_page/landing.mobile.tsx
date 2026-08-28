@@ -5,6 +5,7 @@ import HeroMobile from '@/app/features/landing_page/hero/hero.mobile';
 import AboutMobile from '@/app/features/landing_page/about/about.mobile';
 import FeaturesMobile from '@/app/features/landing_page/features/features.mobile';
 import SampleMobile from '@/app/features/landing_page/sample/sample.mobile';
+import ContactsMobile from '@/app/features/contacts/contacts.mobile';
 import GridGlowBackground from '@/rb_components/grid_glow_background';
 
 /**
@@ -31,6 +32,7 @@ export default function LandingMobile() {
         <AboutMobile />
         <FeaturesMobile />
         <SampleMobile />
+        <ContactsMobile />
       </div>
     </main>
   );

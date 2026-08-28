@@ -3,6 +3,11 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+import {
+  registerPanelScroller,
+  type PanelScroller,
+} from '@/rb_components/section_scroll';
 
 export interface HorizontalScrollProps {
   children: ReactNode;
@@ -47,7 +52,7 @@ export default function HorizontalScroll({
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) return;
 
-    gsap.registerPlugin(ScrollTrigger);
+    gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
     const ctx = gsap.context(() => {
       const getScrollAmount = () => track.scrollWidth - window.innerWidth;
@@ -73,6 +78,24 @@ export default function HorizontalScroll({
       });
 
       const panels = gsap.utils.toArray<HTMLElement>('[data-panel]', track);
+
+      // Expose a panel scroller so buttons elsewhere (e.g. "See Sample") can
+      // pan the pinned track to a specific panel by animating the *vertical*
+      // scroll position to where that panel is centered in the pan.
+      const scrollToPanel: PanelScroller = (panelIndex) => {
+        const st = pan.scrollTrigger;
+        if (!st) return;
+        const clamped = Math.max(0, Math.min(panelIndex, panels.length - 1));
+        const progress =
+          panels.length > 1 ? clamped / (panels.length - 1) : 0;
+        const target = st.start + progress * (st.end - st.start);
+        gsap.to(window, {
+          scrollTo: { y: target, autoKill: false },
+          duration: 1,
+          ease: 'power2.inOut',
+        });
+      };
+      registerPanelScroller(scrollToPanel);
 
       panels.forEach((panel, i) => {
         // Reveal: blur -> sharp, fade + slight lift as the panel enters.
@@ -127,7 +150,10 @@ export default function HorizontalScroll({
       });
     }, root);
 
-    return () => ctx.revert();
+    return () => {
+      registerPanelScroller(null);
+      ctx.revert();
+    };
   }, [weight]);
 
   return (

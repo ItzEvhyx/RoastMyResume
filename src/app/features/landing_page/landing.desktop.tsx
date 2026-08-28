@@ -4,6 +4,7 @@ import Hero from '@/app/features/landing_page/hero/hero.web';
 import About from '@/app/features/landing_page/about/about.web';
 import Features from '@/app/features/landing_page/features/features.web';
 import Sample from '@/app/features/landing_page/sample/sample.web';
+import Contacts from '@/app/features/contacts/contacts.web';
 import HorizontalScroll, { Panel } from '@/rb_components/horizontal_scroll';
 import GridGlowBackground from '@/rb_components/grid_glow_background';
 
@@ -32,6 +33,9 @@ export default function LandingDesktop() {
         </Panel>
         <Panel>
           <Sample />
+        </Panel>
+        <Panel>
+          <Contacts />
         </Panel>
       </HorizontalScroll>
     </main>

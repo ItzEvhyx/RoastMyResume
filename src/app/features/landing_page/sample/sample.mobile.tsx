@@ -311,6 +311,7 @@ export default function SampleMobile() {
 
   return (
     <section
+      id="sample"
       className={`relative z-10 flex flex-col px-5 py-14 ${poppins.variable} ${futuraDisplay.variable}`}
     >
       {/* Eyebrow */}

@@ -6,6 +6,7 @@ import localFont from 'next/font/local';
 import ResumeCardStack from '@/rb_components/resume_card_stack';
 import RadialGlowButton from '@/components/ui/radial_glow_button';
 import SpecularButton from '@/components/specular_button';
+import { scrollToSection } from '@/rb_components/section_scroll';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -105,6 +106,7 @@ export default function Hero() {
             tint="#0b0d12"
             tintOpacity={1}
             textColor="#f5f5f5"
+            onClick={() => scrollToSection('sample')}
             style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}
           >
             See Sample &gt;
