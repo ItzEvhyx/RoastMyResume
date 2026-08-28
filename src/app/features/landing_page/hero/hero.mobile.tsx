@@ -5,6 +5,7 @@ import localFont from 'next/font/local';
 import ResumeCardStack from '@/rb_components/resume_card_stack';
 import RadialGlowButton from '@/components/ui/radial_glow_button';
 import SpecularButton from '@/components/specular_button';
+import Reveal from '@/rb_components/reveal';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -43,24 +44,28 @@ export default function HeroMobile() {
           space to its right for the offset cards, so nudge it right by half
           that reserve (|offsetX| * visible / 2 = 26px) to visually center the
           front card on screen. */}
-      <div className="flex justify-center">
+      <Reveal className="flex justify-center">
         <ResumeCardStack
           items={RESUME_TEMPLATES}
           cardWidth={220}
           className="translate-x-[26px]"
         />
-      </div>
+      </Reveal>
 
       {/* Eyebrow */}
-      <p
+      <Reveal
+        as="p"
+        delay={80}
         className="text-sm italic text-white/60"
         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
       >
         - Resume Builder + AI Feedback
-      </p>
+      </Reveal>
 
       {/* Headline */}
-      <h1
+      <Reveal
+        as="h1"
+        delay={160}
         className="flex flex-col items-center gap-1 text-5xl leading-[0.95] text-white"
         style={{ fontFamily: futuraStack, fontWeight: 800 }}
       >
@@ -76,20 +81,22 @@ export default function HeroMobile() {
             ROASTED
           </span>
         </span>
-      </h1>
+      </Reveal>
 
       {/* Body copy */}
-      <p
+      <Reveal
+        as="p"
+        delay={240}
         className="max-w-md text-base leading-relaxed text-white/70"
         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 300 }}
       >
         Design your resume on an open canvas, then hand it to the AI. Ask for
         the honest version or the brutal one — either way, you&apos;ll know
         exactly what to fix before a recruiter does.
-      </p>
+      </Reveal>
 
       {/* Buttons — stacked full width on phones */}
-      <div className="flex w-full max-w-xs flex-col items-stretch gap-3">
+      <Reveal delay={320} className="flex w-full max-w-xs flex-col items-stretch gap-3">
         <RadialGlowButton
           className="!min-h-0 !min-w-0 w-full px-8 py-3.5 !text-base"
           style={{
@@ -111,15 +118,19 @@ export default function HeroMobile() {
         >
           See Sample &gt;
         </SpecularButton>
-      </div>
+      </Reveal>
 
       {/* Stat line */}
-      <div className="flex flex-col items-center gap-1" style={{ fontFamily: 'var(--font-vt323)' }}>
+      <Reveal
+        delay={400}
+        className="flex flex-col items-center gap-1"
+        style={{ fontFamily: 'var(--font-vt323)' }}
+      >
         <span className="text-4xl text-white">40,301</span>
         <span className="text-xs uppercase tracking-widest text-white/60">
           Resumes reviewed and roasted
         </span>
-      </div>
+      </Reveal>
     </section>
   );
 }

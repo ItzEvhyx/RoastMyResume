@@ -4,6 +4,7 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import { Check } from 'lucide-react';
 import ResumeRoastAnimation from '@/rb_components/resume_roast_animation';
+import Reveal from '@/rb_components/reveal';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -24,19 +25,22 @@ export default function AboutMobile() {
     <section
       className={`relative z-10 flex flex-col gap-6 px-5 py-14 ${poppins.variable} ${futuraDisplay.variable}`}
     >
-      <h2
+      <Reveal
+        as="h2"
         className="text-6xl leading-none text-white"
         style={{ fontFamily: futuraStack, fontWeight: 800 }}
       >
         About
-      </h2>
+      </Reveal>
 
       {/* Roast animation — fixed height box since it fills its container */}
-      <div className="h-[380px] w-full">
+      <Reveal delay={100} className="h-[380px] w-full">
         <ResumeRoastAnimation />
-      </div>
+      </Reveal>
 
-      <p
+      <Reveal
+        as="p"
+        delay={180}
         className="text-base leading-relaxed text-white/85"
         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 300 }}
       >
@@ -46,7 +50,7 @@ export default function AboutMobile() {
         arranging sections visually instead of fighting with Word formatting.
         Once it&apos;s built — or if you just upload an existing resume — you
         hand it over to the AI for feedback.
-      </p>
+      </Reveal>
 
       <ul
         className="flex flex-col gap-3 text-base text-white/90"
@@ -56,11 +60,16 @@ export default function AboutMobile() {
           'No account required to start building',
           'Feedback generated in seconds, not days',
           'Nothing saved to a server — it stays in your browser',
-        ].map((line) => (
-          <li key={line} className="flex items-center gap-3">
+        ].map((line, i) => (
+          <Reveal
+            as="li"
+            key={line}
+            delay={260 + i * 80}
+            className="flex items-center gap-3"
+          >
             <Check className="h-5 w-5 shrink-0 text-white" strokeWidth={2.5} aria-hidden="true" />
             <span>{line}</span>
-          </li>
+          </Reveal>
         ))}
       </ul>
     </section>
