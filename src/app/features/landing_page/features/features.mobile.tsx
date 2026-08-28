@@ -35,9 +35,16 @@ export default function FeaturesMobile() {
 
       {/* Single-column stack of cards, phone-friendly */}
       <div className="flex flex-col gap-3">
+        {/* Order: Canvas -> Tools snapshot -> Drag & drop -> AI analyze -> Apply changes -> Export to pdf */}
+
         {/* Canvas snapshot placeholder */}
         <div className="grid aspect-square w-full place-items-center rounded-2xl bg-white">
           <span className="text-base font-semibold text-neutral-400">Snapshot of the canvas</span>
+        </div>
+
+        {/* Tools snapshot placeholder */}
+        <div className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
+          <span className="text-base font-semibold text-neutral-400">Tools snapshot</span>
         </div>
 
         {/* Drag & drop animation */}
@@ -53,11 +60,6 @@ export default function FeaturesMobile() {
         {/* Apply changes animation */}
         <div className="aspect-[16/11] w-full overflow-hidden rounded-2xl bg-white">
           <ApplyChangesFeature />
-        </div>
-
-        {/* Tools snapshot placeholder */}
-        <div className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
-          <span className="text-base font-semibold text-neutral-400">Tools snapshot</span>
         </div>
 
         {/* Export to pdf animation */}

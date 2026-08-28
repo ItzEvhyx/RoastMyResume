@@ -20,7 +20,7 @@ export default function LandingDesktop() {
 
       {/* Everything scrolls horizontally: scrolling down pans the track
           right-to-left through hero -> about -> features -> sample. */}
-      <HorizontalScroll weight={1.6}>
+      <HorizontalScroll weight={2.8}>
         <Panel>
           <Hero />
         </Panel>
