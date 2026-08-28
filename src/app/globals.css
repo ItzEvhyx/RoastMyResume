@@ -169,3 +169,11 @@
     animation: none;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer {
+    animation: none;
+  }
+  .wave-char {
+    animation: none;
+  }
+}

@@ -155,6 +155,17 @@ function ReviewMarkdown({ content }: { content: string }) {
   );
 }
 
+/** Shimmering text for idle/loading states. */
+function ShimmerWave({
+  text,
+  className = '',
+}: {
+  text: string;
+  className?: string;
+}) {
+  return <p className={`text-shimmer ${className}`}>{text}</p>;
+}
+
 /** Fullscreen preview of a single attached screenshot. */
 function ImagePreviewModal({
   image,
@@ -515,9 +526,10 @@ export default function Sample() {
               }`}
             >
               {loading && (
-                <p className="text-sm italic text-black/50">
-                  Reading your resume and sharpening the knives…
-                </p>
+                <ShimmerWave
+                  text="Reading your resume and sharpening the knives…"
+                  className="text-sm font-medium italic"
+                />
               )}
 
               {!loading && errorMsg && (
@@ -537,9 +549,10 @@ export default function Sample() {
               )}
 
               {!loading && !errorMsg && !outOfScope && !reviewText && (
-                <p className="text-shimmer text-sm font-medium italic">
-                  Your review will appear here once you check for fluff.
-                </p>
+                <ShimmerWave
+                  text="Your review will appear here once you check for fluff."
+                  className="text-sm font-medium italic"
+                />
               )}
             </div>
           </div>
