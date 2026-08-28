@@ -36,13 +36,19 @@ export default function ResumeRoastAnimation({
     const lines = q('[data-line]');
     const flaws = Array.from(root.querySelectorAll<HTMLElement>('[data-flaw]'));
 
+    // Single comment overlay, lives outside the paper so it floats on top,
+    // unscaled and unclipped.
+    const comment = root.querySelector<HTMLElement>('[data-comment]');
+    const commentText = root.querySelector<HTMLElement>('[data-comment-text]');
+
     if (reduce) {
       gsap.set(paper, { autoAlpha: 1, y: 0 });
       gsap.set(lines, { autoAlpha: 1, y: 0 });
       flaws.forEach((f) => {
         gsap.set(f.querySelector('[data-circle]'), { strokeDashoffset: 0, autoAlpha: 1 });
-        gsap.set(f.querySelector('[data-comment]'), { autoAlpha: 1, x: 0 });
       });
+      if (commentText && flaws[0]) commentText.textContent = flaws[0].dataset.critique ?? '';
+      gsap.set(comment, { autoAlpha: 1 });
       return;
     }
 
@@ -55,23 +61,46 @@ export default function ResumeRoastAnimation({
       return `${px}% ${py}%`;
     };
 
+    // Place the (unscaled) comment overlay centered just below the circled
+    // line, measured live AFTER the zoom so it tracks the on-screen position.
+    const placeCommentUnder = (flaw: HTMLElement) => {
+      if (!comment) return;
+      const rootRect = root.getBoundingClientRect();
+      const r = flaw.getBoundingClientRect();
+      const cx = r.left + r.width / 2 - rootRect.left;
+      const below = r.bottom - rootRect.top + 12;
+      // Clamp so the box stays fully inside the stage.
+      const w = comment.offsetWidth || 420;
+      const half = w / 2;
+      const left = Math.min(
+        Math.max(cx, half + 8),
+        rootRect.width - half - 8
+      );
+      const top = Math.min(below, rootRect.height - (comment.offsetHeight || 60) - 8);
+      gsap.set(comment, { left, top, xPercent: -50, x: 0 });
+    };
+
     let tl: gsap.core.Timeline | null = null;
 
     const build = () => {
       gsap.set(camera, { scale: 1, transformOrigin: '50% 50%' });
-      gsap.set(paper, { autoAlpha: 0, y: 20, rotateX: 6, transformOrigin: '50% 0%' });
+      gsap.set(paper, { autoAlpha: 0, y: 60, rotateX: 6, transformOrigin: '50% 0%' });
       gsap.set(lines, { autoAlpha: 0, y: 8 });
+      gsap.set(comment, { autoAlpha: 0, y: 8, scale: 0.96 });
       flaws.forEach((f) => {
         const c = f.querySelector<SVGPathElement>('[data-circle]');
         const len = c?.getTotalLength?.() ?? 400;
         gsap.set(c, { strokeDasharray: len, strokeDashoffset: len, autoAlpha: 1 });
-        gsap.set(f.querySelector('[data-comment]'), { autoAlpha: 0, x: 14, scale: 0.96 });
       });
 
-      const t = gsap.timeline({ repeat: -1, repeatDelay: 0.8, paused: true });
+      const t = gsap.timeline({ repeat: -1, repeatDelay: 0.5, paused: true });
 
-      // 1. Paper drops in
-      t.to(paper, { autoAlpha: 1, y: 0, rotateX: 0, duration: 0.5, ease: 'power3.out' });
+      // 1. Paper pops up into view (fromTo so it restarts cleanly each loop)
+      t.fromTo(
+        paper,
+        { autoAlpha: 0, y: 60, rotateX: 6 },
+        { autoAlpha: 1, y: 0, rotateX: 0, duration: 0.6, ease: 'power3.out' }
+      );
 
       // 2. The ENTIRE resume writes itself, top to bottom
       t.to(
@@ -83,22 +112,39 @@ export default function ResumeRoastAnimation({
       // Beat so the viewer sees the whole finished resume
       t.to({}, { duration: 0.7 });
 
-      // 3. Roast each flaw in turn: zoom in -> circle -> comment -> clear
+      // 3. Roast each flaw in turn: zoom in -> circle -> comment -> clear.
+      // The comment is a single overlay that floats above the paper (never
+      // scaled/clipped); we just retarget its text + position per flaw.
       flaws.forEach((flaw) => {
         const circle = flaw.querySelector('[data-circle]');
-        const comment = flaw.querySelector('[data-comment]');
 
         t.set(camera, { transformOrigin: originOf(flaw) });
         t.to(camera, { scale: 2.3, duration: 0.7, ease: 'power2.inOut' });
         t.to(circle, { strokeDashoffset: 0, duration: 0.5, ease: 'power1.inOut' }, '-=0.1');
-        t.to(comment, { autoAlpha: 1, x: 0, scale: 1, duration: 0.35, ease: 'back.out(1.7)' }, '-=0.05');
-        t.to({}, { duration: 1.2 });
+
+        // Fill the text, position under the zoomed circle, then pop it in.
+        t.call(() => {
+          if (commentText) commentText.textContent = flaw.dataset.critique ?? '';
+          placeCommentUnder(flaw);
+        });
+        t.fromTo(
+          comment,
+          { autoAlpha: 0, y: 8, scale: 0.96 },
+          { autoAlpha: 1, y: 0, scale: 1, duration: 0.35, ease: 'back.out(1.7)' }
+        );
+        // Hold the correction on screen (3s longer than before) so it's
+        // readable before moving to the next flaw.
+        t.to({}, { duration: 4.2 });
         t.to([comment, circle], { autoAlpha: 0, duration: 0.3, ease: 'power1.in' });
       });
 
-      // 4. Zoom back out, hold, loop
+      // 4. Zoom back out, brief hold
       t.to(camera, { scale: 1, transformOrigin: '50% 50%', duration: 0.6, ease: 'power2.inOut' });
       t.to({}, { duration: 0.6 });
+
+      // 5. Slide the whole resume down and out, then the timeline loops back
+      //    to step 1 which pops it up again.
+      t.to(paper, { autoAlpha: 0, y: 60, duration: 0.55, ease: 'power2.in' });
 
       return t;
     };
@@ -147,13 +193,13 @@ export default function ResumeRoastAnimation({
           <div className="flex h-full flex-col px-6 py-5 text-neutral-800">
             {/* Header */}
             <div data-line className="text-center text-lg font-bold tracking-tight text-neutral-900">
-              JORDAN RIVERA
+              YHVHAN SUBA
             </div>
             <div data-line className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-600">
-              Product Manager
+              Software Engineer
             </div>
             <div data-line className="mb-2 text-center text-[8px] text-neutral-500">
-              jordan.rivera@email.com · (555) 018-2245 · San Francisco, CA · linkedin.com/in/jrivera
+              yhvhan.suba@email.com · (555) 018-2245 · San Francisco, CA · linkedin.com/in/yhvhansuba
             </div>
 
             {/* Summary */}
@@ -227,6 +273,22 @@ export default function ResumeRoastAnimation({
           </div>
         </div>
       </div>
+
+      {/* Critique overlay — outside the paper, floats on top of everything.
+          One element, retargeted + repositioned per flaw (centered just below
+          the circled line), so it's never scaled or clipped. */}
+      <div
+        data-comment
+        className="pointer-events-none absolute left-0 top-0 z-30 w-max max-w-[85%] rounded-xl bg-neutral-900/95 px-5 py-4 shadow-2xl ring-1 ring-white/10"
+      >
+        <div className="mb-2 flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-red-500" />
+          <span className="text-base font-semibold uppercase tracking-wider text-red-400">
+            Roast
+          </span>
+        </div>
+        <p data-comment-text className="max-w-[420px] text-xl leading-snug text-white/90" />
+      </div>
     </div>
   );
 }
@@ -263,39 +325,25 @@ function Bullet({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* A red circle + critique comment that the timeline reveals, tied to a line. */
-function RoastMarks({ critique }: { critique: string }) {
+/* The red circle drawn over a flagged line (stays inside the paper, anchored
+   to the text, so it scales correctly with the zoom). The critique text lives
+   on the flaw's data-critique attribute and is shown by the shared overlay. */
+function RoastCircle() {
   return (
-    <>
-      <svg
-        className="pointer-events-none absolute -inset-x-2 -inset-y-1 z-10 h-[calc(100%+8px)] w-[calc(100%+16px)] overflow-visible"
-        viewBox="0 0 300 60"
-        fill="none"
-        preserveAspectRatio="none"
-      >
-        <path
-          data-circle
-          d="M18,30 C18,11 90,7 160,9 C242,11 292,17 289,32 C286,50 200,54 128,53 C58,52 12,50 21,29 C25,19 60,15 122,14"
-          stroke="#ef4444"
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
-      </svg>
-      {/* Comment sits just below the circled line and centered, so it stays
-          in frame when the camera zooms into the line at any position. */}
-      <div
-        data-comment
-        className="absolute left-1/2 top-[calc(100%+6px)] z-20 w-44 max-w-[80%] -translate-x-1/2 rounded-md bg-neutral-900/95 p-2 shadow-xl ring-1 ring-white/10"
-      >
-        <div className="mb-0.5 flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-          <span className="text-[7px] font-semibold uppercase tracking-wider text-red-400">
-            Roast
-          </span>
-        </div>
-        <p className="text-[8px] leading-snug text-white/90">{critique}</p>
-      </div>
-    </>
+    <svg
+      className="pointer-events-none absolute -inset-x-2 -inset-y-1 z-10 h-[calc(100%+8px)] w-[calc(100%+16px)] overflow-visible"
+      viewBox="0 0 300 60"
+      fill="none"
+      preserveAspectRatio="none"
+    >
+      <path
+        data-circle
+        d="M18,30 C18,11 90,7 160,9 C242,11 292,17 289,32 C286,50 200,54 128,53 C58,52 12,50 21,29 C25,19 60,15 122,14"
+        stroke="#ef4444"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
@@ -304,11 +352,12 @@ function Flaw({ children, critique }: { children: React.ReactNode; critique: str
     <div
       data-line
       data-flaw
+      data-critique={critique}
       className="relative mb-2 flex gap-1.5 text-[9px] leading-relaxed text-neutral-700"
     >
       <Dot />
       <span>{children}</span>
-      <RoastMarks critique={critique} />
+      <RoastCircle />
     </div>
   );
 }
@@ -318,11 +367,12 @@ function FlawBullet({ children, critique }: { children: React.ReactNode; critiqu
     <li
       data-line
       data-flaw
+      data-critique={critique}
       className="relative flex gap-1.5 text-[9px] leading-relaxed text-neutral-700"
     >
       <Dot />
       <span>{children}</span>
-      <RoastMarks critique={critique} />
+      <RoastCircle />
     </li>
   );
 }
@@ -332,10 +382,11 @@ function FlawLine({ children, critique }: { children: React.ReactNode; critique:
     <div
       data-line
       data-flaw
+      data-critique={critique}
       className="relative mb-1.5 text-[9px] leading-relaxed text-neutral-700"
     >
       <span>{children}</span>
-      <RoastMarks critique={critique} />
+      <RoastCircle />
     </div>
   );
 }
