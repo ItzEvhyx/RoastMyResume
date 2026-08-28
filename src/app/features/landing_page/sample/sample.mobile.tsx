@@ -346,16 +346,17 @@ export default function SampleMobile() {
           </div>
 
           <div
-            className="flex h-[440px] flex-col px-6 pb-6"
+            className="flex flex-col px-5 pb-5"
             style={{ fontFamily: 'var(--font-poppins)' }}
           >
-            <div className="flex min-h-0 flex-1 flex-col rounded-xl border-2 border-black/10 bg-black/[0.03] p-3 focus-within:border-black/30">
+            <div className="flex flex-col rounded-xl border-2 border-black/10 bg-black/[0.03] p-3 focus-within:border-black/30">
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onPaste={handlePaste}
                 placeholder={PLACEHOLDER}
-                className="no-scrollbar min-h-0 flex-1 resize-none bg-transparent text-sm leading-relaxed text-black outline-none placeholder:text-black/40"
+                rows={6}
+                className="no-scrollbar h-40 w-full resize-none bg-transparent text-sm leading-relaxed text-black outline-none placeholder:text-black/40"
               />
 
               {images.length > 0 && (
@@ -395,7 +396,7 @@ export default function SampleMobile() {
                 <p className="mt-2 text-xs text-black/50">{imageNotice}</p>
               )}
 
-              <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -450,7 +451,7 @@ export default function SampleMobile() {
           </div>
 
           <div
-            className="flex h-[440px] flex-col items-center px-6 pb-6"
+            className="flex flex-col items-center px-5 pb-5"
             style={{ fontFamily: 'var(--font-poppins)' }}
           >
             {/* Roast / Real talk toggle (animated sliding thumb) */}
@@ -488,9 +489,9 @@ export default function SampleMobile() {
               </button>
             </div>
 
-            {/* Review output box — fixed size, invisible scroll */}
+            {/* Review output box — capped height, invisible scroll */}
             <div
-              className={`no-scrollbar relative w-full min-h-0 flex-1 overflow-y-auto rounded-2xl p-4 transition-colors ${
+              className={`no-scrollbar relative max-h-[45vh] min-h-[220px] w-full overflow-y-auto rounded-2xl p-4 transition-colors ${
                 outOfScope ? 'bg-white/30' : 'bg-white'
               }`}
             >
