@@ -2,6 +2,8 @@
 
 import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
+import DragDropFeature from '@/rb_components/drag_drop_feature';
+import AiAnalyzeFeature from '@/rb_components/ai_analyze_feature';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -31,10 +33,35 @@ export default function FeaturesMobile() {
 
       {/* Single-column stack of cards, phone-friendly */}
       <div className="flex flex-col gap-3">
-        <div className="aspect-square w-full rounded-2xl bg-white" />
-        <div className="aspect-[16/7] w-full rounded-2xl bg-white" />
-        <div className="aspect-[16/7] w-full rounded-2xl bg-white" />
-        <div className="aspect-[16/7] w-full rounded-2xl bg-white" />
+        {/* Canvas snapshot placeholder */}
+        <div className="grid aspect-square w-full place-items-center rounded-2xl bg-white">
+          <span className="text-base font-semibold text-neutral-400">Snapshot of the canvas</span>
+        </div>
+
+        {/* Drag & drop animation */}
+        <div className="aspect-[16/10] w-full overflow-hidden rounded-2xl bg-white">
+          <DragDropFeature />
+        </div>
+
+        {/* Let AI analyze animation */}
+        <div className="aspect-[16/10] w-full overflow-hidden rounded-2xl bg-white">
+          <AiAnalyzeFeature />
+        </div>
+
+        {/* Apply changes placeholder */}
+        <div className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
+          <span className="text-base font-semibold text-neutral-400">Apply changes</span>
+        </div>
+
+        {/* Tools snapshot placeholder */}
+        <div className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
+          <span className="text-base font-semibold text-neutral-400">Tools snapshot</span>
+        </div>
+
+        {/* Export to pdf placeholder */}
+        <div className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
+          <span className="text-base font-semibold text-neutral-400">Export to pdf</span>
+        </div>
       </div>
     </section>
   );

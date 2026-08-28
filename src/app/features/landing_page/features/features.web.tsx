@@ -2,6 +2,8 @@
 
 import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
+import DragDropFeature from '@/rb_components/drag_drop_feature';
+import AiAnalyzeFeature from '@/rb_components/ai_analyze_feature';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -9,7 +11,6 @@ const poppins = Poppins({
   variable: '--font-poppins',
 });
 
-// Futura Display — loaded from the local .ttf file (same as Hero / About).
 const futuraDisplay = localFont({
   src: '../../../../../public/assets/fonts/futura_display/Futura Display.ttf',
   variable: '--font-futura-display',
@@ -40,13 +41,36 @@ export default function Features() {
         6. right-4     -> col 2, row 4
         Order of the divs below drives this — don't reorder them.
       */}
-      <div className="grid h-[560px] grid-cols-1 grid-rows-[repeat(6,1fr)] gap-4 md:h-[620px] md:grid-cols-2 md:grid-rows-4">
-        <div className="row-span-1 rounded-2xl bg-white md:row-span-3" />
-        <div className="rounded-2xl bg-white" />
-        <div className="rounded-2xl bg-white" />
-        <div className="rounded-2xl bg-white" />
-        <div className="rounded-2xl bg-white" />
-        <div className="rounded-2xl bg-white" />
+      <div className="grid h-[640px] grid-cols-1 grid-rows-[repeat(6,1fr)] gap-4 md:h-[760px] md:grid-cols-2 md:grid-rows-4">
+        {/* left-big — canvas snapshot placeholder */}
+        <div className="row-span-1 grid place-items-center rounded-2xl bg-white md:row-span-3">
+          <span className="text-lg font-semibold text-neutral-400">Snapshot of the canvas</span>
+        </div>
+
+        {/* right-1 — Drag & drop animation */}
+        <div className="overflow-hidden rounded-2xl bg-white">
+          <DragDropFeature />
+        </div>
+
+        {/* right-2 — Let AI analyze animation */}
+        <div className="overflow-hidden rounded-2xl bg-white">
+          <AiAnalyzeFeature />
+        </div>
+
+        {/* right-3 — Apply changes placeholder */}
+        <div className="grid place-items-center rounded-2xl bg-white">
+          <span className="text-lg font-semibold text-neutral-400">Apply changes</span>
+        </div>
+
+        {/* left-bottom — tools snapshot placeholder */}
+        <div className="grid place-items-center rounded-2xl bg-white">
+          <span className="text-lg font-semibold text-neutral-400">Tools snapshot</span>
+        </div>
+
+        {/* right-4 — Export to pdf placeholder */}
+        <div className="grid place-items-center rounded-2xl bg-white">
+          <span className="text-lg font-semibold text-neutral-400">Export to pdf</span>
+        </div>
       </div>
     </section>
   );
