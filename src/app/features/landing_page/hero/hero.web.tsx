@@ -21,7 +21,7 @@ const vt323 = VT323({
 
 // Futura Display — loaded from the local .ttf file.
 const futuraDisplay = localFont({
-  src: '../../../../public/assets/fonts/futura_display/Futura Display.ttf',
+  src: '../../../../../public/assets/fonts/futura_display/Futura Display.ttf',
   variable: '--font-futura-display',
   display: 'swap',
 });

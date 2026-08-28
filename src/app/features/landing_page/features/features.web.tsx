@@ -11,7 +11,7 @@ const poppins = Poppins({
 
 // Futura Display — loaded from the local .ttf file (same as Hero / About).
 const futuraDisplay = localFont({
-  src: '../../../../public/assets/fonts/futura_display/Futura Display.ttf',
+  src: '../../../../../public/assets/fonts/futura_display/Futura Display.ttf',
   variable: '--font-futura-display',
   display: 'swap',
 });
