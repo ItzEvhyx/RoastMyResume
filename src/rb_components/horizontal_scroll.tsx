@@ -7,11 +7,12 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 export interface HorizontalScrollProps {
   children: ReactNode;
   /**
-   * Scrub smoothing in seconds. Higher = heavier / lazier trailing motion as
-   * the track catches up to the scroll position. This is what gives the
-   * "slow, weighty" feel. Set to `true` for a 1:1 (non-smoothed) scrub.
+   * How much vertical scroll distance maps to the horizontal travel. 1 = the
+   * track moves 1:1 with the scroll (default weight). Values > 1 require more
+   * scrolling to move through the panels, so it feels heavier / more
+   * deliberate — without any easing lag or gliding.
    */
-  smooth?: number;
+  weight?: number;
   className?: string;
 }
 
@@ -30,7 +31,7 @@ export interface HorizontalScrollProps {
  */
 export default function HorizontalScroll({
   children,
-  smooth = 1.4,
+  weight = 1.6,
   className = '',
 }: HorizontalScrollProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -53,15 +54,19 @@ export default function HorizontalScroll({
 
       // The main horizontal pan. This tween is reused as `containerAnimation`
       // for every panel-level trigger below.
+      //
+      // `scrub: true` locks the track to the scroll position 1:1 — no easing
+      // lag, no drift, no snap. The `weight` multiplier stretches the pin's
+      // scroll distance so it feels heavier without gliding.
       const pan = gsap.to(track, {
         x: () => -getScrollAmount(),
         ease: 'none',
         scrollTrigger: {
           trigger: root,
           start: 'top top',
-          end: () => `+=${getScrollAmount()}`,
+          end: () => `+=${getScrollAmount() * weight}`,
           pin: true,
-          scrub: smooth,
+          scrub: true,
           invalidateOnRefresh: true,
           anticipatePin: 1,
         },
@@ -123,7 +128,7 @@ export default function HorizontalScroll({
     }, root);
 
     return () => ctx.revert();
-  }, [smooth]);
+  }, [weight]);
 
   return (
     <div ref={rootRef} className={`overflow-hidden ${className}`}>
