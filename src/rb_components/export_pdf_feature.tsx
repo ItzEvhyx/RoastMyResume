@@ -5,6 +5,13 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import gsap from 'gsap';
 import { HiDocumentArrowDown, HiCheckCircle } from 'react-icons/hi2';
+import {
+  registerFeatureStep,
+  requestSequenceStart,
+} from '@/rb_components/feature_sequence';
+
+/** Play order within the Features sequence. */
+const ORDER = 3;
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -77,14 +84,16 @@ export default function ExportPdfFeature({ className = '' }: { className?: strin
 
     let tl: gsap.core.Timeline | null = null;
 
-    const play = () => {
+    const play = () =>
+      new Promise<void>((resolve) => {
       if (hasPlayed) {
         showFinal();
+        resolve();
         return;
       }
       hasPlayed = true;
 
-      tl = gsap.timeline();
+      tl = gsap.timeline({ onComplete: () => resolve() });
 
       // 1. File icon appears
       tl.to(file, { autoAlpha: 1, scale: 1, duration: 0.4, ease: 'back.out(1.6)' });
@@ -122,12 +131,14 @@ export default function ExportPdfFeature({ className = '' }: { className?: strin
 
       // 7. Final content settles in
       tl.to(content, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.05');
-    };
+    });
+
+    const unregister = registerFeatureStep({ order: ORDER, play });
 
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          play();
+          requestSequenceStart();
           io.disconnect();
         }
       },
@@ -137,6 +148,7 @@ export default function ExportPdfFeature({ className = '' }: { className?: strin
 
     return () => {
       io.disconnect();
+      unregister();
       tl?.kill();
     };
   }, []);

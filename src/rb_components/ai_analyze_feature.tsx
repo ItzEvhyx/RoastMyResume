@@ -5,6 +5,13 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import gsap from 'gsap';
 import { HiSparkles } from 'react-icons/hi2';
+import {
+  registerFeatureStep,
+  requestSequenceStart,
+} from '@/rb_components/feature_sequence';
+
+/** Play order within the Features sequence. */
+const ORDER = 1;
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -71,44 +78,48 @@ export default function AiAnalyzeFeature({ className = '' }: { className?: strin
 
     let tl: gsap.core.Timeline | null = null;
 
-    const play = () => {
-      if (hasPlayed) {
-        showFinal();
-        return;
-      }
-      hasPlayed = true;
+    const play = () =>
+      new Promise<void>((resolve) => {
+        if (hasPlayed) {
+          showFinal();
+          resolve();
+          return;
+        }
+        hasPlayed = true;
 
-      tl = gsap.timeline();
+        tl = gsap.timeline({ onComplete: () => resolve() });
 
-      // 1. Blurred text "types" across the container, line by line
-      tl.to(blurLines, {
-        scaleX: 1,
-        duration: 0.3,
-        stagger: 0.14,
-        ease: 'steps(12)',
+        // 1. Blurred text "types" across the container, line by line
+        tl.to(blurLines, {
+          scaleX: 1,
+          duration: 0.3,
+          stagger: 0.14,
+          ease: 'steps(12)',
+        });
+
+        // 2. Bar scanner sweeps top -> bottom
+        tl.to(scanner, { autoAlpha: 1, duration: 0.12 }, '+=0.1');
+        tl.to(scanner, { top: '100%', duration: 0.9, ease: 'power1.inOut' });
+        tl.to(scanner, { autoAlpha: 0, duration: 0.15 }, '-=0.1');
+
+        // 3. Everything (blurred text) disappears
+        tl.to(scanStage, { autoAlpha: 0, duration: 0.3 }, '-=0.15');
+
+        // 4. AI shimmer line in the center
+        tl.to(thinking, { autoAlpha: 1, duration: 0.3 }, '+=0.05');
+        tl.to({}, { duration: 1.5 });
+        tl.to(thinking, { autoAlpha: 0, duration: 0.3 });
+
+        // 5. Response writes in (left-aligned final content), persists
+        tl.to(content, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.05');
       });
 
-      // 2. Bar scanner sweeps top -> bottom
-      tl.to(scanner, { autoAlpha: 1, duration: 0.12 }, '+=0.1');
-      tl.to(scanner, { top: '100%', duration: 0.9, ease: 'power1.inOut' });
-      tl.to(scanner, { autoAlpha: 0, duration: 0.15 }, '-=0.1');
-
-      // 3. Everything (blurred text) disappears
-      tl.to(scanStage, { autoAlpha: 0, duration: 0.3 }, '-=0.15');
-
-      // 4. AI shimmer line in the center
-      tl.to(thinking, { autoAlpha: 1, duration: 0.3 }, '+=0.05');
-      tl.to({}, { duration: 1.5 });
-      tl.to(thinking, { autoAlpha: 0, duration: 0.3 });
-
-      // 5. Response writes in (left-aligned final content), persists
-      tl.to(content, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.05');
-    };
+    const unregister = registerFeatureStep({ order: ORDER, play });
 
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          play();
+          requestSequenceStart();
           io.disconnect();
         }
       },
@@ -118,6 +129,7 @@ export default function AiAnalyzeFeature({ className = '' }: { className?: strin
 
     return () => {
       io.disconnect();
+      unregister();
       tl?.kill();
     };
   }, []);

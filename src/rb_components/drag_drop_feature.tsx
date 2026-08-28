@@ -5,6 +5,13 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import gsap from 'gsap';
 import { HiCursorArrowRays } from 'react-icons/hi2';
+import {
+  registerFeatureStep,
+  requestSequenceStart,
+} from '@/rb_components/feature_sequence';
+
+/** Play order within the Features sequence. */
+const ORDER = 0;
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -67,38 +74,46 @@ export default function DragDropFeature({ className = '' }: { className?: string
 
     let tl: gsap.core.Timeline | null = null;
 
-    const play = () => {
-      if (hasPlayed) {
-        showFinal();
-        return;
-      }
-      hasPlayed = true;
+    // Starts the animation; resolves when it has finished settling. If it has
+    // already played (or reduced motion), resolves immediately in final state.
+    const play = () =>
+      new Promise<void>((resolve) => {
+        if (hasPlayed) {
+          showFinal();
+          resolve();
+          return;
+        }
+        hasPlayed = true;
 
-      tl = gsap.timeline();
+        tl = gsap.timeline({ onComplete: () => resolve() });
 
-      // 1. Chip + cursor appear at the upper-left corner
-      tl.to(chip, { autoAlpha: 1, duration: 0.25 });
-      tl.to(cursor, { autoAlpha: 1, left: '16%', top: '20%', duration: 0.4, ease: 'power2.out' }, '<');
-      tl.to(cursor, { scale: 0.85, duration: 0.12 }); // "grab"
+        // 1. Chip + cursor appear at the upper-left corner
+        tl.to(chip, { autoAlpha: 1, duration: 0.25 });
+        tl.to(cursor, { autoAlpha: 1, left: '16%', top: '20%', duration: 0.4, ease: 'power2.out' }, '<');
+        tl.to(cursor, { scale: 0.85, duration: 0.12 }); // "grab"
 
-      // 2. Drag chip + cursor toward the middle
-      tl.to([chip, cursor], { left: '50%', top: '50%', duration: 0.9, ease: 'power2.inOut' }, '+=0.05');
+        // 2. Drag chip + cursor toward the middle
+        tl.to([chip, cursor], { left: '50%', top: '50%', duration: 0.9, ease: 'power2.inOut' }, '+=0.05');
 
-      // 3. Cursor + text block disappear
-      tl.to(cursor, { scale: 1, duration: 0.1 });
-      tl.to([cursor, chip], { autoAlpha: 0, duration: 0.3 }, '+=0.05');
+        // 3. Cursor + text block disappear
+        tl.to(cursor, { scale: 1, duration: 0.1 });
+        tl.to([cursor, chip], { autoAlpha: 0, duration: 0.3 }, '+=0.05');
 
-      // 4. Final content pops up in the center
-      tl.to(content, { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'back.out(1.6)' }, '-=0.1');
+        // 4. Final content pops up in the center
+        tl.to(content, { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'back.out(1.6)' }, '-=0.1');
 
-      // 5. ...then settles / aligns to the left of the container
-      tl.to(content, { left: 0, top: 0, xPercent: 0, yPercent: 0, duration: 0.55, ease: 'power3.inOut' }, '+=0.3');
-    };
+        // 5. ...then settles / aligns to the left of the container
+        tl.to(content, { left: 0, top: 0, xPercent: 0, yPercent: 0, duration: 0.55, ease: 'power3.inOut' }, '+=0.3');
+      });
 
+    const unregister = registerFeatureStep({ order: ORDER, play });
+
+    // When this card scrolls into view, ask the coordinator to run the
+    // sequence (it starts once and drives every card in order).
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          play();
+          requestSequenceStart();
           io.disconnect();
         }
       },
@@ -108,6 +123,7 @@ export default function DragDropFeature({ className = '' }: { className?: string
 
     return () => {
       io.disconnect();
+      unregister();
       tl?.kill();
     };
   }, []);

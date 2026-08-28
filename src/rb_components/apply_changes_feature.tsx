@@ -5,6 +5,13 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import gsap from 'gsap';
 import { HiCheckCircle, HiArrowPath } from 'react-icons/hi2';
+import {
+  registerFeatureStep,
+  requestSequenceStart,
+} from '@/rb_components/feature_sequence';
+
+/** Play order within the Features sequence. */
+const ORDER = 2;
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -73,14 +80,16 @@ export default function ApplyChangesFeature({ className = '' }: { className?: st
 
     let tl: gsap.core.Timeline | null = null;
 
-    const play = () => {
+    const play = () =>
+      new Promise<void>((resolve) => {
       if (hasPlayed) {
         showFinal();
+        resolve();
         return;
       }
       hasPlayed = true;
 
-      tl = gsap.timeline();
+      tl = gsap.timeline({ onComplete: () => resolve() });
 
       // 1. Green button appears
       tl.to(button, { autoAlpha: 1, scale: 1, duration: 0.35, ease: 'back.out(1.6)' });
@@ -115,12 +124,14 @@ export default function ApplyChangesFeature({ className = '' }: { className?: st
 
       // 7. Final content settles in
       tl.to(content, { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.05');
-    };
+    });
+
+    const unregister = registerFeatureStep({ order: ORDER, play });
 
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          play();
+          requestSequenceStart();
           io.disconnect();
         }
       },
@@ -130,6 +141,7 @@ export default function ApplyChangesFeature({ className = '' }: { className?: st
 
     return () => {
       io.disconnect();
+      unregister();
       tl?.kill();
     };
   }, []);
