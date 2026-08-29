@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Poppins } from 'next/font/google';
 import { FolderUp } from 'lucide-react';
 import SpecularButton from '@/components/specular_button';
@@ -185,10 +186,12 @@ function TemplateCard({ template, colIndex }: { template: Template; colIndex: nu
   const [hovered, setHovered] = useState(false);
   // Mini preview anchors to top-left for cols 0-1, top-right for cols 2-3
   const previewAnchor = colIndex >= 2 ? 'top-2 right-2' : 'top-2 left-2';
+  const href = template.blank || template.id === 'blank' ? '/canvas' : `/canvas?template=${template.id}`;
 
   return (
-    <div
-      className="relative flex flex-col"
+    <Link
+      href={href}
+      className="group relative flex cursor-pointer flex-col no-underline focus:outline-none"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -238,7 +241,7 @@ function TemplateCard({ template, colIndex }: { template: Template; colIndex: nu
           {/* "Use this Template" button — bottom center */}
           <div className="flex justify-center pb-1">
             <span
-              className="rounded-lg border border-white/50 bg-black/60 px-5 py-2 text-xs font-bold text-white backdrop-blur-sm"
+              className="rounded-lg border border-white/50 bg-black/60 px-5 py-2 text-xs font-bold text-white backdrop-blur-sm transition-transform duration-150 group-active:scale-95"
               style={{ fontFamily: 'var(--font-poppins)' }}
             >
               {template.blank ? 'Start Building' : 'Use this Template'}
@@ -262,7 +265,7 @@ function TemplateCard({ template, colIndex }: { template: Template; colIndex: nu
           {template.category} · {template.tag}
         </p>
       </div>
-    </div>
+    </Link>
   );
 }
 
