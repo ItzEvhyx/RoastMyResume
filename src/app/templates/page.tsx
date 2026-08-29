@@ -7,23 +7,38 @@ import { useMediaQuery } from '@/lib/use_media_query';
 import BannerWeb from '@/app/features/templates_page/banner/banner.web';
 import BannerMobile from '@/app/features/templates_page/banner/banner.mobile';
 import TemplatesAreaWeb from '@/app/features/templates_page/templates_area/templates.area.web';
+import TemplatesAreaMobile from '@/app/features/templates_page/templates_area/templates.area.mobile';
+import TriviaWeb from '@/app/features/templates_page/trivia/trivia.web';
+import TriviaMobile from '@/app/features/templates_page/trivia/trivia.mobile';
 
 export default function TemplatesPage() {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [ready, setReady] = useState(false);
 
-  // Trigger the entry animation on the next frame after mount so the
-  // initial hidden state has been painted before we start animating.
+  // Entry animation — paint the hidden state first, then animate in.
   useEffect(() => {
     const id = requestAnimationFrame(() => setReady(true));
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Hide all scrollbars while this page is mounted.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    html.classList.add('no-scrollbar');
+    body.classList.add('no-scrollbar');
+    return () => {
+      html.classList.remove('no-scrollbar');
+      body.classList.remove('no-scrollbar');
+    };
+  }, []);
+
+
   return (
-    <main className="relative min-h-screen w-full bg-black">
+    <main className="no-scrollbar relative min-h-screen w-full bg-black">
       <GridGlowBackground />
 
-      {/* Entry wrapper — fades in and drifts up from 18px on mount */}
+      {/* Entry wrapper */}
       <div
         style={{
           opacity: ready ? 1 : 0,
@@ -45,7 +60,10 @@ export default function TemplatesPage() {
         </div>
 
         {/* Content area */}
-        {isMobile === undefined ? null : !isMobile && <TemplatesAreaWeb />}
+        {isMobile === undefined ? null : isMobile ? <TemplatesAreaMobile /> : <TemplatesAreaWeb />}
+
+        {/* Trivia banner */}
+        {isMobile === undefined ? null : isMobile ? <TriviaMobile /> : <TriviaWeb />}
       </div>
     </main>
   );
