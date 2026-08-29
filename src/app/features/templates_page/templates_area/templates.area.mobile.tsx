@@ -173,18 +173,25 @@ function TemplateCard({ template, colIndex }: { template: Template; colIndex: nu
           borderColor: hovered ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
         }}
       >
-        {/* Resume lines — darkens heavily on hover */}
+        {/* Resume lines — barely dims on hover */}
         <div
           className="h-full w-full p-3 transition-all duration-200"
-          style={{ filter: hovered ? 'blur(2px) brightness(0.08)' : 'none' }}
+          style={{ filter: hovered ? 'brightness(0.85)' : 'none' }}
         >
           <ResumePreview variant={template.variant} />
         </div>
 
-        {/* Hover overlay */}
+        {/* Liquid glass overlay — subtle frosted pane */}
         <div
           className="absolute inset-0 flex flex-col justify-between p-2.5 transition-opacity duration-200"
-          style={{ opacity: hovered ? 1 : 0 }}
+          style={{
+            opacity: hovered ? 1 : 0,
+            background: 'rgba(255,255,255,0.06)',
+            backdropFilter: 'blur(4px) saturate(120%)',
+            WebkitBackdropFilter: 'blur(4px) saturate(120%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)',
+            border: '1px solid rgba(255,255,255,0.12)',
+          }}
         >
           {/* Mini preview — top corner */}
           <div

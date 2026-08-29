@@ -74,10 +74,10 @@ export default function BannerMobile() {
     </div>
 
     {/* Templates stamp */}
-    <div className={`relative z-20 flex justify-center ${futuraDisplay.variable}`} style={{ marginTop: 24 }}>
+    <div className={`relative z-20 flex justify-center ${futuraDisplay.variable}`} style={{ marginTop: 48 }}>
       <span
-        className="inline-block -rotate-2 rounded-md bg-white px-8 py-3 text-black shadow-lg tracking-widest"
-        style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800, fontSize: 'clamp(2rem, 8vw, 3rem)', lineHeight: 1 }}
+        className="inline-block -rotate-2 rounded-md bg-white px-10 py-4 text-black shadow-lg tracking-widest"
+        style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800, fontSize: 'clamp(2.5rem, 9vw, 3.5rem)', lineHeight: 1 }}
       >
         Templates
       </span>

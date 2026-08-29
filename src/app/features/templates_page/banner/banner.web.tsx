@@ -132,7 +132,7 @@ export default function BannerWeb() {
     </div>
 
     {/* "Templates" stamp — centered, tilted, overlapping the dark bg. */}
-    <div className={`relative z-20 flex justify-center ${futuraDisplay.variable}`} style={{ marginTop: 32 }}>
+    <div className={`relative z-20 flex justify-center ${futuraDisplay.variable}`} style={{ marginTop: 56 }}>
       <span
         className="inline-block -rotate-2 rounded-md bg-white px-20 py-5 text-black shadow-lg tracking-widest"
         style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800, fontSize: 'clamp(4rem, 7vw, 7rem)', lineHeight: 1 }}
