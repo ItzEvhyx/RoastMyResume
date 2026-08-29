@@ -7,6 +7,7 @@ import RadialGlowButton from '@/components/ui/radial_glow_button';
 import SpecularButton from '@/components/specular_button';
 import Reveal from '@/rb_components/reveal';
 import { scrollToSection } from '@/rb_components/section_scroll';
+import { openDeniseModal } from '@/rb_components/denise_modal_store';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -99,6 +100,7 @@ export default function HeroMobile() {
       {/* Buttons — stacked full width on phones */}
       <Reveal delay={320} className="flex w-full max-w-xs flex-col items-stretch gap-3">
         <RadialGlowButton
+          onClick={openDeniseModal}
           className="!min-h-0 !min-w-0 w-full px-8 py-3.5 !text-base"
           style={{
             fontFamily: 'var(--font-poppins)',

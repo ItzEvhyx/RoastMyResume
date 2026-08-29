@@ -3,6 +3,7 @@
 import { useMediaQuery } from '@/lib/use_media_query';
 import LandingDesktop from '@/app/features/landing_page/landing.desktop';
 import LandingMobile from '@/app/features/landing_page/landing.mobile';
+import DeniseModal from '@/rb_components/denise_modal';
 
 /**
  * Device switch: renders exactly one landing tree based on viewport width, so
@@ -20,5 +21,11 @@ export default function LandingPage() {
     return <main className="min-h-screen w-full bg-black" />;
   }
 
-  return isMobile ? <LandingMobile /> : <LandingDesktop />;
+  return (
+    <>
+      {isMobile ? <LandingMobile /> : <LandingDesktop />}
+      {/* Single shared modal instance both trees' Get started buttons open. */}
+      <DeniseModal />
+    </>
+  );
 }

@@ -1,12 +1,15 @@
 // src/app/features/landing_page/hero.tsx
 'use client';
 
+import { useRef } from 'react';
 import { Poppins, VT323 } from 'next/font/google';
 import localFont from 'next/font/local';
 import ResumeCardStack from '@/rb_components/resume_card_stack';
 import RadialGlowButton from '@/components/ui/radial_glow_button';
 import SpecularButton from '@/components/specular_button';
 import { scrollToSection } from '@/rb_components/section_scroll';
+import { openDeniseModal } from '@/rb_components/denise_modal_store';
+import LogoBanner from '@/app/features/landing_page/logo.banner';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -39,10 +42,17 @@ const RESUME_TEMPLATES = [
 const futuraStack = 'var(--font-futura-display), sans-serif';
 
 export default function Hero() {
+  const rootRef = useRef<HTMLDivElement>(null);
+
   return (
     <div
+      ref={rootRef}
       className={`relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col items-center gap-12 px-6 py-16 md:flex-row md:items-center md:justify-start md:gap-10 ${poppins.variable} ${vt323.variable} ${futuraDisplay.variable}`}
     >
+      {/* Fixed wordmark, portaled to the viewport. Visible only while this hero
+          root is in view — it fades out once the track pans to another section. */}
+      <LogoBanner watchRef={rootRef} />
+
       {/* Left — stacked resume templates */}
       <div className="flex shrink-0 justify-center md:justify-start">
         <ResumeCardStack items={RESUME_TEMPLATES} cardWidth={460} />
@@ -91,6 +101,7 @@ export default function Hero() {
         {/* Buttons */}
         <div className="mb-6 flex flex-wrap items-center gap-6">
           <RadialGlowButton
+            onClick={openDeniseModal}
             className="!min-h-0 !min-w-0 px-9 py-4 !text-lg transition-transform hover:-translate-y-0.5"
             style={{
               fontFamily: 'var(--font-poppins)',

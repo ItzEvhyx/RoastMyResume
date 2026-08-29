@@ -7,6 +7,7 @@ import { FaLinkedinIn, FaGithub, FaInstagram } from 'react-icons/fa';
 import SpecularButton from '@/components/specular_button';
 import { ElasticStack, type ElasticStackItem } from '@/components/ui/elastic-stack';
 import Reveal from '@/rb_components/reveal';
+import { openDeniseModal } from '@/rb_components/denise_modal_store';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -96,6 +97,7 @@ export default function ContactsMobile() {
           tintOpacity={1}
           textColor="#f5f5f5"
           className="w-full"
+          onClick={openDeniseModal}
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}
         >
           Get started &gt;
