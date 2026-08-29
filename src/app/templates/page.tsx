@@ -10,6 +10,10 @@ import TemplatesAreaWeb from '@/app/features/templates_page/templates_area/templ
 import TemplatesAreaMobile from '@/app/features/templates_page/templates_area/templates.area.mobile';
 import TriviaWeb from '@/app/features/templates_page/trivia/trivia.web';
 import TriviaMobile from '@/app/features/templates_page/trivia/trivia.mobile';
+import FAQWeb from '@/app/features/templates_page/faq/faq.web';
+import FAQMobile from '@/app/features/templates_page/faq/faq.mobile';
+import FooterWeb from '@/app/features/templates_page/footer/footer.web';
+import FooterMobile from '@/app/features/templates_page/footer/footer.mobile';
 
 export default function TemplatesPage() {
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -64,6 +68,12 @@ export default function TemplatesPage() {
 
         {/* Trivia banner */}
         {isMobile === undefined ? null : isMobile ? <TriviaMobile /> : <TriviaWeb />}
+
+        {/* FAQ */}
+        {isMobile === undefined ? null : isMobile ? <FAQMobile /> : <FAQWeb />}
+
+        {/* Footer */}
+        {isMobile === undefined ? null : isMobile ? <FooterMobile /> : <FooterWeb />}
       </div>
     </main>
   );
