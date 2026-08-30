@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { ChevronUp, ChevronDown } from 'lucide-react';
 
 const glassStyle: React.CSSProperties = {
   background: 'rgba(30, 32, 38, 0.55)',
@@ -20,55 +19,44 @@ const TOOLS = [
   { id: 'container', label: 'Container',    src: '/assets/tools_icons/container_icon.svg'     },
   { id: 'pen',       label: 'Pen',          src: '/assets/tools_icons/pen_icon.svg'           },
   { id: 'shapes',    label: 'Shapes',       src: '/assets/tools_icons/shapes_icon.svg'        },
+  { id: 'layers',    label: 'Layers',       src: '/assets/tools_icons/layer_icon.svg'         },
 ];
 
-export default function ToolSidebarMobile() {
-  const [expanded, setExpanded] = useState(true);
+export default function ToolSidebarMobile({ stage }: { stage: number }) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
 
+  const sidebarVisible = stage >= 3;
+  const sidebarPopStyle: React.CSSProperties = {
+    opacity: sidebarVisible ? 1 : 0,
+    transform: sidebarVisible ? 'scale(1) translateY(0)' : 'scale(0.85) translateY(12px)',
+    transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
+  };
+
   return (
-    <div className="pointer-events-none fixed left-3 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-3">
-
-      {/* Main tools pill */}
-      <div className="pointer-events-auto flex flex-col items-center rounded-full py-2.5" style={glassStyle}>
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="flex h-[54px] w-[54px] items-center justify-center rounded-full text-white/60 transition-all duration-150 hover:bg-white/10 active:scale-90"
-        >
-          {expanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
-        </button>
-
-        <div
-          className="flex flex-col items-center overflow-hidden transition-all duration-300 ease-out"
-          style={{ maxHeight: expanded ? TOOLS.length * 70 : 0 }}
-        >
-          <div className="my-1.5 h-px w-7 bg-white/15" />
-          {TOOLS.map(tool => (
-            <button
-              key={tool.id}
-              title={tool.label}
-              onClick={() => setActiveTool(t => t === tool.id ? null : tool.id)}
-              className="flex h-[54px] w-[54px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
-              style={{ opacity: activeTool === tool.id ? 1 : 0.55 }}
-            >
-              <Image src={tool.src} alt={tool.label} width={36} height={36} />
-            </button>
-          ))}
-        </div>
+    <div 
+      className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-4"
+      style={sidebarPopStyle}
+    >
+      {/* Horizontal scrollable toolbar */}
+      <div 
+        className="pointer-events-auto no-scrollbar flex items-center gap-2 overflow-x-auto rounded-full px-2.5 py-2"
+        style={{
+          ...glassStyle,
+          maxWidth: 'calc(100vw - 32px)', // leave 16px padding on each side
+        }}
+      >
+        {TOOLS.map(tool => (
+          <button
+            key={tool.id}
+            title={tool.label}
+            onClick={() => setActiveTool(t => t === tool.id ? null : tool.id)}
+            className="flex h-[60px] w-[60px] flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
+            style={{ opacity: activeTool === tool.id ? 1 : 0.55 }}
+          >
+            <Image src={tool.src} alt={tool.label} width={44} height={44} />
+          </button>
+        ))}
       </div>
-
-      {/* Layers pill */}
-      <div className="pointer-events-auto flex flex-col items-center rounded-full py-2.5" style={glassStyle}>
-        <button
-          title="Layers"
-          onClick={() => setActiveTool(t => t === 'layers' ? null : 'layers')}
-          className="flex h-[54px] w-[54px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
-          style={{ opacity: activeTool === 'layers' ? 1 : 0.55 }}
-        >
-          <Image src="/assets/tools_icons/layer_icon.svg" alt="Layers" width={36} height={36} />
-        </button>
-      </div>
-
     </div>
   );
 }

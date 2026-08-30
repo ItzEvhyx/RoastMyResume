@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
@@ -45,13 +45,26 @@ function ToolButton({
   );
 }
 
-export default function ToolSidebarWeb() {
-  const [expanded, setExpanded] = useState(true);
+export default function ToolSidebarWeb({ stage }: { stage: number }) {
+  const [expanded, setExpanded] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
 
-  return (
-    <div className="pointer-events-none fixed left-6 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-4">
+  // Auto-expand once stage 4 is reached
+  useEffect(() => {
+    if (stage >= 4) setExpanded(true);
+  }, [stage]);
 
+  const sidebarVisible = stage >= 3;
+  const sidebarPopStyle: React.CSSProperties = {
+    opacity: sidebarVisible ? 1 : 0,
+    transform: sidebarVisible ? 'scale(1) translateX(0)' : 'scale(0.85) translateX(-12px)',
+    transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
+  };
+
+  return (
+    <div className="pointer-events-none fixed left-6 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-4"
+      style={sidebarPopStyle}
+    >
       {/* Main tools pill */}
       <div className="pointer-events-auto flex flex-col items-center rounded-full py-3" style={glassStyle}>
 
@@ -65,7 +78,7 @@ export default function ToolSidebarWeb() {
 
         {/* Tools */}
         <div
-          className="flex flex-col items-center overflow-hidden transition-all duration-300 ease-out"
+          className="flex flex-col items-center overflow-hidden transition-all duration-700 ease-out"
           style={{ maxHeight: expanded ? TOOLS.length * 78 : 0 }}
         >
           <div className="my-1.5 h-px w-8 bg-white/15" />
