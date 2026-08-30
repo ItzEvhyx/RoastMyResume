@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * A4 Resume dimensions:
- * - Editing (true size): 794px × 1123px at 96 DPI — this is what the DOM
- *   element actually measures. Never change these for "fit" purposes;
- *   scale the wrapper visually instead (see fitScale below).
- * - Export: 2480px × 3508px at 300 DPI for print-quality PDF output.
- * - Physical: 21.0cm × 29.7cm
+ * - Physical A4: 210mm × 297mm (21.0cm × 29.7cm)
+ * - At 96 DPI: 794px × 1123px
+ * - At 300 DPI (export): 2480px × 3508px
+ * 
+ * We use 210mm × 297mm ratio = 0.707 (width/height)
+ * To get cleaner numbers: 794 × 1123 maintains this ratio
  */
 const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1123;
