@@ -32,14 +32,17 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
     transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
   };
 
+  // First 4 tools visible (up to image upload), rest require scrolling
+  const visibleToolsCount = 4;
+
   return (
     <div 
       className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-4"
       style={sidebarPopStyle}
     >
-      {/* Horizontal scrollable toolbar */}
+      {/* Horizontal scrollable toolbar - decreased height, shows first 4 tools */}
       <div 
-        className="pointer-events-auto no-scrollbar flex items-center gap-2 overflow-x-auto rounded-full px-2.5 py-2"
+        className="pointer-events-auto no-scrollbar flex items-center gap-2 overflow-x-auto rounded-full px-2.5 py-1.5"
         style={{
           ...glassStyle,
           maxWidth: 'calc(100vw - 32px)', // leave 16px padding on each side
@@ -50,10 +53,10 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
             key={tool.id}
             title={tool.label}
             onClick={() => setActiveTool(t => t === tool.id ? null : tool.id)}
-            className="flex h-[60px] w-[60px] flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
+            className="flex h-[50px] w-[50px] flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
             style={{ opacity: activeTool === tool.id ? 1 : 0.55 }}
           >
-            <Image src={tool.src} alt={tool.label} width={44} height={44} />
+            <Image src={tool.src} alt={tool.label} width={36} height={36} />
           </button>
         ))}
       </div>
