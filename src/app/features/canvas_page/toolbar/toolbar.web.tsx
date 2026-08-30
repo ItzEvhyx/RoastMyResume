@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Poppins } from 'next/font/google';
 import { useState } from 'react';
+import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 import { exportCanvasToPdf } from '@/app/features/canvas_page/utils/exportToPdf';
 
 const poppins = Poppins({
@@ -34,6 +35,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
   const visible = stage >= 2;
   const [resumeTitle, setResumeTitle] = useState('Untitled Resume');
   const [isEditing, setIsEditing] = useState(false);
+  const { isGrabMode, setIsGrabMode } = useCanvas();
 
   const handleExportPdf = async () => {
     const fileName = `${resumeTitle.trim() || 'Untitled Resume'}.pdf`;
@@ -98,9 +100,25 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
         </div>
       </div>
 
-      {/* Right — staggered: Export PDF then Sign in */}
+      {/* Right — staggered: Mode Toggle, Export PDF, then Sign in */}
       <div className="pointer-events-auto flex items-center gap-3">
-        <div style={popStyle(visible, 60)}>
+        {/* Mode Toggle */}
+        <div style={popStyle(visible, 40)}>
+          <button
+            onClick={() => setIsGrabMode(!isGrabMode)}
+            className="flex items-center justify-center rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+            style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
+            title={isGrabMode ? 'Switch to Cursor Mode' : 'Switch to Grab Mode'}
+          >
+            {isGrabMode ? (
+              <Image src="/assets/icons/grab_icon.svg" alt="Grab mode" width={18} height={18} className="opacity-80" />
+            ) : (
+              <Image src="/assets/icons/cursor_icon.svg" alt="Cursor mode" width={18} height={18} className="opacity-80" />
+            )}
+          </button>
+        </div>
+
+        <div style={popStyle(visible, 80)}>
           <button
             onClick={handleExportPdf}
             className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
@@ -111,7 +129,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
           </button>
         </div>
 
-        <div style={popStyle(visible, 120)}>
+        <div style={popStyle(visible, 140)}>
           <button
             className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
             style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
