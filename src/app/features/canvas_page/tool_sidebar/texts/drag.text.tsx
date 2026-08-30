@@ -74,6 +74,8 @@ interface DraggableTextProps {
   onSelect: () => void;
   onUpdate: (updates: Partial<TextElement>) => void;
   onDelete: () => void;
+  /** Mobile only — called when the user long-presses the element */
+  onLongPress?: () => void;
 }
 
 type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw' | 'w' | 'e';
@@ -99,15 +101,19 @@ export function DraggableText({
   onSelect,
   onUpdate,
   onDelete,
+  onLongPress,
 }: DraggableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle | null>(null);
+  const [showCopyPill, setShowCopyPill] = useState(false);
 
   const dragSnapshot = useRef<{ mouseX: number; mouseY: number; elX: number; elY: number } | null>(null);
   const resizeSnapshot = useRef<ResizeSnapshot | null>(null);
   // Double-tap detection
   const lastTapRef = useRef<number>(0);
+  // Long-press timer
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const textRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -530,6 +536,7 @@ export function DraggableText({
   const startTouchDrag = (e: React.TouchEvent) => {
     if (isEditing || e.touches.length !== 1) return;
     e.stopPropagation();
+
     // Double-tap detection → enter edit mode
     const now = Date.now();
     if (isSelected && now - lastTapRef.current < 300) {
@@ -539,15 +546,50 @@ export function DraggableText({
     }
     lastTapRef.current = now;
 
+    // Select immediately so it feels snappy
+    onSelect();
+    setShowCopyPill(false);
+
     const touch = e.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+
     dragSnapshot.current = {
       mouseX: touch.clientX,
       mouseY: touch.clientY,
       elX: element.x,
       elY: element.y,
     };
+
+    // Long-press: if finger hasn't moved much after 600ms, show copy pill
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      // Only fire if finger is still stationary
+      setIsDragging(false);
+      dragSnapshot.current = null;
+      setShowCopyPill(true);
+      if (onLongPress) onLongPress();
+    }, 600);
+
+    // Cancel long-press if finger moves more than 8px
+    const cancelOnMove = (me: TouchEvent) => {
+      if (me.touches.length < 1) return;
+      const t = me.touches[0];
+      const dist = Math.hypot(t.clientX - startX, t.clientY - startY);
+      if (dist > 8) {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+        document.removeEventListener('touchmove', cancelOnMove);
+      }
+    };
+    const cancelOnEnd = () => {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      document.removeEventListener('touchmove', cancelOnMove);
+      document.removeEventListener('touchend', cancelOnEnd);
+    };
+    document.addEventListener('touchmove', cancelOnMove, { passive: true });
+    document.addEventListener('touchend', cancelOnEnd, { once: true });
+
     setIsDragging(true);
-    onSelect();
   };
 
   const startResizeTouch = (handle: ResizeHandle) => (e: React.TouchEvent) => {
@@ -711,6 +753,50 @@ export function DraggableText({
             onTouchStart={startResizeTouch('e')}
           />
         </>
+      )}
+      {/* Copy pill — shown after long-press on mobile */}
+      {showCopyPill && isSelected && !isEditing && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: '50%',
+            transform: 'translate(-50%, 10px)',
+            zIndex: 999,
+          }}
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+          onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        >
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setShowCopyPill(false);
+              if (onLongPress) onLongPress();
+            }}
+            style={{
+              background: 'rgba(20, 22, 30, 0.92)',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: '20px',
+              padding: '8px 22px',
+              color: '#fff',
+              fontSize: '15px',
+              fontWeight: 600,
+              letterSpacing: '0.01em',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+            }}
+          >
+            <span style={{ fontSize: '17px' }}>⎘</span> Copy
+          </button>
+        </div>
       )}
     </div>
   );
