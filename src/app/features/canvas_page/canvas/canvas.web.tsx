@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { useClipboard } from '../globals/pasting';
 import { DraggableText } from '../tool_sidebar/texts/drag.text';
 import { DraggableDivider } from '../tool_sidebar/divider/drag.divider';
+import { clampDividerToSafeArea, clampTextToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import type { DividerElement } from '../context/DividerContext';
+import type { TextElement } from '../context/TextContext';
 
 /**
  * A4 Resume dimensions:
@@ -23,6 +26,12 @@ const PAGE_HEIGHT = 1123;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
 
+interface EdgeWarning {
+  x: number;
+  y: number;
+  height: number;
+}
+
 export default function CanvasWeb() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -33,6 +42,36 @@ export default function CanvasWeb() {
   const { register, unregister } = useClipboard();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [edgeWarning, setEdgeWarning] = useState<EdgeWarning | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showEdgeWarning = useCallback((warning: EdgeWarning) => {
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+    setEdgeWarning(warning);
+    warningTimer.current = setTimeout(() => setEdgeWarning(null), 3000);
+  }, []);
+
+  useEffect(() => () => {
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+  }, []);
+
+  const updateTextSafely = (element: TextElement, updates: Partial<TextElement>) => {
+    const result = clampTextToSafeArea(element, updates);
+    updateElement(element.id, result.updates);
+    if (result.wasClamped) {
+      const next = { ...element, ...result.updates };
+      showEdgeWarning({ x: next.x, y: next.y, height: getTextHeight(next) });
+    }
+  };
+
+  const updateDividerSafely = (element: DividerElement, updates: Partial<DividerElement>) => {
+    const result = clampDividerToSafeArea(element, updates);
+    updateDivider(element.id, result.updates);
+    if (result.wasClamped) {
+      const next = { ...element, ...result.updates };
+      showEdgeWarning({ x: next.x, y: next.y, height: next.thickness ?? 2 });
+    }
+  };
 
   // Register text clipboard source — copies all styling properties
   useEffect(() => {
@@ -99,12 +138,18 @@ export default function CanvasWeb() {
     const y = ((e.clientY - canvasRect.top) / canvasRect.height) * PAGE_HEIGHT;
 
     if (tool === 'text') {
-      addTextElement(x, y);
+      const draft: TextElement = { id: '', content: 'Add text', x, y, width: 150, fontSize: 24 };
+      const result = clampTextToSafeArea(draft, {});
+      addTextElement(result.updates.x!, result.updates.y!, 'Add text', result.updates.width);
+      if (result.wasClamped) showEdgeWarning({ x: result.updates.x!, y: result.updates.y!, height: getTextHeight({ ...draft, ...result.updates }) });
     }
 
     if (tool === 'divider') {
       // Center the divider horizontally on the drop point, same as clicking the tool does visually
-      addDividerElement(x - 150, y);
+      const draft: DividerElement = { id: '', x: x - 150, y, width: 300, thickness: 2 };
+      const result = clampDividerToSafeArea(draft, {});
+      addDividerElement(result.updates.x!, result.updates.y!, result.updates.width);
+      if (result.wasClamped) showEdgeWarning({ x: result.updates.x!, y: result.updates.y!, height: 2 });
     }
   };
 
@@ -316,6 +361,7 @@ export default function CanvasWeb() {
               onDrop={handleDrop}
               onDragOver={handleDragOver}
             >
+              {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
               {/* Render text elements */}
               {textElements.map(element => (
                 <DraggableText
@@ -326,7 +372,7 @@ export default function CanvasWeb() {
                     setSelectedDividerId(null);
                     setSelectedId(element.id);
                   }}
-                  onUpdate={(updates) => updateElement(element.id, updates)}
+                  onUpdate={(updates) => updateTextSafely(element, updates)}
                   onDelete={() => deleteElement(element.id)}
                 />
               ))}
@@ -341,7 +387,7 @@ export default function CanvasWeb() {
                     setSelectedId(null);
                     setSelectedDividerId(element.id);
                   }}
-                  onUpdate={(updates) => updateDivider(element.id, updates)}
+                  onUpdate={(updates) => updateDividerSafely(element, updates)}
                   onDelete={() => deleteDivider(element.id)}
                 />
               ))}

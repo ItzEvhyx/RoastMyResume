@@ -28,9 +28,9 @@ interface TextContextType {
   selectedId: string | null;
   toolbarExpanded: boolean;
   activeTool: string | null;
-  addTextElement: (x: number, y: number, initialContent?: string, initialWidth?: number) => void;
+  addTextElement: (x: number, y: number, initialContent?: string, initialWidth?: number) => string;
   /** Paste a full element snapshot (all props), used by the clipboard system */
-  addFullTextElement: (el: Omit<TextElement, 'id'>) => void;
+  addFullTextElement: (el: Omit<TextElement, 'id'>) => string;
   updateElement: (id: string, updates: Partial<TextElement>) => void;
   deleteElement: (id: string) => void;
   setSelectedId: (id: string | null) => void;
@@ -73,6 +73,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
       setTextElements(prev => prev.filter(element => element.id !== newElement.id));
       setSelectedId(current => current === newElement.id ? null : current);
     });
+    return newElement.id;
   };
 
   const updateElement = (id: string, updates: Partial<TextElement>) => {
@@ -95,6 +96,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
       setTextElements(prev => prev.filter(element => element.id !== newElement.id));
       setSelectedId(current => current === newElement.id ? null : current);
     });
+    return newElement.id;
   };
 
   const deleteElement = (id: string) => {

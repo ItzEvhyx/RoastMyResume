@@ -679,7 +679,7 @@ export function DraggableText({
       )}
 
       {/* Selection UI */}
-      {isSelected && !isEditing && !isDragging && (
+      {isSelected && !isDragging && (
         <>
           {/* Floating toolbar above the element */}
           <TextToolbar

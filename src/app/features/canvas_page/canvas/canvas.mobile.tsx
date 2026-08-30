@@ -8,6 +8,8 @@ import { useClipboard, ClipboardEntry } from '../globals/pasting';
 import { DraggableText } from '../tool_sidebar/texts/drag.text';
 import { DraggableDivider } from '../tool_sidebar/divider/drag.divider';
 import type { TextElement } from '../context/TextContext';
+import type { DividerElement } from '../context/DividerContext';
+import { clampDividerToSafeArea, clampTextToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 
 /**
  * Mobile version: pinch-to-zoom and drag-to-pan
@@ -26,6 +28,12 @@ interface PasteTarget {
   canvasY: number;
   screenX: number; // screen px for positioning the pill overlay
   screenY: number;
+}
+
+interface EdgeWarning {
+  x: number;
+  y: number;
+  height: number;
 }
 
 export default function CanvasMobile() {
@@ -55,6 +63,36 @@ export default function CanvasMobile() {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
   const [pasteTarget, setPasteTarget] = useState<PasteTarget | null>(null);
+  const [edgeWarning, setEdgeWarning] = useState<EdgeWarning | null>(null);
+  const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showEdgeWarning = useCallback((warning: EdgeWarning) => {
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+    setEdgeWarning(warning);
+    warningTimer.current = setTimeout(() => setEdgeWarning(null), 3000);
+  }, []);
+
+  useEffect(() => () => {
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+  }, []);
+
+  const updateTextSafely = (element: TextElement, updates: Partial<TextElement>) => {
+    const result = clampTextToSafeArea(element, updates);
+    updateElement(element.id, result.updates);
+    if (result.wasClamped) {
+      const next = { ...element, ...result.updates };
+      showEdgeWarning({ x: next.x, y: next.y, height: getTextHeight(next) });
+    }
+  };
+
+  const updateDividerSafely = (element: DividerElement, updates: Partial<DividerElement>) => {
+    const result = clampDividerToSafeArea(element, updates);
+    updateDivider(element.id, result.updates);
+    if (result.wasClamped) {
+      const next = { ...element, ...result.updates };
+      showEdgeWarning({ x: next.x, y: next.y, height: next.thickness ?? 2 });
+    }
+  };
 
   // Start with the full canvas width visible instead of the desktop zoom level.
   useEffect(() => {
@@ -346,6 +384,7 @@ export default function CanvasMobile() {
             }}
             onTouchEnd={handleCanvasTap}
           >
+            {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
             {textElements.map(element => (
               <DraggableText
                 key={element.id}
@@ -356,7 +395,7 @@ export default function CanvasMobile() {
                   setSelectedId(element.id);
                   setPasteTarget(null);
                 }}
-                onUpdate={(updates) => updateElement(element.id, updates)}
+                onUpdate={(updates) => updateTextSafely(element, updates)}
                 onDelete={() => deleteElement(element.id)}
                 onLongPress={handleElementLongPress}
               />
@@ -371,7 +410,7 @@ export default function CanvasMobile() {
                   setSelectedDividerId(element.id);
                   setPasteTarget(null);
                 }}
-                onUpdate={(updates) => updateDivider(element.id, updates)}
+                onUpdate={(updates) => updateDividerSafely(element, updates)}
                 onDelete={() => deleteDivider(element.id)}
                 onLongPress={handleElementLongPress}
               />
