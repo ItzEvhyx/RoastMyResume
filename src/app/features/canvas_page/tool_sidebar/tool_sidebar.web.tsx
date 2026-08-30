@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
+import { useText } from '../context/TextContext';
 import GooeyTooltip from '../components/GooeyTooltip';
 
 const glassStyle: React.CSSProperties = {
@@ -15,7 +16,7 @@ const glassStyle: React.CSSProperties = {
 };
 
 const TOOLS = [
-  { id: 'fontstyle', label: 'Font Style',    src: '/assets/tools_icons/font_style_icon.svg'    },
+  { id: 'fontstyle', label: 'Text',    src: '/assets/tools_icons/font_style_icon.svg'    },
   { id: 'divider',   label: 'Divider',        src: '/assets/tools_icons/divider_icon.svg'        },
   { id: 'iconset',   label: 'Icon Set',       src: '/assets/tools_icons/iconset_icon.svg'        },
   { id: 'image',     label: 'Image Upload',   src: '/assets/tools_icons/image_upload_icon.svg'   },
@@ -25,18 +26,20 @@ const TOOLS = [
 ];
 
 function ToolButton({
-  label, src, active, onClick,
+  label, src, active, onClick, onDragStart,
 }: {
-  label: string; src: string; active: boolean; onClick: () => void;
+  label: string; src: string; active: boolean; onClick: () => void; onDragStart?: (e: React.DragEvent) => void;
 }) {
   return (
     <GooeyTooltip label={label} position="right">
       <button
         onClick={onClick}
+        onDragStart={onDragStart}
+        draggable={!!onDragStart}
         className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
-        style={{ opacity: active ? 1 : 0.55 }}
+        style={{ opacity: active ? 1 : 0.55, cursor: onDragStart ? 'grab' : 'pointer' }}
       >
-        <Image src={src} alt={label} width={42} height={42} />
+        <Image src={src} alt={label} width={42} height={42} draggable={false} className="select-none pointer-events-none" />
       </button>
     </GooeyTooltip>
   );
@@ -44,12 +47,37 @@ function ToolButton({
 
 export default function ToolSidebarWeb({ stage }: { stage: number }) {
   const [expanded, setExpanded] = useState(false);
-  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const { addTextElement, setToolbarExpanded, activeTool, setActiveTool, setSelectedId } = useText();
 
   // Auto-expand once stage 4 is reached
   useEffect(() => {
     if (stage >= 4) setExpanded(true);
   }, [stage]);
+
+  // Sync expanded state to context
+  useEffect(() => {
+    setToolbarExpanded(expanded);
+  }, [expanded, setToolbarExpanded]);
+
+  const handleToolClick = (toolId: string) => {
+    const newTool = activeTool === toolId ? null : toolId;
+    setActiveTool(newTool);
+    
+    // Deselect text when switching away from text tool
+    if (activeTool === 'fontstyle' && toolId !== 'fontstyle') {
+      setSelectedId(null);
+    }
+    
+    // Add text to center of canvas when text tool is clicked
+    if (toolId === 'fontstyle') {
+      addTextElement(300, 300); // Center-ish position
+    }
+  };
+
+  const handleTextDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('tool', 'text');
+    e.dataTransfer.effectAllowed = 'copy';
+  };
 
   const sidebarVisible = stage >= 3;
   const sidebarPopStyle: React.CSSProperties = {
@@ -85,7 +113,8 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
               label={tool.label}
               src={tool.src}
               active={activeTool === tool.id}
-              onClick={() => setActiveTool(t => t === tool.id ? null : tool.id)}
+              onClick={() => handleToolClick(tool.id)}
+              onDragStart={tool.id === 'fontstyle' ? handleTextDragStart : undefined}
             />
           ))}
         </div>
@@ -99,7 +128,7 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
             className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
             style={{ opacity: activeTool === 'layers' ? 1 : 0.55 }}
           >
-            <Image src="/assets/tools_icons/layer_icon.svg" alt="Layers" width={42} height={42} />
+            <Image src="/assets/tools_icons/layer_icon.svg" alt="Layers" width={42} height={42} draggable={false} className="select-none pointer-events-none" />
           </button>
         </GooeyTooltip>
       </div>

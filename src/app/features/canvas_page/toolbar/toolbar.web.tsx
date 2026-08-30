@@ -54,7 +54,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
             className="pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
             style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
           >
-            <Image src="/assets/icons/back_icon.svg" alt="Back" width={18} height={18} className="opacity-80" />
+            <Image src="/assets/icons/back_icon.svg" alt="Back" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
             <span className="text-sm font-medium text-white/80">Back</span>
           </button>
         </div>
@@ -112,9 +112,9 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
               style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
             >
               {isGrabMode ? (
-                <Image src="/assets/icons/grab_icon.svg" alt="Grab mode" width={18} height={18} className="opacity-80" />
+                <Image src="/assets/icons/grab_icon.svg" alt="Grab mode" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
               ) : (
-                <Image src="/assets/icons/cursor_icon.svg" alt="Cursor mode" width={18} height={18} className="opacity-80" />
+                <Image src="/assets/icons/cursor_icon.svg" alt="Cursor mode" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
               )}
             </button>
           </GooeyTooltip>
@@ -126,7 +126,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
             className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
             style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
           >
-            <Image src="/assets/icons/pdf_icon.svg" alt="Export PDF" width={18} height={18} className="opacity-80" />
+            <Image src="/assets/icons/pdf_icon.svg" alt="Export PDF" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
             <span className="text-sm font-medium text-white/80">Export PDF</span>
           </button>
         </div>
@@ -136,7 +136,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
             className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
             style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
           >
-            <Image src="/assets/icons/profile_icon.svg" alt="Sign in" width={18} height={18} className="opacity-80" />
+            <Image src="/assets/icons/profile_icon.svg" alt="Sign in" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
             <span className="text-sm font-medium text-white/80">Sign in</span>
           </button>
         </div>

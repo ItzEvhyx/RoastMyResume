@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useCanvas } from '../context/CanvasContext';
+import { useText } from '../context/TextContext';
+import { DraggableText } from '../tool_sidebar/texts/drag.text';
 
 /**
  * Mobile version: pinch-to-zoom and drag-to-pan
@@ -18,25 +20,24 @@ export default function CanvasMobile() {
   const viewportRef = useRef<HTMLDivElement>(null);
   
   const { zoom, setZoom, pan, setPan } = useCanvas();
+  const { textElements, selectedId, setSelectedId, updateElement, deleteElement } = useText();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
 
-  // Touch pan
+  // Touch pan + pinch-zoom
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
-        // Single touch = pan
         setIsPanning(true);
         setPanStart({ 
           x: e.touches[0].clientX - pan.x, 
           y: e.touches[0].clientY - pan.y 
         });
       } else if (e.touches.length === 2) {
-        // Two fingers = prepare for pinch zoom
         const distance = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -50,13 +51,11 @@ export default function CanvasMobile() {
       e.preventDefault();
 
       if (e.touches.length === 1 && isPanning) {
-        // Pan
         setPan({
           x: e.touches[0].clientX - panStart.x,
           y: e.touches[0].clientY - panStart.y,
         });
       } else if (e.touches.length === 2) {
-        // Pinch zoom
         const distance = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -92,9 +91,7 @@ export default function CanvasMobile() {
     <div
       ref={viewportRef}
       className="fixed inset-0 overflow-hidden"
-      style={{
-        touchAction: 'none', // Prevent default touch behaviors
-      }}
+      style={{ touchAction: 'none' }}
     >
       {/* Pannable and zoomable container */}
       <div
@@ -124,8 +121,24 @@ export default function CanvasMobile() {
               backgroundColor: '#ffffff',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             }}
+            // Tap on canvas background → deselect
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedId(null);
+            }}
+            onTouchEnd={(e) => {
+              if (e.target === e.currentTarget) setSelectedId(null);
+            }}
           >
-            {/* Canvas content will go here */}
+            {textElements.map(element => (
+              <DraggableText
+                key={element.id}
+                element={element}
+                isSelected={selectedId === element.id}
+                onSelect={() => setSelectedId(element.id)}
+                onUpdate={(updates) => updateElement(element.id, updates)}
+                onDelete={() => deleteElement(element.id)}
+              />
+            ))}
           </div>
         </div>
       </div>

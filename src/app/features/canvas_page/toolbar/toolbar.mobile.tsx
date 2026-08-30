@@ -51,7 +51,7 @@ export default function ToolbarMobile({ stage, onAssistToggle }: ToolbarMobilePr
           className="pointer-events-auto flex items-center gap-2 rounded-full px-3.5 py-2 transition-all duration-200 active:scale-95"
           style={glassStyle}
         >
-          <Image src="/assets/icons/back_icon.svg" alt="Back" width={16} height={16} className="opacity-80" />
+          <Image src="/assets/icons/back_icon.svg" alt="Back" width={16} height={16} draggable={false} className="opacity-80 select-none pointer-events-none" />
           <span className="text-xs font-medium text-white/80">Back</span>
         </button>
       </div>
@@ -94,7 +94,7 @@ export default function ToolbarMobile({ stage, onAssistToggle }: ToolbarMobilePr
             className="flex items-center justify-center rounded-full p-2.5 transition-all duration-200 active:scale-95"
             style={glassStyle}
           >
-            <Image src="/assets/icons/pdf_icon.svg" alt="Export PDF" width={18} height={18} className="opacity-80" />
+            <Image src="/assets/icons/pdf_icon.svg" alt="Export PDF" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
           </button>
         </div>
 
@@ -103,7 +103,7 @@ export default function ToolbarMobile({ stage, onAssistToggle }: ToolbarMobilePr
             className="flex items-center gap-2 rounded-full px-3.5 py-2 transition-all duration-200 active:scale-95"
             style={glassStyle}
           >
-            <Image src="/assets/icons/profile_icon.svg" alt="Sign in" width={16} height={16} className="opacity-80" />
+            <Image src="/assets/icons/profile_icon.svg" alt="Sign in" width={16} height={16} draggable={false} className="opacity-80 select-none pointer-events-none" />
             <span className="text-xs font-medium text-white/80">Sign in</span>
           </button>
         </div>

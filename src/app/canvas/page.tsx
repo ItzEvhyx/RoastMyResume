@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useMediaQuery } from '@/lib/use_media_query';
 import StitchCanvasBackground from '@/rb_components/stitch_canvas_background';
 import { CanvasProvider } from '@/app/features/canvas_page/context/CanvasContext';
+import { TextProvider } from '@/app/features/canvas_page/context/TextContext';
 import ToolbarWeb from '@/app/features/canvas_page/toolbar/toolbar.web';
 import ToolbarMobile from '@/app/features/canvas_page/toolbar/toolbar.mobile';
 import ToolSidebarWeb from '@/app/features/canvas_page/tool_sidebar/tool_sidebar.web';
 import ToolSidebarMobile from '@/app/features/canvas_page/tool_sidebar/tool_sidebar.mobile';
 import AssistPanelWeb from '@/app/features/canvas_page/assist_panel/assist.panel.web';
 import AssistPanelMobile from '@/app/features/canvas_page/assist_panel/assist.panel.mobile';
+import FontSelector from '@/app/features/canvas_page/tool_sidebar/texts/select.font';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
 
@@ -41,7 +43,8 @@ export default function CanvasPage() {
 
   return (
     <CanvasProvider>
-      <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
+      <TextProvider>
+        <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
 
         {/* Toolbar — pops in at stage 2 */}
         {isMobile === undefined ? null : isMobile
@@ -52,6 +55,9 @@ export default function CanvasPage() {
         {isMobile === undefined ? null : isMobile
           ? <ToolSidebarMobile stage={stage} />
           : <ToolSidebarWeb stage={stage} />}
+
+        {/* Font Selector — appears when text is selected (desktop only) */}
+        {!isMobile && <FontSelector />}
 
         {/* Assistant Panel — appears at stage 2 */}
         {isMobile === undefined ? null : isMobile
@@ -71,6 +77,7 @@ export default function CanvasPage() {
           </StitchCanvasBackground>
         </div>
       </main>
+      </TextProvider>
     </CanvasProvider>
   );
 }

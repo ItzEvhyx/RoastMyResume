@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
+import { useText } from '../context/TextContext';
 
 const glassStyle: React.CSSProperties = {
   background: 'rgba(30, 32, 38, 0.55)',
@@ -12,18 +13,24 @@ const glassStyle: React.CSSProperties = {
 };
 
 const TOOLS = [
-  { id: 'fontstyle', label: 'Font Style',  src: '/assets/tools_icons/font_style_icon.svg'   },
-  { id: 'divider',   label: 'Divider',      src: '/assets/tools_icons/divider_icon.svg'       },
-  { id: 'iconset',   label: 'Icon Set',     src: '/assets/tools_icons/iconset_icon.svg'       },
-  { id: 'image',     label: 'Image',        src: '/assets/tools_icons/image_upload_icon.svg'  },
-  { id: 'container', label: 'Container',    src: '/assets/tools_icons/container_icon.svg'     },
-  { id: 'pen',       label: 'Pen',          src: '/assets/tools_icons/pen_icon.svg'           },
-  { id: 'shapes',    label: 'Shapes',       src: '/assets/tools_icons/shapes_icon.svg'        },
-  { id: 'layers',    label: 'Layers',       src: '/assets/tools_icons/layer_icon.svg'         },
+  { id: 'fontstyle', label: 'Text',      src: '/assets/tools_icons/font_style_icon.svg'  },
+  { id: 'divider',   label: 'Divider',   src: '/assets/tools_icons/divider_icon.svg'     },
+  { id: 'iconset',   label: 'Icon Set',  src: '/assets/tools_icons/iconset_icon.svg'     },
+  { id: 'image',     label: 'Image',     src: '/assets/tools_icons/image_upload_icon.svg'},
+  { id: 'container', label: 'Container', src: '/assets/tools_icons/container_icon.svg'   },
+  { id: 'pen',       label: 'Pen',       src: '/assets/tools_icons/pen_icon.svg'         },
+  { id: 'shapes',    label: 'Shapes',    src: '/assets/tools_icons/shapes_icon.svg'      },
+  { id: 'layers',    label: 'Layers',    src: '/assets/tools_icons/layer_icon.svg'       },
 ];
+
+// A4 canvas dimensions — text element is placed at the horizontal center,
+// roughly one-quarter down the page so it's visible at default zoom.
+const CANVAS_WIDTH = 794;
+const CANVAS_HEIGHT = 1123;
 
 export default function ToolSidebarMobile({ stage }: { stage: number }) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const { addTextElement } = useText();
 
   const sidebarVisible = stage >= 3;
   const sidebarPopStyle: React.CSSProperties = {
@@ -32,31 +39,43 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
     transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
   };
 
-  // First 4 tools visible (up to image upload), rest require scrolling
-  const visibleToolsCount = 4;
+  const handleToolTap = (toolId: string) => {
+    setActiveTool(t => t === toolId ? null : toolId);
+
+    if (toolId === 'fontstyle') {
+      // Place new text element at canvas center, slightly above vertical midpoint
+      addTextElement(CANVAS_WIDTH / 2 - 75, CANVAS_HEIGHT / 4);
+    }
+  };
 
   return (
-    <div 
+    <div
       className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-4"
       style={sidebarPopStyle}
     >
-      {/* Horizontal scrollable toolbar - decreased height, shows first 4 tools */}
-      <div 
+      <div
         className="pointer-events-auto no-scrollbar flex items-center gap-2 overflow-x-auto rounded-full px-2.5 py-1.5"
         style={{
           ...glassStyle,
-          maxWidth: 'calc(100vw - 32px)', // leave 16px padding on each side
+          maxWidth: 'calc(100vw - 32px)',
         }}
       >
         {TOOLS.map(tool => (
           <button
             key={tool.id}
             title={tool.label}
-            onClick={() => setActiveTool(t => t === tool.id ? null : tool.id)}
+            onClick={() => handleToolTap(tool.id)}
             className="flex h-[50px] w-[50px] flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
             style={{ opacity: activeTool === tool.id ? 1 : 0.55 }}
           >
-            <Image src={tool.src} alt={tool.label} width={36} height={36} />
+            <Image
+              src={tool.src}
+              alt={tool.label}
+              width={36}
+              height={36}
+              draggable={false}
+              className="select-none pointer-events-none"
+            />
           </button>
         ))}
       </div>
