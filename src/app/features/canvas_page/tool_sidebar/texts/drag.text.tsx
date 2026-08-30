@@ -5,6 +5,8 @@ import { Poppins } from 'next/font/google';
 import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 import { TextToolbar } from './text.tools';
 import { CATEGORIES } from './font.size';
+import { convertListContent, ListType } from './bulletpoint';
+import { getNextTextAlign, TextAlign } from './alignment';
 
 // ---------------------------------------------------------------------------
 // Stepped font size helper — used by corner resize
@@ -45,6 +47,7 @@ function steppedFontSize(
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
   variable: '--font-poppins',
 });
 
@@ -58,6 +61,10 @@ interface TextElement {
   fontFamily?: string;
   color?: string;
   fontWeight?: number;
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
+  listType?: ListType;
+  textAlign?: TextAlign;
   textCategory?: 'header' | 'subheader' | 'body' | 'meta' | null;
 }
 
@@ -121,14 +128,22 @@ export function DraggableText({
   }, [isSelected, isEditing, onDelete]);
 
   // ---------------------------------------------------------------------------
-  // Auto-focus textarea when editing starts
+  // Auto-focus and auto-grow textarea when editing starts
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
-      inputRef.current.select();
+      if (element.content === 'Add text') {
+        inputRef.current.select();
+      } else {
+        const len = inputRef.current.value.length;
+        inputRef.current.selectionStart = len;
+        inputRef.current.selectionEnd = len;
+      }
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.max(element.fontSize + 8, inputRef.current.scrollHeight)}px`;
     }
-  }, [isEditing]);
+  }, [isEditing, element.content, element.fontSize, element.width]);
 
   // ---------------------------------------------------------------------------
   // Mouse drag
@@ -289,6 +304,188 @@ export function DraggableText({
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onUpdate({ content: e.target.value });
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.max(element.fontSize + 8, inputRef.current.scrollHeight)}px`;
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData('text');
+    if (pasted) {
+      const lines = pasted.split('\n');
+      const maxLen = Math.max(...lines.map(l => l.length));
+      if (element.width <= 200 && maxLen > 15) {
+        const newWidth = Math.min(650, Math.max(element.width, Math.round(maxLen * (element.fontSize * 0.55))));
+        onUpdate({ width: newWidth });
+      }
+    }
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto';
+        inputRef.current.style.height = `${Math.max(element.fontSize + 8, inputRef.current.scrollHeight)}px`;
+      }
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const textarea = inputRef.current;
+      if (!textarea) return;
+
+      const { selectionStart, selectionEnd, value } = textarea;
+      const beforeCursor = value.substring(0, selectionStart);
+      const afterCursor = value.substring(selectionEnd);
+      const lastNewlineIdx = beforeCursor.lastIndexOf('\n');
+      const currentLine = lastNewlineIdx === -1 ? beforeCursor : beforeCursor.substring(lastNewlineIdx + 1);
+
+      const bulletMatch = currentLine.match(/^(\s*)•\s*(.*)$/);
+      const numberMatch = currentLine.match(/^(\s*)(\d+)\.\s*(.*)$/);
+
+      if (bulletMatch) {
+        e.preventDefault();
+        const indent = bulletMatch[1];
+        const textAfterBullet = bulletMatch[2];
+
+        if (textAfterBullet.trim() === '') {
+          // Empty bullet -> user pressed Enter -> remove bullet
+          const startOfLine = lastNewlineIdx === -1 ? 0 : lastNewlineIdx + 1;
+          const newValue = value.substring(0, startOfLine) + afterCursor;
+          onUpdate({ content: newValue, listType: newValue.trim() === '' ? 'none' : element.listType });
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.selectionStart = startOfLine;
+              inputRef.current.selectionEnd = startOfLine;
+            }
+          });
+        } else {
+          // Insert new bullet line
+          const insertText = `\n${indent}• `;
+          const newValue = beforeCursor + insertText + afterCursor;
+          const newCursorPos = selectionStart + insertText.length;
+          onUpdate({ content: newValue });
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.selectionStart = newCursorPos;
+              inputRef.current.selectionEnd = newCursorPos;
+            }
+          });
+        }
+        return;
+      }
+
+      if (numberMatch) {
+        e.preventDefault();
+        const indent = numberMatch[1];
+        const currentNum = parseInt(numberMatch[2], 10);
+        const textAfterNumber = numberMatch[3];
+
+        if (textAfterNumber.trim() === '') {
+          // Empty number line -> remove number
+          const startOfLine = lastNewlineIdx === -1 ? 0 : lastNewlineIdx + 1;
+          const newValue = value.substring(0, startOfLine) + afterCursor;
+          onUpdate({ content: newValue, listType: newValue.trim() === '' ? 'none' : element.listType });
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.selectionStart = startOfLine;
+              inputRef.current.selectionEnd = startOfLine;
+            }
+          });
+        } else {
+          // Insert next numbered line
+          const nextNum = currentNum + 1;
+          const insertText = `\n${indent}${nextNum}. `;
+          const newValue = beforeCursor + insertText + afterCursor;
+          const newCursorPos = selectionStart + insertText.length;
+          onUpdate({ content: newValue });
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.selectionStart = newCursorPos;
+              inputRef.current.selectionEnd = newCursorPos;
+            }
+          });
+        }
+        return;
+      }
+
+      if (element.listType === 'bullet') {
+        e.preventDefault();
+        const insertText = '\n• ';
+        const newValue = beforeCursor + insertText + afterCursor;
+        const newCursorPos = selectionStart + insertText.length;
+        onUpdate({ content: newValue });
+        requestAnimationFrame(() => {
+          if (inputRef.current) {
+            inputRef.current.selectionStart = newCursorPos;
+            inputRef.current.selectionEnd = newCursorPos;
+          }
+        });
+        return;
+      }
+
+      if (element.listType === 'number') {
+        e.preventDefault();
+        const lines = beforeCursor.split('\n');
+        const nextNum = lines.length + 1;
+        const insertText = `\n${nextNum}. `;
+        const newValue = beforeCursor + insertText + afterCursor;
+        const newCursorPos = selectionStart + insertText.length;
+        onUpdate({ content: newValue });
+        requestAnimationFrame(() => {
+          if (inputRef.current) {
+            inputRef.current.selectionStart = newCursorPos;
+            inputRef.current.selectionEnd = newCursorPos;
+          }
+        });
+        return;
+      }
+    }
+
+    if (e.key === 'Backspace') {
+      const textarea = inputRef.current;
+      if (!textarea || textarea.selectionStart !== textarea.selectionEnd) return;
+
+      const { selectionStart, value } = textarea;
+      const beforeCursor = value.substring(0, selectionStart);
+      const lastNewlineIdx = beforeCursor.lastIndexOf('\n');
+      const currentLine = lastNewlineIdx === -1 ? beforeCursor : beforeCursor.substring(lastNewlineIdx + 1);
+
+      const bulletPrefixMatch = currentLine.match(/^(\s*•\s*)$/);
+      const numberPrefixMatch = currentLine.match(/^(\s*\d+\.\s*)$/);
+
+      if (bulletPrefixMatch || numberPrefixMatch) {
+        e.preventDefault();
+        const startOfLine = lastNewlineIdx === -1 ? 0 : lastNewlineIdx + 1;
+        const newValue = value.substring(0, startOfLine) + value.substring(selectionStart);
+        onUpdate({ content: newValue, listType: newValue.trim() === '' ? 'none' : element.listType });
+        requestAnimationFrame(() => {
+          if (inputRef.current) {
+            inputRef.current.selectionStart = startOfLine;
+            inputRef.current.selectionEnd = startOfLine;
+          }
+        });
+      }
+    }
+  };
+
+  const handleListToggle = () => {
+    const currentType: ListType = element.listType || 'none';
+    let nextType: ListType = 'bullet';
+    if (currentType === 'bullet') {
+      nextType = 'number';
+    } else if (currentType === 'number') {
+      nextType = 'none';
+    } else {
+      nextType = 'bullet';
+    }
+
+    const newContent = convertListContent(element.content || '', nextType);
+    onUpdate({ listType: nextType, content: newContent });
+  };
+
+  const handleAlignToggle = () => {
+    const nextAlign = getNextTextAlign(element.textAlign || 'none');
+    onUpdate({ textAlign: nextAlign });
   };
 
   const handleBlur = () => {
@@ -388,7 +585,6 @@ export function DraggableText({
       }}
       onMouseDown={startDrag}
       onClick={handleTextClick}
-      onDoubleClick={handleTextDoubleClick}
       onTouchStart={startTouchDrag}
     >
       {/* Text content */}
@@ -397,6 +593,8 @@ export function DraggableText({
           ref={inputRef}
           value={element.content}
           onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onBlur={handleBlur}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
@@ -406,21 +604,32 @@ export function DraggableText({
             fontFamily: element.fontFamily || 'var(--font-poppins)',
             color: element.color ?? '#000000',
             fontWeight: element.fontWeight ?? 400,
+            fontStyle: element.fontStyle || 'normal',
+            textDecoration: element.textDecoration || 'none',
+            textAlign: element.textAlign && element.textAlign !== 'none' ? element.textAlign : 'left',
             minHeight: `${element.fontSize + 8}px`,
             lineHeight: '1.2',
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
           }}
         />
       ) : (
         <div
+          onDoubleClick={handleTextDoubleClick}
           style={{
             fontSize: `${element.fontSize}px`,
             fontFamily: element.fontFamily || 'var(--font-poppins)',
             color: element.color ?? '#000000',
             fontWeight: element.fontWeight ?? 400,
+            fontStyle: element.fontStyle || 'normal',
+            textDecoration: element.textDecoration || 'none',
+            textAlign: element.textAlign && element.textAlign !== 'none' ? element.textAlign : 'left',
             minHeight: `${element.fontSize + 8}px`,
             lineHeight: '1.2',
             overflowWrap: 'break-word',
             wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
           }}
         >
           {element.content || 'Add text'}
@@ -440,6 +649,14 @@ export function DraggableText({
             color={element.color ?? '#000000'}
             isBold={(element.fontWeight ?? 400) >= 700}
             onBoldToggle={() => onUpdate({ fontWeight: (element.fontWeight ?? 400) >= 700 ? 400 : 700 })}
+            isItalic={element.fontStyle === 'italic'}
+            onItalicToggle={() => onUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })}
+            isUnderline={element.textDecoration === 'underline'}
+            onUnderlineToggle={() => onUpdate({ textDecoration: element.textDecoration === 'underline' ? 'none' : 'underline' })}
+            listType={element.listType || 'none'}
+            onListToggle={handleListToggle}
+            textAlign={element.textAlign || 'none'}
+            onAlignToggle={handleAlignToggle}
           />
 
           {/* Selection border */}

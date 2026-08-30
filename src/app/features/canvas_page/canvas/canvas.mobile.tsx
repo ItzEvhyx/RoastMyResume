@@ -20,10 +20,51 @@ export default function CanvasMobile() {
   const viewportRef = useRef<HTMLDivElement>(null);
   
   const { zoom, setZoom, pan, setPan } = useCanvas();
-  const { textElements, selectedId, setSelectedId, updateElement, deleteElement } = useText();
+  const { textElements, selectedId, setSelectedId, updateElement, deleteElement, addTextElement } = useText();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
+
+  // Global clipboard paste
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+
+      const text = e.clipboardData?.getData('text');
+      if (!text || text.trim() === '') return;
+
+      e.preventDefault();
+
+      const lines = text.split('\n');
+      const maxLen = Math.max(...lines.map(l => l.length));
+      const estimatedWidth = Math.min(650, Math.max(200, Math.round(maxLen * 14)));
+
+      if (selectedId) {
+        updateElement(selectedId, {
+          content: text,
+          width: Math.max(150, estimatedWidth),
+        });
+      } else {
+        addTextElement(
+          PAGE_WIDTH / 2 - Math.min(estimatedWidth, 400) / 2,
+          PAGE_HEIGHT / 3,
+          text,
+          estimatedWidth
+        );
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [selectedId, updateElement, addTextElement]);
 
   // Touch pan + pinch-zoom
   useEffect(() => {

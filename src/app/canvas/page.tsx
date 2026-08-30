@@ -14,6 +14,7 @@ import AssistPanelMobile from '@/app/features/canvas_page/assist_panel/assist.pa
 import FontSelector from '@/app/features/canvas_page/tool_sidebar/texts/select.font';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
+import { ClipboardProvider } from '@/app/features/canvas_page/globals/pasting';
 
 /**
  * Animation sequence:
@@ -44,39 +45,41 @@ export default function CanvasPage() {
   return (
     <CanvasProvider>
       <TextProvider>
-        <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
+        <ClipboardProvider>
+          <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
 
-        {/* Toolbar — pops in at stage 2 */}
-        {isMobile === undefined ? null : isMobile
-          ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} />
-          : <ToolbarWeb stage={stage} />}
+          {/* Toolbar — pops in at stage 2 */}
+          {isMobile === undefined ? null : isMobile
+            ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} />
+            : <ToolbarWeb stage={stage} />}
 
-        {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
-        {isMobile === undefined ? null : isMobile
-          ? <ToolSidebarMobile stage={stage} />
-          : <ToolSidebarWeb stage={stage} />}
+          {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
+          {isMobile === undefined ? null : isMobile
+            ? <ToolSidebarMobile stage={stage} />
+            : <ToolSidebarWeb stage={stage} />}
 
-        {/* Font Selector — appears when text is selected (desktop only) */}
-        {!isMobile && <FontSelector />}
+          {/* Font Selector — appears when text is selected (desktop only) */}
+          {!isMobile && <FontSelector />}
 
-        {/* Assistant Panel — appears at stage 2 */}
-        {isMobile === undefined ? null : isMobile
-          ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} />
-          : <AssistPanelWeb stage={stage} />}
+          {/* Assistant Panel — appears at stage 2 */}
+          {isMobile === undefined ? null : isMobile
+            ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} />
+            : <AssistPanelWeb stage={stage} />}
 
-        {/* Canvas — fades + drifts up at stage 1 */}
-        <div
-          style={{
-            opacity: stage >= 1 ? 1 : 0,
-            transform: stage >= 1 ? 'translateY(0)' : 'translateY(18px)',
-            transition: 'opacity 0.55s ease-out, transform 0.55s ease-out',
-          }}
-        >
-          <StitchCanvasBackground>
-            {isMobile === undefined ? null : isMobile ? <CanvasMobile /> : <CanvasWeb />}
-          </StitchCanvasBackground>
-        </div>
-      </main>
+          {/* Canvas — fades + drifts up at stage 1 */}
+          <div
+            style={{
+              opacity: stage >= 1 ? 1 : 0,
+              transform: stage >= 1 ? 'translateY(0)' : 'translateY(18px)',
+              transition: 'opacity 0.55s ease-out, transform 0.55s ease-out',
+            }}
+          >
+            <StitchCanvasBackground>
+              {isMobile === undefined ? null : isMobile ? <CanvasMobile /> : <CanvasWeb />}
+            </StitchCanvasBackground>
+          </div>
+        </main>
+        </ClipboardProvider>
       </TextProvider>
     </CanvasProvider>
   );

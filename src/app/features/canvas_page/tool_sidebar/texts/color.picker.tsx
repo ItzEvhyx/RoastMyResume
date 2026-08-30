@@ -127,6 +127,8 @@ export function ColorPicker({ color, onSelect }: ColorPickerProps) {
         title="Text color"
         aria-label="Text color"
         onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onPointerDown={(e) => { e.stopPropagation(); }}
+        onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
       />
 

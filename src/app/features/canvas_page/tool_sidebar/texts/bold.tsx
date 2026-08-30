@@ -14,8 +14,12 @@ export function BoldToggle({ isBold, onToggle }: BoldToggleProps) {
       aria-label={isBold ? 'Remove bold' : 'Bold'}
       aria-pressed={isBold}
       onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+      onPointerDown={(e) => { e.stopPropagation(); }}
+      onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
       onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      className="flex items-center justify-center rounded-lg transition-colors"
+      className={`flex items-center justify-center rounded-lg transition-colors ${
+        isBold ? '' : 'hover:bg-white/10 active:bg-white/20'
+      }`}
       style={{
         width: 48,
         height: 40,
@@ -29,7 +33,6 @@ export function BoldToggle({ isBold, onToggle }: BoldToggleProps) {
         alt="Bold"
         width={26}
         height={26}
-        style={{ opacity: isBold ? 1 : 0.75 }}
       />
     </button>
   );

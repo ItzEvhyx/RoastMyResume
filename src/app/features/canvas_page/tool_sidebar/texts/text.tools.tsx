@@ -4,6 +4,10 @@ import Image from 'next/image';
 import { FontSizePicker } from './font.size';
 import { ColorPicker } from './color.picker';
 import { BoldToggle } from './bold';
+import { ItalicToggle } from './italize';
+import { UnderlineToggle } from './underline';
+import { BulletListToggle, ListType } from './bulletpoint';
+import { AlignmentToggle, TextAlign } from './alignment';
 
 interface TextToolbarProps {
   elementX: number;
@@ -14,6 +18,14 @@ interface TextToolbarProps {
   color: string;
   isBold: boolean;
   onBoldToggle: () => void;
+  isItalic: boolean;
+  onItalicToggle: () => void;
+  isUnderline: boolean;
+  onUnderlineToggle: () => void;
+  listType: ListType;
+  onListToggle: () => void;
+  textAlign: TextAlign;
+  onAlignToggle: () => void;
 }
 
 const TOOLBAR_HEIGHT = 60;
@@ -28,24 +40,65 @@ export function TextToolbar({
   color,
   isBold,
   onBoldToggle,
+  isItalic,
+  onItalicToggle,
+  isUnderline,
+  onUnderlineToggle,
+  listType,
+  onListToggle,
+  textAlign,
+  onAlignToggle,
 }: TextToolbarProps) {
   const centerX = elementX + elementWidth / 2;
   const topY = elementY - TOOLBAR_HEIGHT - TOOLBAR_GAP;
 
   return (
     <div
-      className="absolute pointer-events-auto"
+      className="absolute pointer-events-auto select-none"
+      onMouseDown={(e) => {
+        e.stopPropagation();
+      }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      }}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+      }}
       style={{
         left: `${centerX}px`,
         top: `${topY}px`,
         transform: 'translateX(-50%)',
         zIndex: 50,
         whiteSpace: 'nowrap',
+        userSelect: 'none',
       }}
     >
       {/* Pill container */}
       <div
-        className="flex items-center gap-3 px-6"
+        className="flex items-center gap-3 px-6 select-none"
+        onMouseDown={(e) => {
+          e.stopPropagation();
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onTouchStart={(e) => {
+          e.stopPropagation();
+        }}
         style={{
           height: TOOLBAR_HEIGHT,
           background: 'rgba(30, 32, 38, 0.85)',
@@ -70,26 +123,18 @@ export function TextToolbar({
         <BoldToggle isBold={isBold} onToggle={onBoldToggle} />
 
         {/* Italic */}
-        <ToolButton title="Italic" aria-label="Italic">
-          <Image src="/assets/tools_icons/italize_icon.png" alt="Italic" width={26} height={26} />
-        </ToolButton>
+        <ItalicToggle isItalic={isItalic} onToggle={onItalicToggle} />
 
         {/* Underline */}
-        <ToolButton title="Underline" aria-label="Underline">
-          <Image src="/assets/tools_icons/underline_icon.png" alt="Underline" width={26} height={26} />
-        </ToolButton>
+        <UnderlineToggle isUnderline={isUnderline} onToggle={onUnderlineToggle} />
 
         <Divider />
 
-        {/* Bullet points */}
-        <ToolButton title="Bullet list" aria-label="Bullet list">
-          <Image src="/assets/tools_icons/bulletpoint_icon.png" alt="Bullet list" width={26} height={26} />
-        </ToolButton>
+        {/* Bullet / Number list */}
+        <BulletListToggle listType={listType} onToggle={onListToggle} />
 
         {/* Alignment */}
-        <ToolButton title="Alignment" aria-label="Alignment">
-          <Image src="/assets/tools_icons/alignment_icon.png" alt="Alignment" width={26} height={26} />
-        </ToolButton>
+        <AlignmentToggle textAlign={textAlign} onToggle={onAlignToggle} />
       </div>
     </div>
   );

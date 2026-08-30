@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
+import { useClipboard } from '../globals/pasting';
 import { DraggableText } from '../tool_sidebar/texts/drag.text';
 
 /**
@@ -25,9 +26,42 @@ export default function CanvasWeb() {
   const viewportRef = useRef<HTMLDivElement>(null);
   
   const { zoom, setZoom, pan, setPan, isGrabMode } = useCanvas();
-  const { textElements, selectedId, setSelectedId, updateElement, deleteElement, addTextElement } = useText();
+  const { textElements, selectedId, setSelectedId, updateElement, deleteElement, addTextElement, addFullTextElement } = useText();
+  const { register, unregister } = useClipboard();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // Register text clipboard source — copies all styling properties
+  useEffect(() => {
+    register('text', {
+      getCurrent: () => {
+        if (!selectedId) return null;
+        const el = textElements.find(e => e.id === selectedId);
+        if (!el) return null;
+        return { type: 'text', data: { ...el } };
+      },
+      paste: (entry, dx, dy) => {
+        const src = entry.data as Record<string, unknown>;
+        addFullTextElement({
+          content:        (src.content as string)        ?? 'Add text',
+          x:              ((src.x as number) ?? 100) + dx,
+          y:              ((src.y as number) ?? 100) + dy,
+          width:          (src.width as number)          ?? 150,
+          fontSize:       (src.fontSize as number)       ?? 24,
+          fontFamily:     (src.fontFamily as string)     ?? 'Arial, sans-serif',
+          color:          (src.color as string)          ?? '#000000',
+          fontWeight:     src.fontWeight  as number | undefined,
+          fontStyle:      src.fontStyle   as 'normal' | 'italic' | undefined,
+          textDecoration: src.textDecoration as 'none' | 'underline' | undefined,
+          listType:       src.listType    as 'none' | 'bullet' | 'number' | undefined,
+          textAlign:      src.textAlign   as 'none' | 'left' | 'right' | 'center' | 'justify' | undefined,
+          textCategory:   src.textCategory as 'header' | 'subheader' | 'body' | 'meta' | null | undefined,
+        });
+      },
+    });
+    return () => unregister('text');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, textElements, register, unregister, addFullTextElement]);
 
   // Handle drop on canvas
   const handleDrop = (e: React.DragEvent) => {
@@ -137,6 +171,47 @@ export default function CanvasWeb() {
       viewport.removeEventListener('touchend', handleTouchEnd);
     };
   }, [zoom, setZoom]);
+
+  // Global clipboard paste on canvas
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable)
+      ) {
+        return; // Let textarea handle it normally
+      }
+
+      const text = e.clipboardData?.getData('text');
+      if (!text || text.trim() === '') return;
+
+      e.preventDefault();
+
+      const lines = text.split('\n');
+      const maxLen = Math.max(...lines.map(l => l.length));
+      const estimatedWidth = Math.min(650, Math.max(200, Math.round(maxLen * 14)));
+
+      if (selectedId) {
+        updateElement(selectedId, {
+          content: text,
+          width: Math.max(150, estimatedWidth),
+        });
+      } else {
+        addTextElement(
+          PAGE_WIDTH / 2 - Math.min(estimatedWidth, 400) / 2,
+          PAGE_HEIGHT / 3,
+          text,
+          estimatedWidth
+        );
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [selectedId, updateElement, addTextElement]);
 
   return (
     <div

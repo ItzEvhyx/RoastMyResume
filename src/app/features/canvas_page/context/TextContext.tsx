@@ -2,6 +2,9 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 
+export type ListType = 'none' | 'bullet' | 'number';
+export type TextAlign = 'none' | 'left' | 'right' | 'center' | 'justify';
+
 export interface TextElement {
   id: string;
   content: string;
@@ -12,6 +15,10 @@ export interface TextElement {
   fontFamily?: string;
   color?: string;
   fontWeight?: number;
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: 'none' | 'underline';
+  listType?: ListType;
+  textAlign?: TextAlign;
   textCategory?: 'header' | 'subheader' | 'body' | 'meta' | null;
 }
 
@@ -20,7 +27,9 @@ interface TextContextType {
   selectedId: string | null;
   toolbarExpanded: boolean;
   activeTool: string | null;
-  addTextElement: (x: number, y: number) => void;
+  addTextElement: (x: number, y: number, initialContent?: string, initialWidth?: number) => void;
+  /** Paste a full element snapshot (all props), used by the clipboard system */
+  addFullTextElement: (el: Omit<TextElement, 'id'>) => void;
   updateElement: (id: string, updates: Partial<TextElement>) => void;
   deleteElement: (id: string) => void;
   setSelectedId: (id: string | null) => void;
@@ -36,19 +45,27 @@ export function TextProvider({ children }: { children: ReactNode }) {
   const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
 
-  const addTextElement = (x: number, y: number) => {
+  const addTextElement = (x: number, y: number, initialContent?: string, initialWidth?: number) => {
+    const content = initialContent ?? 'Add text';
+    let width = initialWidth ?? 150;
+    if (initialContent && !initialWidth) {
+      const lines = initialContent.split('\n');
+      const maxLen = Math.max(...lines.map(l => l.length));
+      width = Math.min(650, Math.max(150, Math.round(maxLen * 14)));
+    }
+
     const newElement: TextElement = {
       id: `text-${Date.now()}`,
-      content: 'Add text',
+      content,
       x,
       y,
-      width: 150,
+      width,
       fontSize: 24,
       fontFamily: 'Arial, sans-serif',
       color: '#000000',
     };
     
-    setTextElements([...textElements, newElement]);
+    setTextElements(prev => [...prev, newElement]);
     setSelectedId(newElement.id);
   };
 
@@ -56,6 +73,15 @@ export function TextProvider({ children }: { children: ReactNode }) {
     setTextElements(textElements.map(el => 
       el.id === id ? { ...el, ...updates } : el
     ));
+  };
+
+  const addFullTextElement = (el: Omit<TextElement, 'id'>) => {
+    const newElement: TextElement = {
+      ...el,
+      id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    };
+    setTextElements(prev => [...prev, newElement]);
+    setSelectedId(newElement.id);
   };
 
   const deleteElement = (id: string) => {
@@ -73,6 +99,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
         toolbarExpanded,
         activeTool,
         addTextElement,
+        addFullTextElement,
         updateElement,
         deleteElement,
         setSelectedId,

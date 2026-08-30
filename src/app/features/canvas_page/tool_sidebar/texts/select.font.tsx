@@ -102,6 +102,13 @@ export default function FontSelector() {
   return (
     <div
       className="fixed left-[110px] z-40 flex flex-col rounded-3xl transition-all duration-400 ease-out"
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      }}
       style={{
         ...glassStyle,
         width: '200px',

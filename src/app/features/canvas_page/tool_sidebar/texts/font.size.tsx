@@ -91,6 +91,8 @@ export function FontSizePicker({ onSelect, activeCategory }: FontSizePickerProps
         }}
         aria-label="Font size"
         onMouseDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onPointerDown={(e) => { e.stopPropagation(); }}
+        onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onClick={(e) => {
           e.stopPropagation();
           setOpen(o => !o);
