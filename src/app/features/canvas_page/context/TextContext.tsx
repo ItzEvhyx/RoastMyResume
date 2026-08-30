@@ -10,6 +10,9 @@ export interface TextElement {
   width: number;
   fontSize: number;
   fontFamily?: string;
+  color?: string;
+  fontWeight?: number;
+  textCategory?: 'header' | 'subheader' | 'body' | 'meta' | null;
 }
 
 interface TextContextType {
@@ -39,9 +42,10 @@ export function TextProvider({ children }: { children: ReactNode }) {
       content: 'Add text',
       x,
       y,
-      width: 150, // Initial width that can be adjusted
+      width: 150,
       fontSize: 24,
       fontFamily: 'Arial, sans-serif',
+      color: '#000000',
     };
     
     setTextElements([...textElements, newElement]);

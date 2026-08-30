@@ -4,6 +4,43 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Poppins } from 'next/font/google';
 import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 import { TextToolbar } from './text.tools';
+import { CATEGORIES } from './font.size';
+
+// ---------------------------------------------------------------------------
+// Stepped font size helper — used by corner resize
+// If element has a textCategory, snap fontSize to the nearest category step
+// in the direction of the drag (positive scaleDelta = grow, negative = shrink).
+// Returns the new fontSize (may be unchanged if already at the limit).
+// ---------------------------------------------------------------------------
+function steppedFontSize(
+  current: number,
+  scaleDelta: number,
+  category: string | null | undefined,
+): number {
+  if (!category) return current; // no category → free scaling
+  const cat = CATEGORIES.find(c => c.scale === category);
+  if (!cat) return current;
+
+  const sizes = cat.sizes; // already largest → smallest
+  const idx = sizes.indexOf(current);
+
+  if (scaleDelta > 0) {
+    // Growing → move toward larger sizes (lower index)
+    if (idx <= 0) return sizes[0];            // already at max
+    return sizes[idx - 1];
+  } else {
+    // Shrinking → move toward smaller sizes (higher index)
+    if (idx < 0) {
+      // current not in list — snap to closest
+      const closest = sizes.reduce((a, b) =>
+        Math.abs(b - current) < Math.abs(a - current) ? b : a
+      );
+      return closest;
+    }
+    if (idx >= sizes.length - 1) return sizes[sizes.length - 1]; // already at min
+    return sizes[idx + 1];
+  }
+}
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -19,6 +56,9 @@ interface TextElement {
   width: number;
   fontSize: number;
   fontFamily?: string;
+  color?: string;
+  fontWeight?: number;
+  textCategory?: 'header' | 'subheader' | 'body' | 'meta' | null;
 }
 
 interface DraggableTextProps {
@@ -38,6 +78,7 @@ interface ResizeSnapshot {
   y: number;
   width: number;
   fontSize: number;
+  textCategory?: string | null;
 }
 
 const MIN_FONT = 8;
@@ -363,7 +404,8 @@ export function DraggableText({
           style={{
             fontSize: `${element.fontSize}px`,
             fontFamily: element.fontFamily || 'var(--font-poppins)',
-            color: '#000000',
+            color: element.color ?? '#000000',
+            fontWeight: element.fontWeight ?? 400,
             minHeight: `${element.fontSize + 8}px`,
             lineHeight: '1.2',
           }}
@@ -373,7 +415,8 @@ export function DraggableText({
           style={{
             fontSize: `${element.fontSize}px`,
             fontFamily: element.fontFamily || 'var(--font-poppins)',
-            color: '#000000',
+            color: element.color ?? '#000000',
+            fontWeight: element.fontWeight ?? 400,
             minHeight: `${element.fontSize + 8}px`,
             lineHeight: '1.2',
             overflowWrap: 'break-word',
@@ -392,6 +435,11 @@ export function DraggableText({
             elementX={0}
             elementY={0}
             elementWidth={element.width}
+            onFontSizeChange={(fontSize) => onUpdate({ fontSize })}
+            onColorChange={(color) => onUpdate({ color })}
+            color={element.color ?? '#000000'}
+            isBold={(element.fontWeight ?? 400) >= 700}
+            onBoldToggle={() => onUpdate({ fontWeight: (element.fontWeight ?? 400) >= 700 ? 400 : 700 })}
           />
 
           {/* Selection border */}

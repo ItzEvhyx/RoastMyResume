@@ -31,6 +31,9 @@ export default function CanvasMobile() {
     if (!viewport) return;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Lock canvas pan/zoom whenever a text element is selected
+      if (selectedId !== null) return;
+
       if (e.touches.length === 1) {
         setIsPanning(true);
         setPanStart({ 
@@ -48,6 +51,9 @@ export default function CanvasMobile() {
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      // Lock canvas pan/zoom whenever a text element is selected
+      if (selectedId !== null) return;
+
       e.preventDefault();
 
       if (e.touches.length === 1 && isPanning) {
@@ -85,7 +91,7 @@ export default function CanvasMobile() {
       viewport.removeEventListener('touchmove', handleTouchMove);
       viewport.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isPanning, panStart, pan, zoom, lastTouchDistance, setPan, setZoom]);
+  }, [isPanning, panStart, pan, zoom, lastTouchDistance, selectedId, setPan, setZoom]);
 
   return (
     <div
