@@ -369,7 +369,7 @@ export default function CanvasMobile() {
               animation: 'mobilePillPop 0.22s cubic-bezier(0.34,1.56,0.64,1) forwards',
             }}
           >
-            <span style={{ fontSize: '17px' }}>📋</span> Paste here
+            Paste here
           </button>
         </div>
       )}

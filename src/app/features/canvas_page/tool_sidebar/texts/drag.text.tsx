@@ -754,7 +754,7 @@ export function DraggableText({
           />
         </>
       )}
-      {/* Copy pill — shown after long-press on mobile */}
+      {/* Copy / Delete pill row — shown after long-press on mobile */}
       {showCopyPill && isSelected && !isEditing && (
         <div
           style={{
@@ -763,10 +763,13 @@ export function DraggableText({
             left: '50%',
             transform: 'translate(-50%, 10px)',
             zIndex: 999,
+            display: 'flex',
+            gap: '8px',
           }}
           onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
           onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
         >
+          {/* Copy */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
             onTouchEnd={(e) => {
@@ -795,6 +798,37 @@ export function DraggableText({
             }}
           >
             <span style={{ fontSize: '17px' }}>⎘</span> Copy
+          </button>
+
+          {/* Delete */}
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setShowCopyPill(false);
+              onDelete();
+            }}
+            style={{
+              background: 'rgba(20, 22, 30, 0.92)',
+              backdropFilter: 'blur(14px)',
+              WebkitBackdropFilter: 'blur(14px)',
+              border: '1px solid rgba(239,68,68,0.45)',
+              borderRadius: '20px',
+              padding: '8px 22px',
+              color: '#ef4444',
+              fontSize: '15px',
+              fontWeight: 600,
+              letterSpacing: '0.01em',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+            }}
+          >
+            Delete
           </button>
         </div>
       )}
