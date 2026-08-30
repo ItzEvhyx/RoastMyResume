@@ -124,7 +124,7 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
       <div className="pointer-events-auto flex flex-col items-center rounded-full py-3" style={glassStyle}>
         <GooeyTooltip label="Layers" position="right">
           <button
-            onClick={() => setActiveTool(t => t === 'layers' ? null : 'layers')}
+            onClick={() => setActiveTool(activeTool === 'layers' ? null : 'layers')}
             className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
             style={{ opacity: activeTool === 'layers' ? 1 : 0.55 }}
           >
