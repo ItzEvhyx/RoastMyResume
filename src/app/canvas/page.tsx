@@ -8,6 +8,8 @@ import ToolbarWeb from '@/app/features/canvas_page/toolbar/toolbar.web';
 import ToolbarMobile from '@/app/features/canvas_page/toolbar/toolbar.mobile';
 import ToolSidebarWeb from '@/app/features/canvas_page/tool_sidebar/tool_sidebar.web';
 import ToolSidebarMobile from '@/app/features/canvas_page/tool_sidebar/tool_sidebar.mobile';
+import AssistPanelWeb from '@/app/features/canvas_page/assist_panel/assist.panel.web';
+import AssistPanelMobile from '@/app/features/canvas_page/assist_panel/assist.panel.mobile';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
 
@@ -21,6 +23,7 @@ import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
  */
 export default function CanvasPage() {
   const [stage, setStage] = useState(0);
+  const [mobileAssistOpen, setMobileAssistOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
 
   useEffect(() => {
@@ -42,13 +45,18 @@ export default function CanvasPage() {
 
         {/* Toolbar — pops in at stage 2 */}
         {isMobile === undefined ? null : isMobile
-          ? <ToolbarMobile stage={stage} />
+          ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} />
           : <ToolbarWeb stage={stage} />}
 
         {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
         {isMobile === undefined ? null : isMobile
           ? <ToolSidebarMobile stage={stage} />
           : <ToolSidebarWeb stage={stage} />}
+
+        {/* Assistant Panel — appears at stage 2 */}
+        {isMobile === undefined ? null : isMobile
+          ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} />
+          : <AssistPanelWeb stage={stage} />}
 
         {/* Canvas — fades + drifts up at stage 1 */}
         <div

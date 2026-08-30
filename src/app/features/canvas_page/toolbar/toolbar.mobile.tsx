@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { exportCanvasToPdf } from '@/app/features/canvas_page/utils/exportToPdf';
@@ -20,12 +21,24 @@ function popStyle(visible: boolean, delay: number): React.CSSProperties {
   };
 }
 
-export default function ToolbarMobile({ stage }: { stage: number }) {
+interface ToolbarMobileProps {
+  stage: number;
+  onAssistToggle?: (isOpen: boolean) => void;
+}
+
+export default function ToolbarMobile({ stage, onAssistToggle }: ToolbarMobileProps) {
   const router = useRouter();
+  const [assistOpen, setAssistOpen] = useState(false);
   const visible = stage >= 2;
 
   const handleExportPdf = async () => {
     await exportCanvasToPdf('resume.pdf');
+  };
+
+  const handleAssistToggle = () => {
+    const newState = !assistOpen;
+    setAssistOpen(newState);
+    onAssistToggle?.(newState);
   };
 
   return (
@@ -43,8 +56,38 @@ export default function ToolbarMobile({ stage }: { stage: number }) {
         </button>
       </div>
 
-      {/* Right — PDF + Sign in */}
+      {/* Right — Assistant + PDF + Sign in */}
       <div className="pointer-events-auto flex items-center gap-2">
+        {/* Assistant Panel Toggle */}
+        <div style={popStyle(visible, 30)}>
+          <button
+            onClick={handleAssistToggle}
+            className="flex items-center justify-center rounded-full p-2.5 transition-all duration-200 active:scale-95"
+            style={glassStyle}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{
+                transform: assistOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.3s ease',
+              }}
+            >
+              <path
+                d="M6 9L12 15L18 9"
+                stroke="white"
+                strokeOpacity="0.8"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+
         <div style={popStyle(visible, 60)}>
           <button
             onClick={handleExportPdf}

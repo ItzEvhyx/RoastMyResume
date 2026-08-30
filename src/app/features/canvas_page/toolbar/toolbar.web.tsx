@@ -6,6 +6,7 @@ import { Poppins } from 'next/font/google';
 import { useState } from 'react';
 import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 import { exportCanvasToPdf } from '@/app/features/canvas_page/utils/exportToPdf';
+import GooeyTooltip from '@/app/features/canvas_page/components/GooeyTooltip';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -104,18 +105,19 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
       <div className="pointer-events-auto flex items-center gap-3">
         {/* Mode Toggle */}
         <div style={popStyle(visible, 40)}>
-          <button
-            onClick={() => setIsGrabMode(!isGrabMode)}
-            className="flex items-center justify-center rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
-            style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
-            title={isGrabMode ? 'Switch to Cursor Mode' : 'Switch to Grab Mode'}
-          >
-            {isGrabMode ? (
-              <Image src="/assets/icons/grab_icon.svg" alt="Grab mode" width={18} height={18} className="opacity-80" />
-            ) : (
-              <Image src="/assets/icons/cursor_icon.svg" alt="Cursor mode" width={18} height={18} className="opacity-80" />
-            )}
-          </button>
+          <GooeyTooltip label={isGrabMode ? "Grab Mode" : "Cursor Mode"} position="bottom">
+            <button
+              onClick={() => setIsGrabMode(!isGrabMode)}
+              className="flex items-center justify-center rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+              style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
+            >
+              {isGrabMode ? (
+                <Image src="/assets/icons/grab_icon.svg" alt="Grab mode" width={18} height={18} className="opacity-80" />
+              ) : (
+                <Image src="/assets/icons/cursor_icon.svg" alt="Cursor mode" width={18} height={18} className="opacity-80" />
+              )}
+            </button>
+          </GooeyTooltip>
         </div>
 
         <div style={popStyle(visible, 80)}>

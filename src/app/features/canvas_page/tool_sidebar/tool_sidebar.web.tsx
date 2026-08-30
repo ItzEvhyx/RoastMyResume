@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
+import GooeyTooltip from '../components/GooeyTooltip';
 
 const glassStyle: React.CSSProperties = {
   background: 'rgba(30, 32, 38, 0.55)',
@@ -29,20 +30,15 @@ function ToolButton({
   label: string; src: string; active: boolean; onClick: () => void;
 }) {
   return (
-    <button
-      title={label}
-      onClick={onClick}
-      className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
-      style={{ opacity: active ? 1 : 0.55 }}
-    >
-      <Image src={src} alt={label} width={42} height={42} />
-      <span
-        className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-[11px] text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-        style={{ fontFamily: 'sans-serif' }}
+    <GooeyTooltip label={label} position="right">
+      <button
+        onClick={onClick}
+        className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
+        style={{ opacity: active ? 1 : 0.55 }}
       >
-        {label}
-      </span>
-    </button>
+        <Image src={src} alt={label} width={42} height={42} />
+      </button>
+    </GooeyTooltip>
   );
 }
 
@@ -97,17 +93,15 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
 
       {/* Layers pill */}
       <div className="pointer-events-auto flex flex-col items-center rounded-full py-3" style={glassStyle}>
-        <button
-          title="Layers"
-          onClick={() => setActiveTool(t => t === 'layers' ? null : 'layers')}
-          className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
-          style={{ opacity: activeTool === 'layers' ? 1 : 0.55 }}
-        >
-          <Image src="/assets/tools_icons/layer_icon.svg" alt="Layers" width={42} height={42} />
-          <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md bg-black/80 px-2 py-1 text-[11px] text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-            Layers
-          </span>
-        </button>
+        <GooeyTooltip label="Layers" position="right">
+          <button
+            onClick={() => setActiveTool(t => t === 'layers' ? null : 'layers')}
+            className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
+            style={{ opacity: activeTool === 'layers' ? 1 : 0.55 }}
+          >
+            <Image src="/assets/tools_icons/layer_icon.svg" alt="Layers" width={42} height={42} />
+          </button>
+        </GooeyTooltip>
       </div>
 
       {/* Zoom controls - compact pill below layers */}
@@ -135,31 +129,34 @@ function ZoomControls() {
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
       }}
     >
-      <button
-        onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP))}
-        className="flex h-[50px] w-[50px] items-center justify-center rounded-full text-xl text-white/80 transition-all hover:bg-white/10 active:scale-90"
-        title="Zoom in"
-      >
-        +
-      </button>
-      <button
-        onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - ZOOM_STEP))}
-        className="flex h-[50px] w-[50px] items-center justify-center rounded-full text-xl text-white/80 transition-all hover:bg-white/10 active:scale-90"
-        title="Zoom out"
-      >
-        −
-      </button>
+      <GooeyTooltip label="Zoom In" position="right">
+        <button
+          onClick={() => setZoom(z => Math.min(MAX_ZOOM, z + ZOOM_STEP))}
+          className="flex h-[50px] w-[50px] items-center justify-center rounded-full text-xl text-white/80 transition-all hover:bg-white/10 active:scale-90"
+        >
+          +
+        </button>
+      </GooeyTooltip>
+      <GooeyTooltip label="Zoom Out" position="right">
+        <button
+          onClick={() => setZoom(z => Math.max(MIN_ZOOM, z - ZOOM_STEP))}
+          className="flex h-[50px] w-[50px] items-center justify-center rounded-full text-xl text-white/80 transition-all hover:bg-white/10 active:scale-90"
+        >
+          −
+        </button>
+      </GooeyTooltip>
       <div className="my-0.5 h-px w-6 bg-white/15" />
-      <button
-        onClick={resetView}
-        className="flex h-[50px] w-[50px] items-center justify-center rounded-full text-white/80 transition-all hover:bg-white/10 active:scale-90"
-        title="Reset view"
-      >
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M8 2L8 8L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
-        </svg>
-      </button>
+      <GooeyTooltip label="Reset View" position="right">
+        <button
+          onClick={resetView}
+          className="flex h-[50px] w-[50px] items-center justify-center rounded-full text-white/80 transition-all hover:bg-white/10 active:scale-90"
+        >
+          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 2L8 8L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
+          </svg>
+        </button>
+      </GooeyTooltip>
     </div>
   );
 }
