@@ -16,6 +16,7 @@ import FontSelector from '@/app/features/canvas_page/tool_sidebar/texts/select.f
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
 import { ClipboardProvider } from '@/app/features/canvas_page/globals/pasting';
+import { UndoProvider } from '@/app/features/canvas_page/globals/undo';
 
 /**
  * Animation sequence:
@@ -45,9 +46,10 @@ export default function CanvasPage() {
 
   return (
     <CanvasProvider>
-      <TextProvider>
-        <DividerProvider>
-          <ClipboardProvider>
+      <UndoProvider>
+        <TextProvider>
+          <DividerProvider>
+            <ClipboardProvider>
             <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
 
               {/* Toolbar — pops in at stage 2 */}
@@ -81,9 +83,10 @@ export default function CanvasPage() {
                 </StitchCanvasBackground>
               </div>
             </main>
-          </ClipboardProvider>
-        </DividerProvider>
-      </TextProvider>
+            </ClipboardProvider>
+          </DividerProvider>
+        </TextProvider>
+      </UndoProvider>
     </CanvasProvider>
   );
 }

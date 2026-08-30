@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { FontSizePicker } from './font.size';
-import { ColorPicker } from './color.picker';
+import { ColorPicker } from '../../globals/color.picker';
 import { BoldToggle } from './bold';
 import { ItalicToggle } from './italize';
 import { UnderlineToggle } from './underline';

@@ -63,27 +63,48 @@ export default function CanvasWeb() {
       },
     });
     return () => unregister('text');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, textElements, register, unregister, addFullTextElement]);
+
+  // Register dividers so they participate in the global copy/paste workflow.
+  useEffect(() => {
+    register('divider', {
+      getCurrent: () => {
+        if (!selectedDividerId) return null;
+        const element = dividerElements.find(item => item.id === selectedDividerId);
+        return element ? { type: 'divider', data: { ...element } } : null;
+      },
+      paste: (entry, dx, dy) => {
+        const src = entry.data as Record<string, unknown>;
+        const width = (src.width as number) ?? 300;
+        const id = addDividerElement(((src.x as number) ?? 100) + dx, ((src.y as number) ?? 100) + dy, width);
+        updateDivider(id, {
+          thickness: src.thickness as number | undefined,
+          color: src.color as string | undefined,
+        });
+      },
+    });
+    return () => unregister('divider');
+  }, [selectedDividerId, dividerElements, register, unregister, addDividerElement, updateDivider]);
 
   // Handle drop on canvas
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const tool = e.dataTransfer.getData('tool');
 
-    if (tool === 'text' && canvasRef.current) {
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const x = e.clientX - canvasRect.left;
-      const y = e.clientY - canvasRect.top;
+    if (!canvasRef.current) return;
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    // The rect reflects pan and zoom; scale the screen release point back into
+    // the canvas's untransformed coordinate system before placing the tool.
+    const x = ((e.clientX - canvasRect.left) / canvasRect.width) * PAGE_WIDTH;
+    const y = ((e.clientY - canvasRect.top) / canvasRect.height) * PAGE_HEIGHT;
+
+    if (tool === 'text') {
       addTextElement(x, y);
     }
 
-    if (tool === 'divider' && canvasRef.current) {
-      const canvasRect = canvasRef.current.getBoundingClientRect();
+    if (tool === 'divider') {
       // Center the divider horizontally on the drop point, same as clicking the tool does visually
-      const x = e.clientX - canvasRect.left - 150;
-      const y = e.clientY - canvasRect.top;
-      addDividerElement(x, y);
+      addDividerElement(x - 150, y);
     }
   };
 

@@ -51,12 +51,8 @@ export function DraggableDivider({
 
     const dragSnapshot = useRef<{ mouseX: number; mouseY: number; elX: number; elY: number } | null>(null);
     const resizeSnapshot = useRef<ResizeSnapshot | null>(null);
-    // Double-tap detection
-    const lastTapRef = useRef<number>(0);
     // Long-press timer
     const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const dividerRef = useRef<HTMLDivElement>(null);
     const { zoom } = useCanvas();
 
     const thickness = element.thickness ?? 2;
@@ -219,7 +215,7 @@ export function DraggableDivider({
         onSelect();
     };
 
-    const startResize = (handle: ResizeHandle) => (e: React.MouseEvent) => {
+    const startResize = useCallback((e: React.MouseEvent, handle: ResizeHandle) => {
         e.stopPropagation();
         e.preventDefault();
         resizeSnapshot.current = {
@@ -230,7 +226,7 @@ export function DraggableDivider({
         };
         setResizeHandle(handle);
         onSelect();
-    };
+    }, [element.x, element.width, onSelect]);
 
     // ---------------------------------------------------------------------------
     // Touch event handlers
@@ -238,14 +234,6 @@ export function DraggableDivider({
     const startTouchDrag = (e: React.TouchEvent) => {
         if (e.touches.length !== 1) return;
         e.stopPropagation();
-
-        // Double-tap detection (kept for parity with text — no-op for now)
-        const now = Date.now();
-        if (isSelected && now - lastTapRef.current < 300) {
-            lastTapRef.current = 0;
-        } else {
-            lastTapRef.current = now;
-        }
 
         // Select immediately so it feels snappy
         onSelect();
@@ -293,7 +281,7 @@ export function DraggableDivider({
         setIsDragging(true);
     };
 
-    const startResizeTouch = (handle: ResizeHandle) => (e: React.TouchEvent) => {
+    const startResizeTouch = useCallback((e: React.TouchEvent, handle: ResizeHandle) => {
         if (e.touches.length < 1) return;
         e.stopPropagation();
         e.preventDefault();
@@ -306,14 +294,13 @@ export function DraggableDivider({
         };
         setResizeHandle(handle);
         onSelect();
-    };
+    }, [element.x, element.width, onSelect]);
 
     // ---------------------------------------------------------------------------
     // Render
     // ---------------------------------------------------------------------------
     return (
         <div
-            ref={dividerRef}
             className="absolute"
             style={{
                 left: `${element.x}px`,
@@ -375,8 +362,8 @@ export function DraggableDivider({
                             left: -HANDLE_SIZE / 2,
                             top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2,
                         }}
-                        onMouseDown={startResize('w')}
-                        onTouchStart={startResizeTouch('w')}
+                        onMouseDown={(e) => startResize(e, 'w')}
+                        onTouchStart={(e) => startResizeTouch(e, 'w')}
                     />
 
                     {/* Right circle handle */}
@@ -388,8 +375,8 @@ export function DraggableDivider({
                             right: -HANDLE_SIZE / 2,
                             top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2,
                         }}
-                        onMouseDown={startResize('e')}
-                        onTouchStart={startResizeTouch('e')}
+                        onMouseDown={(e) => startResize(e, 'e')}
+                        onTouchStart={(e) => startResizeTouch(e, 'e')}
                     />
                 </>
             )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode } from 'react';
+import { useUndo } from '../globals/undo';
 
 export type ListType = 'none' | 'bullet' | 'number';
 export type TextAlign = 'none' | 'left' | 'right' | 'center' | 'justify';
@@ -44,6 +45,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
+  const { record } = useUndo();
 
   const addTextElement = (x: number, y: number, initialContent?: string, initialWidth?: number) => {
     const content = initialContent ?? 'Add text';
@@ -67,9 +69,16 @@ export function TextProvider({ children }: { children: ReactNode }) {
     
     setTextElements(prev => [...prev, newElement]);
     setSelectedId(newElement.id);
+    record(() => {
+      setTextElements(prev => prev.filter(element => element.id !== newElement.id));
+      setSelectedId(current => current === newElement.id ? null : current);
+    });
   };
 
   const updateElement = (id: string, updates: Partial<TextElement>) => {
+    const previous = textElements.find(element => element.id === id);
+    if (!previous) return;
+    record(() => setTextElements(elements => elements.map(element => element.id === id ? previous : element)));
     setTextElements(textElements.map(el => 
       el.id === id ? { ...el, ...updates } : el
     ));
@@ -82,9 +91,21 @@ export function TextProvider({ children }: { children: ReactNode }) {
     };
     setTextElements(prev => [...prev, newElement]);
     setSelectedId(newElement.id);
+    record(() => {
+      setTextElements(prev => prev.filter(element => element.id !== newElement.id));
+      setSelectedId(current => current === newElement.id ? null : current);
+    });
   };
 
   const deleteElement = (id: string) => {
+    const index = textElements.findIndex(element => element.id === id);
+    const deleted = textElements[index];
+    if (!deleted) return;
+    const previousSelection = selectedId;
+    record(() => {
+      setTextElements(elements => [...elements.slice(0, index), deleted, ...elements.slice(index)]);
+      setSelectedId(previousSelection);
+    });
     setTextElements(textElements.filter(el => el.id !== id));
     if (selectedId === id) {
       setSelectedId(null);

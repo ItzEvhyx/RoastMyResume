@@ -1,6 +1,6 @@
 'use client';
 
-import { ColorPicker } from './color.picker';
+import { ColorPicker } from '../../globals/color.picker';
 import { ThicknessPicker } from './divider.thickness';
 
 interface DividerToolbarProps {

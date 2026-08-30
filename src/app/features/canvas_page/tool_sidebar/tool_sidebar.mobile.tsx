@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useText } from '../context/TextContext';
+import { useDivider } from '../context/DividerContext';
 
 const glassStyle: React.CSSProperties = {
   background: 'rgba(30, 32, 38, 0.55)',
@@ -30,7 +31,8 @@ const CANVAS_HEIGHT = 1123;
 
 export default function ToolSidebarMobile({ stage }: { stage: number }) {
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const { addTextElement } = useText();
+  const { addTextElement, setSelectedId } = useText();
+  const { addDividerElement, setSelectedDividerId } = useDivider();
 
   const sidebarVisible = stage >= 3;
   const sidebarPopStyle: React.CSSProperties = {
@@ -44,7 +46,13 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
 
     if (toolId === 'fontstyle') {
       // Place new text element at canvas center, slightly above vertical midpoint
+      setSelectedDividerId(null);
       addTextElement(CANVAS_WIDTH / 2 - 75, CANVAS_HEIGHT / 4);
+    }
+
+    if (toolId === 'divider') {
+      setSelectedId(null);
+      addDividerElement(CANVAS_WIDTH / 2 - 150, CANVAS_HEIGHT / 4);
     }
   };
 

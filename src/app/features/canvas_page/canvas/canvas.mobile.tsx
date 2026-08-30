@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
+import { useDivider } from '../context/DividerContext';
 import { useClipboard, ClipboardEntry } from '../globals/pasting';
 import { DraggableText } from '../tool_sidebar/texts/drag.text';
+import { DraggableDivider } from '../tool_sidebar/divider/drag.divider';
 import type { TextElement } from '../context/TextContext';
 
 /**
@@ -38,6 +40,14 @@ export default function CanvasMobile() {
     deleteElement,
     addFullTextElement,
   } = useText();
+  const {
+    dividerElements,
+    selectedDividerId,
+    setSelectedDividerId,
+    addDividerElement,
+    updateDivider,
+    deleteDivider,
+  } = useDivider();
   const { clipboard, register, unregister, copy } = useClipboard();
 
   const [isPanning, setIsPanning] = useState(false);
@@ -76,8 +86,28 @@ export default function CanvasMobile() {
       },
     });
     return () => unregister('text');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, textElements, register, unregister, addFullTextElement]);
+
+  // Register dividers with the same global clipboard used by text elements.
+  useEffect(() => {
+    register('divider', {
+      getCurrent: () => {
+        if (!selectedDividerId) return null;
+        const element = dividerElements.find(item => item.id === selectedDividerId);
+        return element ? { type: 'divider', data: { ...element } } : null;
+      },
+      paste: (entry: ClipboardEntry, dx: number, dy: number) => {
+        const src = entry.data as Record<string, unknown>;
+        const width = (src.width as number) ?? 300;
+        const id = addDividerElement(((src.x as number) ?? 100) + dx, ((src.y as number) ?? 100) + dy, width);
+        updateDivider(id, {
+          thickness: src.thickness as number | undefined,
+          color: src.color as string | undefined,
+        });
+      },
+    });
+    return () => unregister('divider');
+  }, [selectedDividerId, dividerElements, register, unregister, addDividerElement, updateDivider]);
 
   // ---------------------------------------------------------------------------
   // Convert screen touch position → canvas-space coordinates
@@ -108,6 +138,7 @@ export default function CanvasMobile() {
 
     if (!clipboard) {
       setSelectedId(null);
+      setSelectedDividerId(null);
       return;
     }
 
@@ -121,13 +152,23 @@ export default function CanvasMobile() {
       screenY: touch.clientY,
     });
     setSelectedId(null);
-  }, [clipboard, screenToCanvas, setSelectedId]);
+    setSelectedDividerId(null);
+  }, [clipboard, screenToCanvas, setSelectedId, setSelectedDividerId]);
 
   // Paste the element at the tapped location
   const executePaste = useCallback(() => {
     if (!clipboard || !pasteTarget) return;
     const src = clipboard.data as Record<string, unknown>;
     const w = (src.width as number) ?? 150;
+    if (clipboard.type === 'divider') {
+      const id = addDividerElement(pasteTarget.canvasX - w / 2, pasteTarget.canvasY, w);
+      updateDivider(id, {
+        thickness: src.thickness as number | undefined,
+        color: src.color as string | undefined,
+      });
+      setPasteTarget(null);
+      return;
+    }
     addFullTextElement({
       content:        (src.content as string)        ?? 'Add text',
       x:              pasteTarget.canvasX - w / 2,
@@ -144,7 +185,7 @@ export default function CanvasMobile() {
       textCategory:   src.textCategory as 'header' | 'subheader' | 'body' | 'meta' | null | undefined,
     } as Omit<TextElement, 'id'>);
     setPasteTarget(null);
-  }, [clipboard, pasteTarget, addFullTextElement]);
+  }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider]);
 
   // ---------------------------------------------------------------------------
   // Global clipboard paste (system paste event fallback)
@@ -193,7 +234,7 @@ export default function CanvasMobile() {
 
     const handleTouchStart = (e: TouchEvent) => {
       // Lock canvas pan/zoom whenever a text element is selected
-      if (selectedId !== null) return;
+      if (selectedId !== null || selectedDividerId !== null) return;
 
       if (e.touches.length === 1) {
         setIsPanning(true);
@@ -213,7 +254,7 @@ export default function CanvasMobile() {
 
     const handleTouchMove = (e: TouchEvent) => {
       // Lock canvas pan/zoom whenever a text element is selected
-      if (selectedId !== null) return;
+      if (selectedId !== null || selectedDividerId !== null) return;
 
       e.preventDefault();
 
@@ -250,7 +291,7 @@ export default function CanvasMobile() {
       viewport.removeEventListener('touchmove', handleTouchMove);
       viewport.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isPanning, panStart, pan, zoom, lastTouchDistance, selectedId, setPan, setZoom]);
+  }, [isPanning, panStart, pan, zoom, lastTouchDistance, selectedId, selectedDividerId, setPan, setZoom]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -291,7 +332,10 @@ export default function CanvasMobile() {
             }}
             // Tap on canvas background → deselect or show paste target
             onClick={(e) => {
-              if (e.target === e.currentTarget) setSelectedId(null);
+              if (e.target === e.currentTarget) {
+                setSelectedId(null);
+                setSelectedDividerId(null);
+              }
             }}
             onTouchEnd={handleCanvasTap}
           >
@@ -300,9 +344,28 @@ export default function CanvasMobile() {
                 key={element.id}
                 element={element}
                 isSelected={selectedId === element.id}
-                onSelect={() => { setSelectedId(element.id); setPasteTarget(null); }}
+                onSelect={() => {
+                  setSelectedDividerId(null);
+                  setSelectedId(element.id);
+                  setPasteTarget(null);
+                }}
                 onUpdate={(updates) => updateElement(element.id, updates)}
                 onDelete={() => deleteElement(element.id)}
+                onLongPress={handleElementLongPress}
+              />
+            ))}
+            {dividerElements.map(element => (
+              <DraggableDivider
+                key={element.id}
+                element={element}
+                isSelected={selectedDividerId === element.id}
+                onSelect={() => {
+                  setSelectedId(null);
+                  setSelectedDividerId(element.id);
+                  setPasteTarget(null);
+                }}
+                onUpdate={(updates) => updateDivider(element.id, updates)}
+                onDelete={() => deleteDivider(element.id)}
                 onLongPress={handleElementLongPress}
               />
             ))}
