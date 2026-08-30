@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
+import { useDivider } from '../context/DividerContext';
 import { useClipboard } from '../globals/pasting';
 import { DraggableText } from '../tool_sidebar/texts/drag.text';
+import { DraggableDivider } from '../tool_sidebar/divider/drag.divider';
 
 /**
  * A4 Resume dimensions:
@@ -24,9 +26,10 @@ const MAX_ZOOM = 3;
 export default function CanvasWeb() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
-  
+
   const { zoom, setZoom, pan, setPan, isGrabMode } = useCanvas();
   const { textElements, selectedId, setSelectedId, updateElement, deleteElement, addTextElement, addFullTextElement } = useText();
+  const { dividerElements, selectedDividerId, setSelectedDividerId, addDividerElement, updateDivider, deleteDivider } = useDivider();
   const { register, unregister } = useClipboard();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -43,36 +46,44 @@ export default function CanvasWeb() {
       paste: (entry, dx, dy) => {
         const src = entry.data as Record<string, unknown>;
         addFullTextElement({
-          content:        (src.content as string)        ?? 'Add text',
-          x:              ((src.x as number) ?? 100) + dx,
-          y:              ((src.y as number) ?? 100) + dy,
-          width:          (src.width as number)          ?? 150,
-          fontSize:       (src.fontSize as number)       ?? 24,
-          fontFamily:     (src.fontFamily as string)     ?? 'Arial, sans-serif',
-          color:          (src.color as string)          ?? '#000000',
-          fontWeight:     src.fontWeight  as number | undefined,
-          fontStyle:      src.fontStyle   as 'normal' | 'italic' | undefined,
+          content: (src.content as string) ?? 'Add text',
+          x: ((src.x as number) ?? 100) + dx,
+          y: ((src.y as number) ?? 100) + dy,
+          width: (src.width as number) ?? 150,
+          fontSize: (src.fontSize as number) ?? 24,
+          fontFamily: (src.fontFamily as string) ?? 'Arial, sans-serif',
+          color: (src.color as string) ?? '#000000',
+          fontWeight: src.fontWeight as number | undefined,
+          fontStyle: src.fontStyle as 'normal' | 'italic' | undefined,
           textDecoration: src.textDecoration as 'none' | 'underline' | undefined,
-          listType:       src.listType    as 'none' | 'bullet' | 'number' | undefined,
-          textAlign:      src.textAlign   as 'none' | 'left' | 'right' | 'center' | 'justify' | undefined,
-          textCategory:   src.textCategory as 'header' | 'subheader' | 'body' | 'meta' | null | undefined,
+          listType: src.listType as 'none' | 'bullet' | 'number' | undefined,
+          textAlign: src.textAlign as 'none' | 'left' | 'right' | 'center' | 'justify' | undefined,
+          textCategory: src.textCategory as 'header' | 'subheader' | 'body' | 'meta' | null | undefined,
         });
       },
     });
     return () => unregister('text');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, textElements, register, unregister, addFullTextElement]);
 
   // Handle drop on canvas
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const tool = e.dataTransfer.getData('tool');
-    
+
     if (tool === 'text' && canvasRef.current) {
       const canvasRect = canvasRef.current.getBoundingClientRect();
       const x = e.clientX - canvasRect.left;
       const y = e.clientY - canvasRect.top;
       addTextElement(x, y);
+    }
+
+    if (tool === 'divider' && canvasRef.current) {
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      // Center the divider horizontally on the drop point, same as clicking the tool does visually
+      const x = e.clientX - canvasRect.left - 150;
+      const y = e.clientY - canvasRect.top;
+      addDividerElement(x, y);
     }
   };
 
@@ -139,7 +150,7 @@ export default function CanvasWeb() {
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 2) {
         e.preventDefault(); // Prevent default pinch zoom
-        
+
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const currentDistance = Math.hypot(
@@ -213,6 +224,12 @@ export default function CanvasWeb() {
     return () => window.removeEventListener('paste', handleGlobalPaste);
   }, [selectedId, updateElement, addTextElement]);
 
+  // Deselect both text and divider elements when clicking empty space
+  const deselectAll = () => {
+    setSelectedId(null);
+    setSelectedDividerId(null);
+  };
+
   return (
     <div
       ref={viewportRef}
@@ -221,9 +238,9 @@ export default function CanvasWeb() {
         cursor: isGrabMode ? (isPanning ? 'grabbing' : 'grab') : 'default',
       }}
       onClick={(e) => {
-        // Deselect text when clicking outside canvas
+        // Deselect when clicking outside canvas
         if (e.target === e.currentTarget) {
-          setSelectedId(null);
+          deselectAll();
         }
       }}
     >
@@ -240,7 +257,7 @@ export default function CanvasWeb() {
         onClick={(e) => {
           // Deselect when clicking the background
           if (e.target === e.currentTarget) {
-            setSelectedId(null);
+            deselectAll();
           }
         }}
       >
@@ -270,9 +287,9 @@ export default function CanvasWeb() {
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
               }}
               onClick={(e) => {
-                // Deselect text when clicking canvas background
+                // Deselect when clicking canvas background
                 if (e.target === e.currentTarget) {
-                  setSelectedId(null);
+                  deselectAll();
                 }
               }}
               onDrop={handleDrop}
@@ -284,9 +301,27 @@ export default function CanvasWeb() {
                   key={element.id}
                   element={element}
                   isSelected={selectedId === element.id}
-                  onSelect={() => setSelectedId(element.id)}
+                  onSelect={() => {
+                    setSelectedDividerId(null);
+                    setSelectedId(element.id);
+                  }}
                   onUpdate={(updates) => updateElement(element.id, updates)}
                   onDelete={() => deleteElement(element.id)}
+                />
+              ))}
+
+              {/* Render divider elements */}
+              {dividerElements.map(element => (
+                <DraggableDivider
+                  key={element.id}
+                  element={element}
+                  isSelected={selectedDividerId === element.id}
+                  onSelect={() => {
+                    setSelectedId(null);
+                    setSelectedDividerId(element.id);
+                  }}
+                  onUpdate={(updates) => updateDivider(element.id, updates)}
+                  onDelete={() => deleteDivider(element.id)}
                 />
               ))}
             </div>

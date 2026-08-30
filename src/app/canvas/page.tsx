@@ -5,6 +5,7 @@ import { useMediaQuery } from '@/lib/use_media_query';
 import StitchCanvasBackground from '@/rb_components/stitch_canvas_background';
 import { CanvasProvider } from '@/app/features/canvas_page/context/CanvasContext';
 import { TextProvider } from '@/app/features/canvas_page/context/TextContext';
+import { DividerProvider } from '@/app/features/canvas_page/context/DividerContext';
 import ToolbarWeb from '@/app/features/canvas_page/toolbar/toolbar.web';
 import ToolbarMobile from '@/app/features/canvas_page/toolbar/toolbar.mobile';
 import ToolSidebarWeb from '@/app/features/canvas_page/tool_sidebar/tool_sidebar.web';
@@ -45,41 +46,43 @@ export default function CanvasPage() {
   return (
     <CanvasProvider>
       <TextProvider>
-        <ClipboardProvider>
-          <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
+        <DividerProvider>
+          <ClipboardProvider>
+            <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
 
-          {/* Toolbar — pops in at stage 2 */}
-          {isMobile === undefined ? null : isMobile
-            ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} />
-            : <ToolbarWeb stage={stage} />}
+              {/* Toolbar — pops in at stage 2 */}
+              {isMobile === undefined ? null : isMobile
+                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} />
+                : <ToolbarWeb stage={stage} />}
 
-          {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
-          {isMobile === undefined ? null : isMobile
-            ? <ToolSidebarMobile stage={stage} />
-            : <ToolSidebarWeb stage={stage} />}
+              {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
+              {isMobile === undefined ? null : isMobile
+                ? <ToolSidebarMobile stage={stage} />
+                : <ToolSidebarWeb stage={stage} />}
 
-          {/* Font Selector — appears when text is selected (desktop only) */}
-          {!isMobile && <FontSelector />}
+              {/* Font Selector — appears when text is selected (desktop only) */}
+              {!isMobile && <FontSelector />}
 
-          {/* Assistant Panel — appears at stage 2 */}
-          {isMobile === undefined ? null : isMobile
-            ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} />
-            : <AssistPanelWeb stage={stage} />}
+              {/* Assistant Panel — appears at stage 2 */}
+              {isMobile === undefined ? null : isMobile
+                ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} />
+                : <AssistPanelWeb stage={stage} />}
 
-          {/* Canvas — fades + drifts up at stage 1 */}
-          <div
-            style={{
-              opacity: stage >= 1 ? 1 : 0,
-              transform: stage >= 1 ? 'translateY(0)' : 'translateY(18px)',
-              transition: 'opacity 0.55s ease-out, transform 0.55s ease-out',
-            }}
-          >
-            <StitchCanvasBackground>
-              {isMobile === undefined ? null : isMobile ? <CanvasMobile /> : <CanvasWeb />}
-            </StitchCanvasBackground>
-          </div>
-        </main>
-        </ClipboardProvider>
+              {/* Canvas — fades + drifts up at stage 1 */}
+              <div
+                style={{
+                  opacity: stage >= 1 ? 1 : 0,
+                  transform: stage >= 1 ? 'translateY(0)' : 'translateY(18px)',
+                  transition: 'opacity 0.55s ease-out, transform 0.55s ease-out',
+                }}
+              >
+                <StitchCanvasBackground>
+                  {isMobile === undefined ? null : isMobile ? <CanvasMobile /> : <CanvasWeb />}
+                </StitchCanvasBackground>
+              </div>
+            </main>
+          </ClipboardProvider>
+        </DividerProvider>
       </TextProvider>
     </CanvasProvider>
   );

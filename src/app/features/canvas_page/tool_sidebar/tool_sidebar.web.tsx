@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
+import { useDivider } from '../context/DividerContext';
 import GooeyTooltip from '../components/GooeyTooltip';
 
 const glassStyle: React.CSSProperties = {
@@ -16,13 +17,13 @@ const glassStyle: React.CSSProperties = {
 };
 
 const TOOLS = [
-  { id: 'fontstyle', label: 'Text',    src: '/assets/tools_icons/font_style_icon.svg'    },
-  { id: 'divider',   label: 'Divider',        src: '/assets/tools_icons/divider_icon.svg'        },
-  { id: 'iconset',   label: 'Icon Set',       src: '/assets/tools_icons/iconset_icon.svg'        },
-  { id: 'image',     label: 'Image Upload',   src: '/assets/tools_icons/image_upload_icon.svg'   },
-  { id: 'container', label: 'Container',      src: '/assets/tools_icons/container_icon.svg'      },
-  { id: 'pen',       label: 'Pen',            src: '/assets/tools_icons/pen_icon.svg'            },
-  { id: 'shapes',    label: 'Shapes',         src: '/assets/tools_icons/shapes_icon.svg'         },
+  { id: 'fontstyle', label: 'Text', src: '/assets/tools_icons/font_style_icon.svg' },
+  { id: 'divider', label: 'Divider', src: '/assets/tools_icons/divider_icon.svg' },
+  { id: 'iconset', label: 'Icon Set', src: '/assets/tools_icons/iconset_icon.svg' },
+  { id: 'image', label: 'Image Upload', src: '/assets/tools_icons/image_upload_icon.svg' },
+  { id: 'container', label: 'Container', src: '/assets/tools_icons/container_icon.svg' },
+  { id: 'pen', label: 'Pen', src: '/assets/tools_icons/pen_icon.svg' },
+  { id: 'shapes', label: 'Shapes', src: '/assets/tools_icons/shapes_icon.svg' },
 ];
 
 function ToolButton({
@@ -48,6 +49,7 @@ function ToolButton({
 export default function ToolSidebarWeb({ stage }: { stage: number }) {
   const [expanded, setExpanded] = useState(false);
   const { addTextElement, setToolbarExpanded, activeTool, setActiveTool, setSelectedId } = useText();
+  const { addDividerElement, setSelectedDividerId } = useDivider();
 
   // Auto-expand once stage 4 is reached
   useEffect(() => {
@@ -62,20 +64,37 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
   const handleToolClick = (toolId: string) => {
     const newTool = activeTool === toolId ? null : toolId;
     setActiveTool(newTool);
-    
+
     // Deselect text when switching away from text tool
     if (activeTool === 'fontstyle' && toolId !== 'fontstyle') {
       setSelectedId(null);
     }
-    
+
+    // Deselect divider when switching away from divider tool
+    if (activeTool === 'divider' && toolId !== 'divider') {
+      setSelectedDividerId(null);
+    }
+
     // Add text to center of canvas when text tool is clicked
     if (toolId === 'fontstyle') {
+      setSelectedDividerId(null); // only one kind of element selected at a time
       addTextElement(300, 300); // Center-ish position
+    }
+
+    // Add a horizontal divider line to the canvas when the divider tool is clicked
+    if (toolId === 'divider') {
+      setSelectedId(null); // only one kind of element selected at a time
+      addDividerElement(300, 300);
     }
   };
 
   const handleTextDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('tool', 'text');
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleDividerDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('tool', 'divider');
     e.dataTransfer.effectAllowed = 'copy';
   };
 
@@ -88,7 +107,7 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
 
   return (
     <div className="pointer-events-none fixed left-6 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-4"
-      style={{...sidebarPopStyle, marginTop: '40px'}} // Push down 40px
+      style={{ ...sidebarPopStyle, marginTop: '40px' }} // Push down 40px
     >
       {/* Main tools pill */}
       <div className="pointer-events-auto flex flex-col items-center rounded-full py-3" style={glassStyle}>
@@ -114,7 +133,11 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
               src={tool.src}
               active={activeTool === tool.id}
               onClick={() => handleToolClick(tool.id)}
-              onDragStart={tool.id === 'fontstyle' ? handleTextDragStart : undefined}
+              onDragStart={
+                tool.id === 'fontstyle' ? handleTextDragStart :
+                  tool.id === 'divider' ? handleDividerDragStart :
+                    undefined
+              }
             />
           ))}
         </div>
@@ -181,8 +204,8 @@ function ZoomControls() {
           className="flex h-[50px] w-[50px] items-center justify-center rounded-full text-white/80 transition-all hover:bg-white/10 active:scale-90"
         >
           <svg width="20" height="20" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M8 2L8 8L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M8 2L8 8L12 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
           </svg>
         </button>
       </GooeyTooltip>
