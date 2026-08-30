@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { Poppins } from 'next/font/google';
+
+const poppins = Poppins({
+    subsets: ['latin'],
+    weight: ['400', '500', '600', '700'],
+    variable: '--font-poppins',
+});
 
 // ─── Shared glass style (matches FontSizePicker's dropdown panel) ─────────────
 
@@ -60,11 +67,15 @@ export function ThicknessPicker({ thickness, onSelect }: ThicknessPickerProps) {
     const triggerLabel = activeOption ? `${activeOption.label} · ${activeOption.value}px` : `${thickness}px`;
 
     return (
-        <div ref={rootRef} className="relative" style={{ userSelect: 'none' }}>
+        <div
+            ref={rootRef}
+            className={`relative ${poppins.variable}`}
+            style={{ userSelect: 'none', fontFamily: 'var(--font-poppins)' }}
+        >
 
             {/* Trigger button */}
             <button
-                className="flex items-center justify-center rounded-full px-5 text-white font-semibold text-sm transition-colors hover:bg-white/10 active:bg-white/20"
+                className="flex items-center justify-center rounded-full px-5 text-white font-bold text-sm transition-colors hover:bg-white/10 active:bg-white/20"
                 style={{
                     height: 38,
                     border: '1.5px solid rgba(255,255,255,0.3)',
@@ -125,8 +136,8 @@ export function ThicknessPicker({ thickness, onSelect }: ThicknessPickerProps) {
                                             flexShrink: 0,
                                         }}
                                     />
-                                    <span style={{ fontSize: 14, fontWeight: 500 }}>{option.label}</span>
-                                    <span style={{ fontSize: 12, fontWeight: 400, color: 'rgba(255,255,255,0.5)', marginLeft: 'auto' }}>
+                                    <span style={{ fontSize: 14, fontWeight: 700 }}>{option.label}</span>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginLeft: 'auto' }}>
                                         {option.value}px
                                     </span>
                                 </button>
