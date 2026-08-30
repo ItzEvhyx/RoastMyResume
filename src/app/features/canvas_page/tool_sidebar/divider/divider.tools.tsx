@@ -2,6 +2,7 @@
 
 import { ColorPicker } from '../../globals/color.picker';
 import { ThicknessPicker } from './divider.thickness';
+import { useMediaQuery } from '@/lib/use_media_query';
 
 interface DividerToolbarProps {
     elementX: number;
@@ -25,6 +26,7 @@ export function DividerToolbar({
     thickness,
     onThicknessSelect,
 }: DividerToolbarProps) {
+    const isMobile = useMediaQuery('(max-width: 767px)');
     const centerX = elementX + elementWidth / 2;
     const topY = elementY - TOOLBAR_HEIGHT - TOOLBAR_GAP;
 
@@ -84,6 +86,8 @@ export function DividerToolbar({
                     border: '1px solid rgba(255,255,255,0.10)',
                     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 28px rgba(0,0,0,0.5)',
                     borderRadius: 999,
+                    transform: isMobile ? 'scale(1.35)' : undefined,
+                    transformOrigin: 'center bottom',
                 }}
             >
                 {/* Color picker */}

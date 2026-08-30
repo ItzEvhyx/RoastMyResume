@@ -18,6 +18,7 @@ const PAGE_HEIGHT = 1123;
 
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 3;
+const CANVAS_HORIZONTAL_PADDING = 32;
 
 // Paste pill position in canvas-space coords
 interface PasteTarget {
@@ -54,6 +55,12 @@ export default function CanvasMobile() {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [lastTouchDistance, setLastTouchDistance] = useState(0);
   const [pasteTarget, setPasteTarget] = useState<PasteTarget | null>(null);
+
+  // Start with the full canvas width visible instead of the desktop zoom level.
+  useEffect(() => {
+    const fitToWidth = (window.innerWidth - CANVAS_HORIZONTAL_PADDING) / PAGE_WIDTH;
+    setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fitToWidth)));
+  }, [setZoom]);
 
   // ---------------------------------------------------------------------------
   // Register text clipboard source (mirrors canvas.web.tsx)
