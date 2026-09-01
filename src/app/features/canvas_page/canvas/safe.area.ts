@@ -31,11 +31,11 @@ export function clampTextToSafeArea(element: TextElement, updates: Partial<TextE
 }
 
 export function SafeAreaWarning({ x, y, height }: { x: number; y: number; height: number }) {
-  const pillWidth = 300;
+  const pillWidth = 340;
   return createElement(Fragment, null,
     createElement('div', { className: 'pointer-events-none absolute', style: { inset: 0, background: `linear-gradient(to right, rgba(239,68,68,0.14) ${SAFE_MARGIN}px, transparent ${SAFE_MARGIN}px, transparent calc(100% - ${SAFE_MARGIN}px), rgba(239,68,68,0.14) calc(100% - ${SAFE_MARGIN}px))` } }),
     createElement('div', { className: 'pointer-events-none absolute', style: { inset: 0, background: `linear-gradient(to bottom, rgba(239,68,68,0.14) ${SAFE_MARGIN}px, transparent ${SAFE_MARGIN}px, transparent calc(100% - ${SAFE_MARGIN}px), rgba(239,68,68,0.14) calc(100% - ${SAFE_MARGIN}px))` } }),
-    createElement('div', { className: 'pointer-events-none absolute', style: { left: clamp(x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - pillWidth), top: Math.min(y + height + 16, CANVAS_HEIGHT - SAFE_MARGIN), width: pillWidth, zIndex: 200, borderRadius: 999, background: 'rgba(127, 29, 29, 0.92)', color: '#fff', padding: '8px 14px', fontSize: 12, fontWeight: 600, boxShadow: '0 6px 18px rgba(127,29,29,0.28)', textAlign: 'center' } }, 'Too close to the edge — might get clipped when printed.'),
+    createElement('div', { className: 'pointer-events-none absolute', style: { left: clamp(x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - pillWidth), top: Math.min(y + height + 20, CANVAS_HEIGHT - SAFE_MARGIN), width: pillWidth, zIndex: 200, borderRadius: 999, background: 'rgba(127, 29, 29, 0.92)', color: '#fff', padding: '12px 20px', fontSize: 15, fontFamily: "'Poppins', sans-serif", fontWeight: 700, boxShadow: '0 6px 18px rgba(127,29,29,0.28)', textAlign: 'center' } }, 'Too close to the edge — might get clipped when printed.'),
   );
 }
 

@@ -13,6 +13,7 @@ import ToolSidebarMobile from '@/app/features/canvas_page/tool_sidebar/tool_side
 import AssistPanelWeb from '@/app/features/canvas_page/assist_panel/assist.panel.web';
 import AssistPanelMobile from '@/app/features/canvas_page/assist_panel/assist.panel.mobile';
 import FontSelector from '@/app/features/canvas_page/tool_sidebar/texts/select.font';
+import IconPicker from '@/app/features/canvas_page/tool_sidebar/icons_set/pick.icon';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
 import { ClipboardProvider } from '@/app/features/canvas_page/globals/pasting';
@@ -64,6 +65,9 @@ export default function CanvasPage() {
 
               {/* Font Selector — appears when text is selected (desktop only) */}
               {!isMobile && <FontSelector />}
+
+              {/* Icon Picker — appears when iconset tool is active (desktop only) */}
+              {!isMobile && <IconPicker />}
 
               {/* Assistant Panel — appears at stage 2 */}
               {isMobile === undefined ? null : isMobile

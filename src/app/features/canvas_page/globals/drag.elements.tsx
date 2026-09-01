@@ -1,0 +1,922 @@
+'use client';
+
+/**
+ * globals/drag.elements.tsx
+ *
+ * Universal drag + resize logic for every canvas element.
+ *
+ * Exports:
+ *   useDragAndResize()   — generic hook; works for any element type
+ *   DraggableText        — text element wrapper
+ *   DraggableDivider     — divider element wrapper
+ *
+ * Adding a new element type later:
+ *   1. Define its interface here (or import from its context)
+ *   2. Call useDragAndResize() with its position/size refs
+ *   3. Build its render wrapper — drag/resize events are already handled
+ */
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Poppins } from 'next/font/google';
+import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
+import { TextToolbar } from '../tool_sidebar/texts/text.tools';
+import { DividerToolbar } from '../tool_sidebar/divider/divider.tools';
+import { CATEGORIES } from '../tool_sidebar/texts/font.size';
+import { convertListContent, ListType } from '../tool_sidebar/texts/bulletpoint';
+import { getNextTextAlign, TextAlign } from '../tool_sidebar/texts/alignment';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Re-export element types so importers only need this one file
+// ─────────────────────────────────────────────────────────────────────────────
+export type { TextElement } from '../context/TextContext';
+export type { DividerElement } from '../context/DividerContext';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared constants
+// ─────────────────────────────────────────────────────────────────────────────
+const HANDLE_SIZE = 16;
+const HIT_PADDING = 8; // extra invisible hit area around thin divider line
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Poppins font (text element)
+// ─────────────────────────────────────────────────────────────────────────────
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-poppins',
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stepped font-size helper (text resize via corner handles)
+// ─────────────────────────────────────────────────────────────────────────────
+function steppedFontSize(
+  current: number,
+  scaleDelta: number,
+  category: string | null | undefined,
+): number {
+  if (!category) return current;
+  const cat = CATEGORIES.find(c => c.scale === category);
+  if (!cat) return current;
+  const sizes = cat.sizes;
+  const idx = sizes.indexOf(current);
+  if (scaleDelta > 0) {
+    if (idx <= 0) return sizes[0];
+    return sizes[idx - 1];
+  } else {
+    if (idx < 0) return sizes.reduce((a, b) => Math.abs(b - current) < Math.abs(a - current) ? b : a);
+    if (idx >= sizes.length - 1) return sizes[sizes.length - 1];
+    return sizes[idx + 1];
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generic drag hook
+// Handles mouse + touch drag and exposes the same snapshot pattern used by
+// both element types.  Callers supply onMove/onEnd callbacks.
+// ─────────────────────────────────────────────────────────────────────────────
+interface UseDragOptions {
+  zoom: number;
+  onMove: (dx: number, dy: number) => void;
+  onEnd?: () => void;
+}
+
+function useDrag({ zoom, onMove, onEnd }: UseDragOptions) {
+  const [isDragging, setIsDragging] = useState(false);
+  const snapshot = useRef<{ mouseX: number; mouseY: number } | null>(null);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!snapshot.current) return;
+    onMove(
+      (e.clientX - snapshot.current.mouseX) / zoom,
+      (e.clientY - snapshot.current.mouseY) / zoom,
+    );
+  }, [zoom, onMove]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    snapshot.current = null;
+    onEnd?.();
+  }, [onEnd]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (e.touches.length !== 1 || !snapshot.current) return;
+    e.stopPropagation();
+    const t = e.touches[0];
+    onMove(
+      (t.clientX - snapshot.current.mouseX) / zoom,
+      (t.clientY - snapshot.current.mouseY) / zoom,
+    );
+  }, [zoom, onMove]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+    snapshot.current = null;
+    onEnd?.();
+  }, [onEnd]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd);
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [isDragging, handleTouchMove, handleTouchEnd]);
+
+  const startMouse = useCallback((e: React.MouseEvent) => {
+    snapshot.current = { mouseX: e.clientX, mouseY: e.clientY };
+    setIsDragging(true);
+  }, []);
+
+  const startTouch = useCallback((clientX: number, clientY: number) => {
+    snapshot.current = { mouseX: clientX, mouseY: clientY };
+    setIsDragging(true);
+  }, []);
+
+  return { isDragging, startMouse, startTouch };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generic resize hook
+// Handles mouse + touch resize for any handle set.  Callers supply applyResize.
+// ─────────────────────────────────────────────────────────────────────────────
+type ResizeHandleAll = 'nw' | 'ne' | 'se' | 'sw' | 'w' | 'e';
+
+interface ResizeSnapshot {
+  mouseX: number;
+  mouseY: number;
+  x: number;
+  y: number;
+  width: number;
+  fontSize: number;
+  textCategory?: string | null;
+}
+
+interface UseResizeOptions<H extends string> {
+  zoom: number;
+  applyResize: (handle: H, snap: ResizeSnapshot, dx: number, dy: number) => void;
+}
+
+function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>) {
+  const [activeHandle, setActiveHandle] = useState<H | null>(null);
+  const snapshot = useRef<ResizeSnapshot | null>(null);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!activeHandle || !snapshot.current) return;
+    applyResize(
+      activeHandle,
+      snapshot.current,
+      (e.clientX - snapshot.current.mouseX) / zoom,
+      (e.clientY - snapshot.current.mouseY) / zoom,
+    );
+  }, [activeHandle, zoom, applyResize]);
+
+  const handleMouseUp = useCallback(() => {
+    setActiveHandle(null);
+    snapshot.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!activeHandle) return;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [activeHandle, handleMouseMove, handleMouseUp]);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (!activeHandle || !snapshot.current || e.touches.length < 1) return;
+    e.stopPropagation();
+    const t = e.touches[0];
+    applyResize(
+      activeHandle,
+      snapshot.current,
+      (t.clientX - snapshot.current.mouseX) / zoom,
+      (t.clientY - snapshot.current.mouseY) / zoom,
+    );
+  }, [activeHandle, zoom, applyResize]);
+
+  const handleTouchEnd = useCallback(() => {
+    setActiveHandle(null);
+    snapshot.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!activeHandle) return;
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd);
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [activeHandle, handleTouchMove, handleTouchEnd]);
+
+  const startMouse = useCallback(
+    (e: React.MouseEvent, handle: H, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+      e.stopPropagation();
+      e.preventDefault();
+      snapshot.current = { mouseX: e.clientX, mouseY: e.clientY, ...snap };
+      setActiveHandle(handle);
+    },
+    [],
+  );
+
+  const startTouch = useCallback(
+    (e: React.TouchEvent, handle: H, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+      if (e.touches.length < 1) return;
+      e.stopPropagation();
+      e.preventDefault();
+      const t = e.touches[0];
+      snapshot.current = { mouseX: t.clientX, mouseY: t.clientY, ...snap };
+      setActiveHandle(handle);
+    },
+    [],
+  );
+
+  return { activeHandle, startMouse, startTouch };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared long-press hook (mobile copy/delete pill)
+// ─────────────────────────────────────────────────────────────────────────────
+function useLongPress(onLongPress?: () => void) {
+  const [showPill, setShowPill] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const start = useCallback(
+    (startX: number, startY: number, cancelDrag: () => void) => {
+      setShowPill(false);
+      if (timer.current) clearTimeout(timer.current);
+
+      timer.current = setTimeout(() => {
+        cancelDrag();
+        setShowPill(true);
+        onLongPress?.();
+      }, 600);
+
+      const cancelOnMove = (e: TouchEvent) => {
+        if (e.touches.length < 1) return;
+        const t = e.touches[0];
+        if (Math.hypot(t.clientX - startX, t.clientY - startY) > 8) {
+          if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+          document.removeEventListener('touchmove', cancelOnMove);
+        }
+      };
+      const cancelOnEnd = () => {
+        if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+        document.removeEventListener('touchmove', cancelOnMove);
+        document.removeEventListener('touchend', cancelOnEnd);
+      };
+      document.addEventListener('touchmove', cancelOnMove, { passive: true });
+      document.addEventListener('touchend', cancelOnEnd, { once: true });
+    },
+    [onLongPress],
+  );
+
+  const dismiss = useCallback(() => setShowPill(false), []);
+
+  return { showPill, startLongPress: start, dismissPill: dismiss };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared mobile Copy/Delete pill UI
+// ─────────────────────────────────────────────────────────────────────────────
+function CopyDeletePill({
+  onCopy,
+  onDelete,
+}: {
+  onCopy: () => void;
+  onDelete: () => void;
+}) {
+  const btnBase: React.CSSProperties = {
+    background: 'rgba(20, 22, 30, 0.92)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    borderRadius: '20px',
+    padding: '8px 22px',
+    fontSize: '15px',
+    fontWeight: 600,
+    letterSpacing: '0.01em',
+    boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+    whiteSpace: 'nowrap',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '7px',
+  };
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '100%',
+        left: '50%',
+        transform: 'translate(-50%, 10px)',
+        zIndex: 999,
+        display: 'flex',
+        gap: '8px',
+      }}
+      onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+      onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+    >
+      <button
+        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onCopy(); }}
+        style={{ ...btnBase, color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}
+      >
+        <span style={{ fontSize: '17px' }}>⎘</span> Copy
+      </button>
+      <button
+        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+        onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(); }}
+        style={{ ...btnBase, color: '#ef4444', border: '1px solid rgba(239,68,68,0.45)' }}
+      >
+        Delete
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared selection handles UI
+// ─────────────────────────────────────────────────────────────────────────────
+type HandleVariant = 'square' | 'circle';
+
+function ResizeHandleNode({
+  style,
+  variant = 'square',
+  cursor,
+  onMouseDown,
+  onTouchStart,
+}: {
+  style: React.CSSProperties;
+  variant?: HandleVariant;
+  cursor: string;
+  onMouseDown: (e: React.MouseEvent) => void;
+  onTouchStart: (e: React.TouchEvent) => void;
+}) {
+  return (
+    <div
+      className={`absolute bg-white border-2 border-black ${variant === 'circle' ? 'rounded-full' : 'rounded-sm'}`}
+      style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, cursor, ...style }}
+      onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─── DraggableText ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+import type { TextElement } from '../context/TextContext';
+
+const MIN_FONT = 8;
+const MAX_FONT = 120;
+const MIN_TEXT_WIDTH = 60;
+const MAX_TEXT_WIDTH = 1100;
+
+interface DraggableTextProps {
+  element: TextElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onUpdate: (updates: Partial<TextElement>) => void;
+  onDelete: () => void;
+  onDragEnd?: () => void;
+  onLongPress?: () => void;
+}
+
+export function DraggableText({
+  element,
+  isSelected,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onDragEnd,
+  onLongPress,
+}: DraggableTextProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const lastTapRef = useRef<number>(0);
+  const { zoom } = useCanvas();
+
+  // ── Drag ──────────────────────────────────────────────────────────────────
+  const elPosRef = useRef({ x: element.x, y: element.y });
+  elPosRef.current = { x: element.x, y: element.y };
+
+  const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
+    zoom,
+    onMove: (dx, dy) => onUpdate({ x: elPosRef.current.x + dx, y: elPosRef.current.y + dy }),
+    onEnd: onDragEnd,
+  });
+
+  // ── Resize ────────────────────────────────────────────────────────────────
+  const applyTextResize = useCallback(
+    (handle: ResizeHandleAll, snap: ResizeSnapshot, dx: number, dy: number) => {
+      if (handle === 'e') {
+        onUpdate({ width: Math.max(MIN_TEXT_WIDTH, Math.min(MAX_TEXT_WIDTH, snap.width + dx)) });
+      } else if (handle === 'w') {
+        const newW = Math.max(MIN_TEXT_WIDTH, Math.min(MAX_TEXT_WIDTH, snap.width - dx));
+        onUpdate({ x: snap.x + (snap.width - newW), width: newW });
+      } else {
+        const scaleDelta =
+          handle === 'se' ? dx + dy :
+          handle === 'sw' ? -dx + dy :
+          handle === 'ne' ? dx - dy :
+          -dx - dy; // nw
+        const newW = Math.max(MIN_TEXT_WIDTH, Math.min(MAX_TEXT_WIDTH, snap.width + scaleDelta));
+        const newFs = Math.max(MIN_FONT, Math.min(MAX_FONT,
+          snap.textCategory
+            ? steppedFontSize(snap.fontSize, scaleDelta, snap.textCategory)
+            : snap.fontSize * (newW / snap.width),
+        ));
+        if (handle === 'nw' || handle === 'sw') {
+          onUpdate({ x: snap.x + (snap.width - newW), width: newW, fontSize: newFs });
+        } else {
+          onUpdate({ width: newW, fontSize: newFs });
+        }
+      }
+    },
+    [onUpdate],
+  );
+
+  const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
+    useResize<ResizeHandleAll>({ zoom, applyResize: applyTextResize });
+
+  // ── Long-press ────────────────────────────────────────────────────────────
+  const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
+
+  // ── Keyboard delete ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (isSelected && !isEditing && (e.key === 'Backspace' || e.key === 'Delete')) {
+        e.preventDefault();
+        onDelete();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isSelected, isEditing, onDelete]);
+
+  // ── Auto-grow textarea ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isEditing || !inputRef.current) return;
+    inputRef.current.focus();
+    if (element.content === 'Add text') {
+      inputRef.current.select();
+    } else {
+      const len = inputRef.current.value.length;
+      inputRef.current.selectionStart = len;
+      inputRef.current.selectionEnd = len;
+    }
+    inputRef.current.style.height = 'auto';
+    inputRef.current.style.height = `${Math.max(element.fontSize + 8, inputRef.current.scrollHeight)}px`;
+  }, [isEditing, element.content, element.fontSize, element.width]);
+
+  // ── Mouse handlers ────────────────────────────────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isEditing) return;
+    onSelect();
+    startDragMouse(e);
+  };
+
+  // ── Touch handlers ────────────────────────────────────────────────────────
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (isEditing || e.touches.length !== 1) return;
+    e.stopPropagation();
+
+    const now = Date.now();
+    if (isSelected && now - lastTapRef.current < 300) {
+      setIsEditing(true);
+      lastTapRef.current = 0;
+      return;
+    }
+    lastTapRef.current = now;
+    onSelect();
+    dismissPill();
+
+    const t = e.touches[0];
+    startDragTouch(t.clientX, t.clientY);
+    startLongPress(t.clientX, t.clientY, () => {
+      // cancel drag on long-press trigger
+    });
+  };
+
+  // ── Text editing handlers ─────────────────────────────────────────────────
+  const growTextarea = () => {
+    if (!inputRef.current) return;
+    inputRef.current.style.height = 'auto';
+    inputRef.current.style.height = `${Math.max(element.fontSize + 8, inputRef.current.scrollHeight)}px`;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onUpdate({ content: e.target.value });
+    growTextarea();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData('text');
+    if (pasted) {
+      const maxLen = Math.max(...pasted.split('\n').map(l => l.length));
+      if (element.width <= 200 && maxLen > 15) {
+        onUpdate({ width: Math.min(650, Math.max(element.width, Math.round(maxLen * element.fontSize * 0.55))) });
+      }
+    }
+    requestAnimationFrame(growTextarea);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const ta = inputRef.current;
+      if (!ta) return;
+      const { selectionStart, selectionEnd, value } = ta;
+      const before = value.substring(0, selectionStart);
+      const after = value.substring(selectionEnd);
+      const lastNl = before.lastIndexOf('\n');
+      const line = lastNl === -1 ? before : before.substring(lastNl + 1);
+
+      const bulletMatch = line.match(/^(\s*)•\s*(.*)$/);
+      const numberMatch = line.match(/^(\s*)(\d+)\.\s*(.*)$/);
+
+      const insertAt = (text: string) => {
+        const next = before + text + after;
+        onUpdate({ content: next });
+        requestAnimationFrame(() => {
+          if (!inputRef.current) return;
+          inputRef.current.selectionStart = selectionStart + text.length;
+          inputRef.current.selectionEnd = selectionStart + text.length;
+        });
+      };
+      const removeLine = () => {
+        const sol = lastNl === -1 ? 0 : lastNl + 1;
+        const next = value.substring(0, sol) + after;
+        onUpdate({ content: next, listType: next.trim() === '' ? 'none' : element.listType });
+        requestAnimationFrame(() => {
+          if (!inputRef.current) return;
+          inputRef.current.selectionStart = sol;
+          inputRef.current.selectionEnd = sol;
+        });
+      };
+
+      if (bulletMatch) {
+        e.preventDefault();
+        bulletMatch[2].trim() === '' ? removeLine() : insertAt(`\n${bulletMatch[1]}• `);
+        return;
+      }
+      if (numberMatch) {
+        e.preventDefault();
+        numberMatch[3].trim() === '' ? removeLine() : insertAt(`\n${numberMatch[1]}${parseInt(numberMatch[2]) + 1}. `);
+        return;
+      }
+      if (element.listType === 'bullet') {
+        e.preventDefault();
+        insertAt('\n• ');
+        return;
+      }
+      if (element.listType === 'number') {
+        e.preventDefault();
+        insertAt(`\n${before.split('\n').length + 1}. `);
+        return;
+      }
+    }
+
+    if (e.key === 'Backspace') {
+      const ta = inputRef.current;
+      if (!ta || ta.selectionStart !== ta.selectionEnd) return;
+      const { selectionStart, value } = ta;
+      const before = value.substring(0, selectionStart);
+      const lastNl = before.lastIndexOf('\n');
+      const line = lastNl === -1 ? before : before.substring(lastNl + 1);
+      if (line.match(/^(\s*•\s*)$/) || line.match(/^(\s*\d+\.\s*)$/)) {
+        e.preventDefault();
+        const sol = lastNl === -1 ? 0 : lastNl + 1;
+        const next = value.substring(0, sol) + value.substring(selectionStart);
+        onUpdate({ content: next, listType: next.trim() === '' ? 'none' : element.listType });
+        requestAnimationFrame(() => {
+          if (!inputRef.current) return;
+          inputRef.current.selectionStart = sol;
+          inputRef.current.selectionEnd = sol;
+        });
+      }
+    }
+  };
+
+  const handleListToggle = () => {
+    const cur: ListType = element.listType || 'none';
+    const next: ListType = cur === 'bullet' ? 'number' : cur === 'number' ? 'none' : 'bullet';
+    onUpdate({ listType: next, content: convertListContent(element.content || '', next) });
+  };
+
+  const handleAlignToggle = () => {
+    onUpdate({ textAlign: getNextTextAlign(element.textAlign || 'none') });
+  };
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    if (!element.content?.trim()) onDelete();
+  };
+
+  const textStyle: React.CSSProperties = {
+    fontSize: `${element.fontSize}px`,
+    fontFamily: element.fontFamily || 'var(--font-poppins)',
+    color: element.color ?? '#000000',
+    fontWeight: element.fontWeight ?? 400,
+    fontStyle: element.fontStyle || 'normal',
+    textDecoration: element.textDecoration || 'none',
+    textAlign: element.textAlign && element.textAlign !== 'none' ? element.textAlign : 'left',
+    minHeight: `${element.fontSize + 8}px`,
+    lineHeight: '1.2',
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'break-word',
+    wordBreak: 'break-word',
+  };
+
+  const snapBase = { x: element.x, y: element.y, width: element.width, fontSize: element.fontSize, textCategory: element.textCategory };
+
+  return (
+    <div
+      className={`absolute ${poppins.variable}`}
+      style={{
+        left: element.x,
+        top: element.y,
+        width: element.width,
+        cursor: isDragging ? 'grabbing' : isEditing ? 'text' : 'move',
+        fontFamily: element.fontFamily || 'var(--font-poppins)',
+        pointerEvents: 'auto',
+        touchAction: 'none',
+      }}
+      onMouseDown={handleMouseDown}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onTouchStart={handleTouchStart}
+    >
+      {isEditing ? (
+        <textarea
+          ref={inputRef}
+          value={element.content}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          onBlur={handleBlur}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className="w-full resize-none border-none bg-transparent outline-none overflow-hidden block"
+          style={textStyle}
+        />
+      ) : (
+        <div
+          onDoubleClick={(e) => { e.stopPropagation(); if (isSelected) setIsEditing(true); }}
+          style={textStyle}
+        >
+          {element.content || 'Add text'}
+        </div>
+      )}
+
+      {isSelected && !isDragging && (
+        <>
+          <TextToolbar
+            elementX={0}
+            elementY={0}
+            elementWidth={element.width}
+            onFontSizeChange={(fontSize) => onUpdate({ fontSize })}
+            onColorChange={(color) => onUpdate({ color })}
+            color={element.color ?? '#000000'}
+            isBold={(element.fontWeight ?? 400) >= 700}
+            onBoldToggle={() => onUpdate({ fontWeight: (element.fontWeight ?? 400) >= 700 ? 400 : 700 })}
+            isItalic={element.fontStyle === 'italic'}
+            onItalicToggle={() => onUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })}
+            isUnderline={element.textDecoration === 'underline'}
+            onUnderlineToggle={() => onUpdate({ textDecoration: element.textDecoration === 'underline' ? 'none' : 'underline' })}
+            listType={element.listType || 'none'}
+            onListToggle={handleListToggle}
+            textAlign={element.textAlign || 'none'}
+            onAlignToggle={handleAlignToggle}
+          />
+
+          {/* Selection border */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ border: '2px solid #000000', marginTop: -2, marginLeft: -2, width: 'calc(100% + 4px)', height: 'calc(100% + 4px)' }}
+          />
+
+          {/* Corner handles */}
+          <ResizeHandleNode cursor="nwse-resize" style={{ left: -8, top: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+          <ResizeHandleNode cursor="nesw-resize" style={{ right: -8, top: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+          <ResizeHandleNode cursor="nwse-resize" style={{ right: -8, bottom: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+          <ResizeHandleNode cursor="nesw-resize" style={{ left: -8, bottom: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+
+          {/* Side handles */}
+          <ResizeHandleNode cursor="ew-resize" style={{ left: -8, top: '50%', transform: 'translateY(-50%)' }}
+            onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
+          <ResizeHandleNode cursor="ew-resize" style={{ right: -8, top: '50%', transform: 'translateY(-50%)' }}
+            onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
+        </>
+      )}
+
+      {showPill && isSelected && !isEditing && (
+        <CopyDeletePill
+          onCopy={() => { dismissPill(); onLongPress?.(); }}
+          onDelete={() => { dismissPill(); onDelete(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─── DraggableDivider ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+import type { DividerElement } from '../context/DividerContext';
+
+type DividerResizeHandle = 'w' | 'e';
+
+const MIN_DIV_WIDTH = 40;
+const MAX_DIV_WIDTH = 1400;
+
+interface DraggableDividerProps {
+  element: DividerElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onUpdate: (updates: Partial<DividerElement>) => void;
+  onDelete: () => void;
+  onDragEnd?: () => void;
+  onLongPress?: () => void;
+}
+
+export function DraggableDivider({
+  element,
+  isSelected,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onDragEnd,
+  onLongPress,
+}: DraggableDividerProps) {
+  const { zoom } = useCanvas();
+  const thickness = element.thickness ?? 2;
+  const color = element.color ?? '#000000';
+
+  // ── Drag ──────────────────────────────────────────────────────────────────
+  const elPosRef = useRef({ x: element.x, y: element.y });
+  elPosRef.current = { x: element.x, y: element.y };
+
+  const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
+    zoom,
+    onMove: (dx, dy) => onUpdate({ x: elPosRef.current.x + dx, y: elPosRef.current.y + dy }),
+    onEnd: onDragEnd,
+  });
+
+  // ── Resize ────────────────────────────────────────────────────────────────
+  const applyDividerResize = useCallback(
+    (handle: DividerResizeHandle, snap: ResizeSnapshot, dx: number) => {
+      if (handle === 'e') {
+        onUpdate({ width: Math.max(MIN_DIV_WIDTH, Math.min(MAX_DIV_WIDTH, snap.width + dx)) });
+      } else {
+        const newW = Math.max(MIN_DIV_WIDTH, Math.min(MAX_DIV_WIDTH, snap.width - dx));
+        onUpdate({ x: snap.x + (snap.width - newW), width: newW });
+      }
+    },
+    [onUpdate],
+  );
+
+  const applyDividerResizeFull = useCallback(
+    (handle: DividerResizeHandle, snap: ResizeSnapshot, dx: number, _dy: number) =>
+      applyDividerResize(handle, snap, dx),
+    [applyDividerResize],
+  );
+
+  const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
+    useResize<DividerResizeHandle>({ zoom, applyResize: applyDividerResizeFull });
+
+  // ── Long-press ────────────────────────────────────────────────────────────
+  const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
+
+  // ── Keyboard delete ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (isSelected && (e.key === 'Backspace' || e.key === 'Delete')) {
+        e.preventDefault();
+        onDelete();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isSelected, onDelete]);
+
+  // ── Mouse handlers ────────────────────────────────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onSelect();
+    startDragMouse(e);
+  };
+
+  // ── Touch handlers ────────────────────────────────────────────────────────
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    e.stopPropagation();
+    onSelect();
+    dismissPill();
+    const t = e.touches[0];
+    startDragTouch(t.clientX, t.clientY);
+    startLongPress(t.clientX, t.clientY, () => {});
+  };
+
+  const snapBase = { x: element.x, y: element.y, width: element.width, fontSize: 0 };
+
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: element.x,
+        top: element.y - HIT_PADDING,
+        width: element.width,
+        height: HIT_PADDING * 2 + thickness,
+        cursor: isDragging ? 'grabbing' : 'move',
+        pointerEvents: 'auto',
+        touchAction: 'none',
+      }}
+      onMouseDown={handleMouseDown}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onTouchStart={handleTouchStart}
+    >
+      {/* Visible line, centred in hit area */}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: HIT_PADDING, height: thickness, backgroundColor: color }} />
+
+      {isSelected && !isDragging && (
+        <>
+          <DividerToolbar
+            elementX={0}
+            elementY={0}
+            elementWidth={element.width}
+            color={color}
+            onColorChange={(c) => onUpdate({ color: c })}
+            thickness={thickness}
+            onThicknessSelect={(t) => onUpdate({ thickness: t })}
+          />
+
+          {/* Selection outline */}
+          <div
+            className="pointer-events-none absolute"
+            style={{ left: -2, top: HIT_PADDING - 2, width: 'calc(100% + 4px)', height: thickness + 4, border: '1px dashed rgba(0,0,0,0.4)' }}
+          />
+
+          {/* Left handle */}
+          <ResizeHandleNode
+            variant="circle"
+            cursor="ew-resize"
+            style={{ left: -HANDLE_SIZE / 2, top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2 }}
+            onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)}
+          />
+
+          {/* Right handle */}
+          <ResizeHandleNode
+            variant="circle"
+            cursor="ew-resize"
+            style={{ right: -HANDLE_SIZE / 2, top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2 }}
+            onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)}
+          />
+        </>
+      )}
+
+      {showPill && isSelected && (
+        <CopyDeletePill
+          onCopy={() => { dismissPill(); onLongPress?.(); }}
+          onDelete={() => { dismissPill(); onDelete(); }}
+        />
+      )}
+    </div>
+  );
+}

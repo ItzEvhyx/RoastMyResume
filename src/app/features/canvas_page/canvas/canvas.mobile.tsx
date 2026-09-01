@@ -5,8 +5,7 @@ import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { useClipboard, ClipboardEntry } from '../globals/pasting';
-import { DraggableText } from '../tool_sidebar/texts/drag.text';
-import { DraggableDivider } from '../tool_sidebar/divider/drag.divider';
+import { DraggableText, DraggableDivider } from '../globals/drag.elements';
 import type { TextElement } from '../context/TextContext';
 import type { DividerElement } from '../context/DividerContext';
 import { clampDividerToSafeArea, clampTextToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
@@ -69,7 +68,11 @@ export default function CanvasMobile() {
   const showEdgeWarning = useCallback((warning: EdgeWarning) => {
     if (warningTimer.current) clearTimeout(warningTimer.current);
     setEdgeWarning(warning);
-    warningTimer.current = setTimeout(() => setEdgeWarning(null), 3000);
+  }, []);
+
+  const clearEdgeWarning = useCallback(() => {
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+    setEdgeWarning(null);
   }, []);
 
   useEffect(() => () => {
@@ -82,6 +85,8 @@ export default function CanvasMobile() {
     if (result.wasClamped) {
       const next = { ...element, ...result.updates };
       showEdgeWarning({ x: next.x, y: next.y, height: getTextHeight(next) });
+    } else {
+      clearEdgeWarning();
     }
   };
 
@@ -91,6 +96,8 @@ export default function CanvasMobile() {
     if (result.wasClamped) {
       const next = { ...element, ...result.updates };
       showEdgeWarning({ x: next.x, y: next.y, height: next.thickness ?? 2 });
+    } else {
+      clearEdgeWarning();
     }
   };
 
@@ -397,6 +404,7 @@ export default function CanvasMobile() {
                 }}
                 onUpdate={(updates) => updateTextSafely(element, updates)}
                 onDelete={() => deleteElement(element.id)}
+                onDragEnd={clearEdgeWarning}
                 onLongPress={handleElementLongPress}
               />
             ))}
@@ -412,6 +420,7 @@ export default function CanvasMobile() {
                 }}
                 onUpdate={(updates) => updateDividerSafely(element, updates)}
                 onDelete={() => deleteDivider(element.id)}
+                onDragEnd={clearEdgeWarning}
                 onLongPress={handleElementLongPress}
               />
             ))}

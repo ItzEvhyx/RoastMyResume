@@ -5,8 +5,7 @@ import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { useClipboard } from '../globals/pasting';
-import { DraggableText } from '../tool_sidebar/texts/drag.text';
-import { DraggableDivider } from '../tool_sidebar/divider/drag.divider';
+import { DraggableText, DraggableDivider } from '../globals/drag.elements';
 import { clampDividerToSafeArea, clampTextToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
@@ -48,7 +47,11 @@ export default function CanvasWeb() {
   const showEdgeWarning = useCallback((warning: EdgeWarning) => {
     if (warningTimer.current) clearTimeout(warningTimer.current);
     setEdgeWarning(warning);
-    warningTimer.current = setTimeout(() => setEdgeWarning(null), 3000);
+  }, []);
+
+  const clearEdgeWarning = useCallback(() => {
+    if (warningTimer.current) clearTimeout(warningTimer.current);
+    setEdgeWarning(null);
   }, []);
 
   useEffect(() => () => {
@@ -61,6 +64,8 @@ export default function CanvasWeb() {
     if (result.wasClamped) {
       const next = { ...element, ...result.updates };
       showEdgeWarning({ x: next.x, y: next.y, height: getTextHeight(next) });
+    } else {
+      clearEdgeWarning();
     }
   };
 
@@ -70,6 +75,8 @@ export default function CanvasWeb() {
     if (result.wasClamped) {
       const next = { ...element, ...result.updates };
       showEdgeWarning({ x: next.x, y: next.y, height: next.thickness ?? 2 });
+    } else {
+      clearEdgeWarning();
     }
   };
 
@@ -374,6 +381,7 @@ export default function CanvasWeb() {
                   }}
                   onUpdate={(updates) => updateTextSafely(element, updates)}
                   onDelete={() => deleteElement(element.id)}
+                  onDragEnd={clearEdgeWarning}
                 />
               ))}
 
@@ -389,6 +397,7 @@ export default function CanvasWeb() {
                   }}
                   onUpdate={(updates) => updateDividerSafely(element, updates)}
                   onDelete={() => deleteDivider(element.id)}
+                  onDragEnd={clearEdgeWarning}
                 />
               ))}
             </div>
