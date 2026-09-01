@@ -6,6 +6,7 @@ import StitchCanvasBackground from '@/rb_components/stitch_canvas_background';
 import { CanvasProvider } from '@/app/features/canvas_page/context/CanvasContext';
 import { TextProvider } from '@/app/features/canvas_page/context/TextContext';
 import { DividerProvider } from '@/app/features/canvas_page/context/DividerContext';
+import { IconProvider } from '@/app/features/canvas_page/context/IconContext';
 import ToolbarWeb from '@/app/features/canvas_page/toolbar/toolbar.web';
 import ToolbarMobile from '@/app/features/canvas_page/toolbar/toolbar.mobile';
 import ToolSidebarWeb from '@/app/features/canvas_page/tool_sidebar/tool_sidebar.web';
@@ -50,6 +51,7 @@ export default function CanvasPage() {
       <UndoProvider>
         <TextProvider>
           <DividerProvider>
+            <IconProvider>
             <ClipboardProvider>
             <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
 
@@ -88,6 +90,7 @@ export default function CanvasPage() {
               </div>
             </main>
             </ClipboardProvider>
+            </IconProvider>
           </DividerProvider>
         </TextProvider>
       </UndoProvider>

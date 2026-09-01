@@ -4,11 +4,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
+import { useIcon } from '../context/IconContext';
 import { useClipboard, ClipboardEntry } from '../globals/pasting';
-import { DraggableText, DraggableDivider } from '../globals/drag.elements';
+import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
 import type { TextElement } from '../context/TextContext';
 import type { DividerElement } from '../context/DividerContext';
-import { clampDividerToSafeArea, clampTextToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import type { IconElement } from '../context/IconContext';
+import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 
 /**
  * Mobile version: pinch-to-zoom and drag-to-pan
@@ -56,6 +58,7 @@ export default function CanvasMobile() {
     updateDivider,
     deleteDivider,
   } = useDivider();
+  const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
   const { clipboard, register, unregister, copy } = useClipboard();
 
   const [isPanning, setIsPanning] = useState(false);
@@ -96,6 +99,17 @@ export default function CanvasMobile() {
     if (result.wasClamped) {
       const next = { ...element, ...result.updates };
       showEdgeWarning({ x: next.x, y: next.y, height: next.thickness ?? 2 });
+    } else {
+      clearEdgeWarning();
+    }
+  };
+
+  const updateIconSafely = (element: IconElement, updates: Partial<IconElement>) => {
+    const result = clampIconToSafeArea(element, updates);
+    updateIcon(element.id, result.updates);
+    if (result.wasClamped) {
+      const next = { ...element, ...result.updates };
+      showEdgeWarning({ x: next.x, y: next.y, height: next.size });
     } else {
       clearEdgeWarning();
     }
@@ -161,6 +175,28 @@ export default function CanvasMobile() {
     return () => unregister('divider');
   }, [selectedDividerId, dividerElements, register, unregister, addDividerElement, updateDivider]);
 
+  // Register icons for the global copy/paste workflow.
+  useEffect(() => {
+    register('icon', {
+      getCurrent: () => {
+        if (!selectedIconId) return null;
+        const el = iconElements.find(e => e.id === selectedIconId);
+        return el ? { type: 'icon', data: { ...el } } : null;
+      },
+      paste: (entry: ClipboardEntry, dx: number, dy: number) => {
+        const src = entry.data as Record<string, unknown>;
+        addFullIconElement({
+          x: ((src.x as number) ?? 100) + dx,
+          y: ((src.y as number) ?? 100) + dy,
+          size: (src.size as number) ?? 48,
+          svgUrl: (src.svgUrl as string) ?? '',
+          color: (src.color as string) ?? '#000000',
+        });
+      },
+    });
+    return () => unregister('icon');
+  }, [selectedIconId, iconElements, register, unregister, addFullIconElement]);
+
   // ---------------------------------------------------------------------------
   // Convert screen touch position → canvas-space coordinates
   // ---------------------------------------------------------------------------
@@ -191,6 +227,7 @@ export default function CanvasMobile() {
     if (!clipboard) {
       setSelectedId(null);
       setSelectedDividerId(null);
+      setSelectedIconId(null);
       return;
     }
 
@@ -221,6 +258,18 @@ export default function CanvasMobile() {
       setPasteTarget(null);
       return;
     }
+    if (clipboard.type === 'icon') {
+      const size = (src.size as number) ?? 48;
+      addFullIconElement({
+        x: pasteTarget.canvasX - size / 2,
+        y: pasteTarget.canvasY - size / 2,
+        size,
+        svgUrl: (src.svgUrl as string) ?? '',
+        color: (src.color as string) ?? '#000000',
+      });
+      setPasteTarget(null);
+      return;
+    }
     addFullTextElement({
       content:        (src.content as string)        ?? 'Add text',
       x:              pasteTarget.canvasX - w / 2,
@@ -237,7 +286,7 @@ export default function CanvasMobile() {
       textCategory:   src.textCategory as 'header' | 'subheader' | 'body' | 'meta' | null | undefined,
     } as Omit<TextElement, 'id'>);
     setPasteTarget(null);
-  }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider]);
+  }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider, addFullIconElement]);
 
   // ---------------------------------------------------------------------------
   // Global clipboard paste (system paste event fallback)
@@ -399,6 +448,7 @@ export default function CanvasMobile() {
                 isSelected={selectedId === element.id}
                 onSelect={() => {
                   setSelectedDividerId(null);
+                  setSelectedIconId(null);
                   setSelectedId(element.id);
                   setPasteTarget(null);
                 }}
@@ -415,11 +465,29 @@ export default function CanvasMobile() {
                 isSelected={selectedDividerId === element.id}
                 onSelect={() => {
                   setSelectedId(null);
+                  setSelectedIconId(null);
                   setSelectedDividerId(element.id);
                   setPasteTarget(null);
                 }}
                 onUpdate={(updates) => updateDividerSafely(element, updates)}
                 onDelete={() => deleteDivider(element.id)}
+                onDragEnd={clearEdgeWarning}
+                onLongPress={handleElementLongPress}
+              />
+            ))}
+            {iconElements.map(element => (
+              <DraggableIcon
+                key={element.id}
+                element={element}
+                isSelected={selectedIconId === element.id}
+                onSelect={() => {
+                  setSelectedId(null);
+                  setSelectedDividerId(null);
+                  setSelectedIconId(element.id);
+                  setPasteTarget(null);
+                }}
+                onUpdate={(updates) => updateIconSafely(element, updates)}
+                onDelete={() => deleteIcon(element.id)}
                 onDragEnd={clearEdgeWarning}
                 onLongPress={handleElementLongPress}
               />

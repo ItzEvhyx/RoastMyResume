@@ -1,7 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Poppins } from 'next/font/google';
 import { useText } from '../../context/TextContext';
+
+// Fonts
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '600', '700'],
+  variable: '--font-poppins',
+});
+
+const FUTURA_STYLE = `
+  @font-face {
+    font-family: 'FuturaDisplay';
+    src: url('/assets/fonts/futura_display/Futura Display.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+`;
 
 // Top 12 most common resume fonts (first 6 visible, rest via scroll)
 const DEFAULT_FONTS = [
@@ -97,29 +114,41 @@ export default function FontSelector() {
   };
 
   // Don't render if no text is selected OR if text tool is not active
-  const shouldShow = selectedElement && toolbarExpanded && activeTool === 'fontstyle';
+  const shouldShow = selectedElement && activeTool === 'fontstyle';
 
   return (
-    <div
-      className="fixed left-[110px] z-40 flex flex-col rounded-3xl transition-all duration-400 ease-out"
-      onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-      }}
-      style={{
-        ...glassStyle,
-        width: '200px',
-        height: 'calc(100vh - 280px)',
-        maxHeight: '550px',
-        top: 'calc(50% - (100vh - 280px) / 2 + 40px)',
-        opacity: shouldShow ? 1 : 0,
-        transform: shouldShow ? 'scale(1) translateX(0)' : 'scale(0.85) translateX(-12px)',
-        pointerEvents: shouldShow ? 'auto' : 'none',
-      }}
-    >
+    <>
+      <style>{FUTURA_STYLE}</style>
+      <div
+        className="fixed left-[110px] z-40 flex flex-col rounded-3xl transition-all duration-400 ease-out"
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        style={{
+          ...glassStyle,
+          width: '200px',
+          height: 'calc(100vh - 280px)',
+          maxHeight: '550px',
+          top: 'calc(50% - (100vh - 280px) / 2 + 40px)',
+          opacity: shouldShow ? 1 : 0,
+          transform: shouldShow ? 'scale(1) translateX(0)' : 'scale(0.85) translateX(-12px)',
+          pointerEvents: shouldShow ? 'auto' : 'none',
+        }}
+      >
+      {/* Header */}
+      <div className="px-4 pt-4 pb-3 shrink-0">
+        <span style={{ fontFamily: 'FuturaDisplay, sans-serif', fontSize: '24px', color: '#fff', letterSpacing: '0.01em', lineHeight: 1 }}>
+          Select Font
+        </span>
+      </div>
+
+      {/* Divider line */}
+      <div className="mx-3 h-[1px] bg-white/10 shrink-0" />
+
       {/* Font list - fixed height, scrollable without visible scrollbar */}
       <div 
         className="flex-1 overflow-y-auto p-3"
@@ -139,9 +168,10 @@ export default function FontSelector() {
             <button
               key={idx}
               onClick={() => handleFontSelect(font.family, font.name)}
-              className="rounded-lg px-4 py-3 text-left text-sm text-white/80 transition-all duration-150 hover:bg-white/10 active:scale-95"
+              className={`rounded-lg px-4 py-3 text-left text-sm text-white/80 transition-all duration-150 hover:bg-white/10 active:scale-95 ${poppins.className}`}
               style={{
-                fontFamily: font.family,
+                fontFamily: 'var(--font-poppins)',
+                fontWeight: 400,
                 background: selectedElement?.fontFamily === font.family 
                   ? 'rgba(255, 255, 255, 0.15)' 
                   : 'transparent',
@@ -152,7 +182,7 @@ export default function FontSelector() {
           ))}
           
           {displayFonts.length === 0 && (
-            <div className="py-8 text-center text-sm text-white/40">
+            <div className="py-8 text-center text-sm text-white/40" style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}>
               No fonts found
             </div>
           )}
@@ -160,16 +190,30 @@ export default function FontSelector() {
       </div>
 
       {/* Search input - sticky at bottom */}
-      <div className="border-t border-white/10 p-3">
-        <input
-          type="text"
-          placeholder="Search fonts..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={handleSearchKeyDown}
-          className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 outline-none transition-all focus:border-white/20 focus:bg-white/10"
-        />
+      <div className="px-3 pb-3 shrink-0">
+        <div
+          className="flex items-center gap-2 rounded-2xl px-3 py-2.5"
+          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
+        >
+          <input
+            type="text"
+            placeholder="Search fonts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            className="flex-1 bg-transparent text-sm text-white outline-none"
+            style={{
+              fontFamily: 'var(--font-poppins)',
+              fontWeight: 400,
+            }}
+          />
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-55">
+            <circle cx="11" cy="11" r="7" stroke="white" strokeWidth="2.2" />
+            <path d="M16.5 16.5L21 21" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
+        </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

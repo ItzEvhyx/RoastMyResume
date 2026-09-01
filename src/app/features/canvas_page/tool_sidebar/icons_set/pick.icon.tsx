@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Poppins } from 'next/font/google';
 import { useText } from '../../context/TextContext';
+import { useIcon } from '../../context/IconContext';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fonts
@@ -28,7 +29,9 @@ const poppins = Poppins({
 // Using Phosphor Icons (ph) for solid filled look,
 // with mdi fallbacks for brand icons that only exist there.
 // ─────────────────────────────────────────────────────────────────────────────
-const ph  = (name: string) => `https://api.iconify.design/ph/${name}.svg`;
+// All icons use mdi (Material Design Icons) — every icon is solid/filled by
+// default and all names below have been verified to exist in the set.
+// ─────────────────────────────────────────────────────────────────────────────
 const mdi = (name: string) => `https://api.iconify.design/mdi/${name}.svg`;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,16 +52,16 @@ function i(iconId: string, svgUrl: string): IconItem {
 // Featured — 6 solid icons (2 rows × 3)
 // ─────────────────────────────────────────────────────────────────────────────
 const FEATURED_ICONS: IconItem[] = [
-  i('ph:envelope-fill',       ph('envelope-fill')),
-  i('ph:phone-fill',          ph('phone-fill')),
-  i('ph:map-pin-fill',        ph('map-pin-fill')),
+  i('mdi:email',              mdi('email')),
+  i('mdi:phone',              mdi('phone')),
+  i('mdi:map-marker',         mdi('map-marker')),
   i('mdi:linkedin',           mdi('linkedin')),
-  i('ph:globe-fill',          ph('globe-fill')),
-  i('ph:briefcase-fill',      ph('briefcase-fill')),
+  i('mdi:web',                mdi('web')),
+  i('mdi:briefcase',          mdi('briefcase')),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Categories
+// Categories — all icons use verified mdi names (solid/filled by default)
 // ─────────────────────────────────────────────────────────────────────────────
 interface CategoryDef {
   id: string;
@@ -71,18 +74,18 @@ const ICON_CATEGORIES: CategoryDef[] = [
   {
     id: 'contact',
     label: 'Contact',
-    iconSvgUrl: ph('envelope-fill'),
+    iconSvgUrl: mdi('email'),
     icons: [
-      i('ph:envelope-fill',             ph('envelope-fill')),
-      i('ph:phone-fill',                ph('phone-fill')),
-      i('ph:map-pin-fill',              ph('map-pin-fill')),
-      i('ph:device-mobile-fill',        ph('device-mobile-fill')),
-      i('ph:address-book-fill',         ph('address-book-fill')),
-      i('ph:house-fill',                ph('house-fill')),
-      i('ph:chat-fill',                 ph('chat-fill')),
-      i('ph:chat-dots-fill',            ph('chat-dots-fill')),
-      i('ph:calendar-fill',             ph('calendar-fill')),
-      i('ph:clock-fill',                ph('clock-fill')),
+      i('mdi:email',                    mdi('email')),
+      i('mdi:phone',                    mdi('phone')),
+      i('mdi:map-marker',               mdi('map-marker')),
+      i('mdi:cellphone',                mdi('cellphone')),
+      i('mdi:card-account-details',     mdi('card-account-details')),
+      i('mdi:home',                     mdi('home')),
+      i('mdi:chat',                     mdi('chat')),
+      i('mdi:message',                  mdi('message')),
+      i('mdi:calendar',                 mdi('calendar')),
+      i('mdi:clock',                    mdi('clock')),
       i('mdi:whatsapp',                 mdi('whatsapp')),
       i('mdi:skype',                    mdi('skype')),
     ],
@@ -90,107 +93,107 @@ const ICON_CATEGORIES: CategoryDef[] = [
   {
     id: 'social',
     label: 'Social & links',
-    iconSvgUrl: ph('globe-fill'),
+    iconSvgUrl: mdi('web'),
     icons: [
       i('mdi:linkedin',                 mdi('linkedin')),
       i('mdi:github',                   mdi('github')),
-      i('ph:globe-fill',                ph('globe-fill')),
+      i('mdi:web',                      mdi('web')),
       i('mdi:twitter',                  mdi('twitter')),
       i('mdi:instagram',                mdi('instagram')),
       i('mdi:youtube',                  mdi('youtube')),
       i('mdi:dribbble',                 mdi('dribbble')),
       i('mdi:behance',                  mdi('behance')),
-      i('ph:link-fill',                 ph('link-fill')),
+      i('mdi:link-variant',             mdi('link-variant')),
     ],
   },
   {
     id: 'experience',
     label: 'Experience',
-    iconSvgUrl: ph('briefcase-fill'),
+    iconSvgUrl: mdi('briefcase'),
     icons: [
-      i('ph:briefcase-fill',            ph('briefcase-fill')),
-      i('ph:buildings-fill',            ph('buildings-fill')),
-      i('ph:user-circle-fill',          ph('user-circle-fill')),
-      i('ph:calendar-fill',             ph('calendar-fill')),
-      i('ph:chart-line-fill',           ph('chart-line-fill')),
-      i('ph:handshake-fill',            ph('handshake-fill')),
-      i('ph:rocket-launch-fill',        ph('rocket-launch-fill')),
-      i('ph:chalkboard-teacher-fill',   ph('chalkboard-teacher-fill')),
-      i('ph:presentation-chart-fill',   ph('presentation-chart-fill')),
-      i('ph:tag-fill',                  ph('tag-fill')),
-      i('ph:currency-dollar-fill',      ph('currency-dollar-fill')),
-      i('ph:trend-up-fill',             ph('trend-up-fill')),
-      i('ph:clipboard-text-fill',       ph('clipboard-text-fill')),
-      i('ph:timer-fill',                ph('timer-fill')),
+      i('mdi:briefcase',                mdi('briefcase')),
+      i('mdi:office-building',          mdi('office-building')),
+      i('mdi:account-tie',              mdi('account-tie')),
+      i('mdi:calendar-range',           mdi('calendar-range')),
+      i('mdi:chart-line',               mdi('chart-line')),
+      i('mdi:handshake',                mdi('handshake')),
+      i('mdi:rocket-launch',            mdi('rocket-launch')),
+      i('mdi:human-male-board',         mdi('human-male-board')),
+      i('mdi:presentation',             mdi('presentation')),
+      i('mdi:tag',                      mdi('tag')),
+      i('mdi:currency-usd',             mdi('currency-usd')),
+      i('mdi:trending-up',              mdi('trending-up')),
+      i('mdi:clipboard-text',           mdi('clipboard-text')),
+      i('mdi:timer',                    mdi('timer')),
     ],
   },
   {
     id: 'education',
     label: 'Education',
-    iconSvgUrl: ph('graduation-cap-fill'),
+    iconSvgUrl: mdi('school'),
     icons: [
-      i('ph:graduation-cap-fill',       ph('graduation-cap-fill')),
-      i('ph:books-fill',                ph('books-fill')),
-      i('ph:certificate-fill',          ph('certificate-fill')),
-      i('ph:chalkboard-teacher-fill',   ph('chalkboard-teacher-fill')),
-      i('ph:pencil-fill',               ph('pencil-fill')),
-      i('ph:flask-fill',                ph('flask-fill')),
-      i('ph:telescope-fill',            ph('telescope-fill')),
-      i('ph:brain-fill',                ph('brain-fill')),
-      i('ph:translate-fill',            ph('translate-fill')),
-      i('ph:calculator-fill',           ph('calculator-fill')),
+      i('mdi:school',                   mdi('school')),
+      i('mdi:book-open-variant',        mdi('book-open-variant')),
+      i('mdi:certificate',              mdi('certificate')),
+      i('mdi:human-male-board',         mdi('human-male-board')),
+      i('mdi:pencil',                   mdi('pencil')),
+      i('mdi:flask',                    mdi('flask')),
+      i('mdi:telescope',                mdi('telescope')),
+      i('mdi:brain',                    mdi('brain')),
+      i('mdi:translate',                mdi('translate')),
+      i('mdi:calculator',               mdi('calculator')),
     ],
   },
   {
     id: 'skills',
     label: 'Skills',
-    iconSvgUrl: ph('code-fill'),
+    iconSvgUrl: mdi('code-tags'),
     icons: [
-      i('ph:code-fill',                 ph('code-fill')),
+      i('mdi:code-tags',                mdi('code-tags')),
       i('mdi:language-javascript',      mdi('language-javascript')),
       i('mdi:language-typescript',      mdi('language-typescript')),
       i('mdi:language-python',          mdi('language-python')),
       i('mdi:react',                    mdi('react')),
       i('mdi:nodejs',                   mdi('nodejs')),
-      i('ph:database-fill',             ph('database-fill')),
+      i('mdi:database',                 mdi('database')),
       i('mdi:docker',                   mdi('docker')),
       i('mdi:git',                      mdi('git')),
       i('mdi:aws',                      mdi('aws')),
-      i('ph:cloud-fill',                ph('cloud-fill')),
+      i('mdi:cloud',                    mdi('cloud')),
       i('mdi:linux',                    mdi('linux')),
-      i('ph:lightbulb-fill',            ph('lightbulb-fill')),
-      i('ph:paint-brush-fill',          ph('paint-brush-fill')),
-      i('ph:magnifying-glass-fill',     ph('magnifying-glass-fill')),
-      i('ph:pen-nib-fill',              ph('pen-nib-fill')),
+      i('mdi:lightbulb',                mdi('lightbulb')),
+      i('mdi:palette',                  mdi('palette')),
+      i('mdi:magnify',                  mdi('magnify')),
+      i('mdi:vector-pen',               mdi('vector-pen')),
     ],
   },
   {
     id: 'certifications',
     label: 'Certifications & awards',
-    iconSvgUrl: ph('medal-fill'),
+    iconSvgUrl: mdi('medal'),
     icons: [
-      i('ph:medal-fill',                ph('medal-fill')),
-      i('ph:trophy-fill',               ph('trophy-fill')),
-      i('ph:certificate-fill',          ph('certificate-fill')),
-      i('ph:star-fill',                 ph('star-fill')),
-      i('ph:check-circle-fill',         ph('check-circle-fill')),
-      i('ph:seal-fill',                 ph('seal-fill')),
-      i('ph:crown-fill',                ph('crown-fill')),
+      i('mdi:medal',                    mdi('medal')),
+      i('mdi:trophy',                   mdi('trophy')),
+      i('mdi:certificate',              mdi('certificate')),
+      i('mdi:star',                     mdi('star')),
+      i('mdi:check-circle',             mdi('check-circle')),
+      i('mdi:ribbon',                   mdi('ribbon')),
+      i('mdi:crown',                    mdi('crown')),
     ],
   },
   {
     id: 'projects',
     label: 'Projects',
-    iconSvgUrl: ph('folder-fill'),
+    iconSvgUrl: mdi('folder'),
     icons: [
-      i('ph:folder-fill',               ph('folder-fill')),
-      i('ph:file-text-fill',            ph('file-text-fill')),
-      i('ph:code-fill',                 ph('code-fill')),
-      i('ph:monitor-fill',              ph('monitor-fill')),
-      i('ph:globe-fill',                ph('globe-fill')),
+      i('mdi:folder',                   mdi('folder')),
+      i('mdi:file-document',            mdi('file-document')),
+      i('mdi:code-braces',              mdi('code-braces')),
+      i('mdi:monitor',                  mdi('monitor')),
+      i('mdi:web',                      mdi('web')),
       i('mdi:github',                   mdi('github')),
-      i('ph:arrow-square-out-fill',     ph('arrow-square-out-fill')),
-      i('ph:puzzle-piece-fill',         ph('puzzle-piece-fill')),
+      i('mdi:launch',                   mdi('launch')),
+      i('mdi:puzzle',                   mdi('puzzle')),
     ],
   },
 ];
@@ -342,7 +345,7 @@ function SlidePanel({
       <div className="flex flex-col items-center gap-3 py-8 mt-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={ph('magnifying-glass-fill')}
+          src={mdi('magnify')}
           alt="search"
           width={52}
           height={52}
@@ -372,6 +375,7 @@ function SlidePanel({
 // ─────────────────────────────────────────────────────────────────────────────
 export default function IconPicker() {
   const { toolbarExpanded, activeTool } = useText();
+  const { addIconElement } = useIcon();
 
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<IconItem[]>([]);
@@ -419,8 +423,16 @@ export default function IconPicker() {
   const handleSelect = useCallback((icon: IconItem) => {
     pushRecentIcon(icon);
     setRecentIcons(getRecentIcons());
-    console.log('[IconPicker] selected:', icon.iconId);
-  }, []);
+    const CANVAS_WIDTH = 794;
+    const CANVAS_HEIGHT = 1123;
+    const DEFAULT_SIZE = 48;
+    addIconElement(
+      Math.round(CANVAS_WIDTH / 2 - DEFAULT_SIZE / 2),
+      Math.round(CANVAS_HEIGHT / 2 - DEFAULT_SIZE / 2),
+      icon.svgUrl ?? icon.cloudinaryUrl,
+      DEFAULT_SIZE,
+    );
+  }, [addIconElement]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace' || e.key === 'Delete') e.stopPropagation();

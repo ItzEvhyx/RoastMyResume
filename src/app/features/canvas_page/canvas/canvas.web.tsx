@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
+import { useIcon } from '../context/IconContext';
 import { useClipboard } from '../globals/pasting';
-import { DraggableText, DraggableDivider } from '../globals/drag.elements';
-import { clampDividerToSafeArea, clampTextToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
+import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
+import type { IconElement } from '../context/IconContext';
 
 /**
  * A4 Resume dimensions:
@@ -38,6 +40,7 @@ export default function CanvasWeb() {
   const { zoom, setZoom, pan, setPan, isGrabMode } = useCanvas();
   const { textElements, selectedId, setSelectedId, updateElement, deleteElement, addTextElement, addFullTextElement } = useText();
   const { dividerElements, selectedDividerId, setSelectedDividerId, addDividerElement, updateDivider, deleteDivider } = useDivider();
+  const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
   const { register, unregister } = useClipboard();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
@@ -75,6 +78,17 @@ export default function CanvasWeb() {
     if (result.wasClamped) {
       const next = { ...element, ...result.updates };
       showEdgeWarning({ x: next.x, y: next.y, height: next.thickness ?? 2 });
+    } else {
+      clearEdgeWarning();
+    }
+  };
+
+  const updateIconSafely = (element: IconElement, updates: Partial<IconElement>) => {
+    const result = clampIconToSafeArea(element, updates);
+    updateIcon(element.id, result.updates);
+    if (result.wasClamped) {
+      const next = { ...element, ...result.updates };
+      showEdgeWarning({ x: next.x, y: next.y, height: next.size });
     } else {
       clearEdgeWarning();
     }
@@ -131,6 +145,28 @@ export default function CanvasWeb() {
     });
     return () => unregister('divider');
   }, [selectedDividerId, dividerElements, register, unregister, addDividerElement, updateDivider]);
+
+  // Register icons for the global copy/paste workflow.
+  useEffect(() => {
+    register('icon', {
+      getCurrent: () => {
+        if (!selectedIconId) return null;
+        const el = iconElements.find(e => e.id === selectedIconId);
+        return el ? { type: 'icon', data: { ...el } } : null;
+      },
+      paste: (entry, dx, dy) => {
+        const src = entry.data as Record<string, unknown>;
+        addFullIconElement({
+          x: ((src.x as number) ?? 100) + dx,
+          y: ((src.y as number) ?? 100) + dy,
+          size: (src.size as number) ?? 48,
+          svgUrl: (src.svgUrl as string) ?? '',
+          color: (src.color as string) ?? '#000000',
+        });
+      },
+    });
+    return () => unregister('icon');
+  }, [selectedIconId, iconElements, register, unregister, addFullIconElement]);
 
   // Handle drop on canvas
   const handleDrop = (e: React.DragEvent) => {
@@ -297,10 +333,11 @@ export default function CanvasWeb() {
     return () => window.removeEventListener('paste', handleGlobalPaste);
   }, [selectedId, updateElement, addTextElement]);
 
-  // Deselect both text and divider elements when clicking empty space
+  // Deselect all element types when clicking empty space
   const deselectAll = () => {
     setSelectedId(null);
     setSelectedDividerId(null);
+    setSelectedIconId(null);
   };
 
   return (
@@ -377,6 +414,7 @@ export default function CanvasWeb() {
                   isSelected={selectedId === element.id}
                   onSelect={() => {
                     setSelectedDividerId(null);
+                    setSelectedIconId(null);
                     setSelectedId(element.id);
                   }}
                   onUpdate={(updates) => updateTextSafely(element, updates)}
@@ -394,9 +432,27 @@ export default function CanvasWeb() {
                   onSelect={() => {
                     setSelectedId(null);
                     setSelectedDividerId(element.id);
+                    setSelectedIconId(null);
                   }}
                   onUpdate={(updates) => updateDividerSafely(element, updates)}
                   onDelete={() => deleteDivider(element.id)}
+                  onDragEnd={clearEdgeWarning}
+                />
+              ))}
+
+              {/* Render icon elements */}
+              {iconElements.map(element => (
+                <DraggableIcon
+                  key={element.id}
+                  element={element}
+                  isSelected={selectedIconId === element.id}
+                  onSelect={() => {
+                    setSelectedId(null);
+                    setSelectedDividerId(null);
+                    setSelectedIconId(element.id);
+                  }}
+                  onUpdate={(updates) => updateIconSafely(element, updates)}
+                  onDelete={() => deleteIcon(element.id)}
                   onDragEnd={clearEdgeWarning}
                 />
               ))}

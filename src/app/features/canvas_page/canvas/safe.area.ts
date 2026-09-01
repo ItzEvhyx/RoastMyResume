@@ -50,3 +50,15 @@ export function clampDividerToSafeArea(element: DividerElement, updates: Partial
     wasClamped: x !== next.x || y !== next.y || width !== next.width,
   };
 }
+
+import type { IconElement } from '../context/IconContext';
+
+export function clampIconToSafeArea(element: IconElement, updates: Partial<IconElement>): ClampResult<IconElement> {
+  const next = { ...element, ...updates };
+  const x = clamp(next.x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - next.size);
+  const y = clamp(next.y, SAFE_MARGIN, CANVAS_HEIGHT - SAFE_MARGIN - next.size);
+  return {
+    updates: { ...updates, x, y },
+    wasClamped: x !== next.x || y !== next.y,
+  };
+}

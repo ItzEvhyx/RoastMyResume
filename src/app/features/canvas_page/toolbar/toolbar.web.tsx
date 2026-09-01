@@ -85,7 +85,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
                 maxLength={25}
                 autoFocus
                 className="bg-transparent text-sm font-semibold text-white outline-none"
-                style={{ width: '200px' }}
+                style={{ width: '200px', fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
               />
             ) : (
               <span
@@ -96,7 +96,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
                 {resumeTitle.length > 25 ? `${resumeTitle.slice(0, 25)}...` : resumeTitle}
               </span>
             )}
-            <span className="text-sm text-white/50">— Tech / CS template</span>
+            <span className="text-sm text-white/50">— Tech / IT Template</span>
           </div>
         </div>
       </div>

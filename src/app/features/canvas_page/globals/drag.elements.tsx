@@ -72,32 +72,43 @@ function steppedFontSize(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Generic drag hook
-// Handles mouse + touch drag and exposes the same snapshot pattern used by
-// both element types.  Callers supply onMove/onEnd callbacks.
+// Snapshot-based: records the element's position at drag-start alongside the
+// mouse origin so onMove always gets the correct absolute target position.
 // ─────────────────────────────────────────────────────────────────────────────
 interface UseDragOptions {
   zoom: number;
-  onMove: (dx: number, dy: number) => void;
+  /** Called with the new absolute (x, y) the element should move to */
+  onMove: (x: number, y: number) => void;
   onEnd?: () => void;
 }
 
 function useDrag({ zoom, onMove, onEnd }: UseDragOptions) {
   const [isDragging, setIsDragging] = useState(false);
-  const snapshot = useRef<{ mouseX: number; mouseY: number } | null>(null);
+  // Store both the pointer origin AND the element origin at drag-start
+  const snapshot = useRef<{ mouseX: number; mouseY: number; elX: number; elY: number } | null>(null);
+
+  // Use a ref for the callbacks so the event listeners never go stale
+  const onMoveRef = useRef(onMove);
+  const onEndRef = useRef(onEnd);
+  useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
+  useEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
+  const zoomRef = useRef(zoom);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!snapshot.current) return;
-    onMove(
-      (e.clientX - snapshot.current.mouseX) / zoom,
-      (e.clientY - snapshot.current.mouseY) / zoom,
+    const { mouseX, mouseY, elX, elY } = snapshot.current;
+    onMoveRef.current(
+      elX + (e.clientX - mouseX) / zoomRef.current,
+      elY + (e.clientY - mouseY) / zoomRef.current,
     );
-  }, [zoom, onMove]);
+  }, []); // stable — never recreated
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     snapshot.current = null;
-    onEnd?.();
-  }, [onEnd]);
+    onEndRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -113,17 +124,18 @@ function useDrag({ zoom, onMove, onEnd }: UseDragOptions) {
     if (e.touches.length !== 1 || !snapshot.current) return;
     e.stopPropagation();
     const t = e.touches[0];
-    onMove(
-      (t.clientX - snapshot.current.mouseX) / zoom,
-      (t.clientY - snapshot.current.mouseY) / zoom,
+    const { mouseX, mouseY, elX, elY } = snapshot.current;
+    onMoveRef.current(
+      elX + (t.clientX - mouseX) / zoomRef.current,
+      elY + (t.clientY - mouseY) / zoomRef.current,
     );
-  }, [zoom, onMove]);
+  }, []); // stable
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
     snapshot.current = null;
-    onEnd?.();
-  }, [onEnd]);
+    onEndRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -137,13 +149,15 @@ function useDrag({ zoom, onMove, onEnd }: UseDragOptions) {
     };
   }, [isDragging, handleTouchMove, handleTouchEnd]);
 
-  const startMouse = useCallback((e: React.MouseEvent) => {
-    snapshot.current = { mouseX: e.clientX, mouseY: e.clientY };
+  /** Call on mousedown — pass current mouse position AND element's current position */
+  const startMouse = useCallback((e: React.MouseEvent, elX: number, elY: number) => {
+    snapshot.current = { mouseX: e.clientX, mouseY: e.clientY, elX, elY };
     setIsDragging(true);
   }, []);
 
-  const startTouch = useCallback((clientX: number, clientY: number) => {
-    snapshot.current = { mouseX: clientX, mouseY: clientY };
+  /** Call on touchstart — pass touch position AND element's current position */
+  const startTouch = useCallback((clientX: number, clientY: number, elX: number, elY: number) => {
+    snapshot.current = { mouseX: clientX, mouseY: clientY, elX, elY };
     setIsDragging(true);
   }, []);
 
@@ -419,12 +433,9 @@ export function DraggableText({
   const { zoom } = useCanvas();
 
   // ── Drag ──────────────────────────────────────────────────────────────────
-  const elPosRef = useRef({ x: element.x, y: element.y });
-  elPosRef.current = { x: element.x, y: element.y };
-
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
-    onMove: (dx, dy) => onUpdate({ x: elPosRef.current.x + dx, y: elPosRef.current.y + dy }),
+    onMove: (x, y) => onUpdate({ x, y }),
     onEnd: onDragEnd,
   });
 
@@ -497,7 +508,7 @@ export function DraggableText({
     e.preventDefault();
     if (isEditing) return;
     onSelect();
-    startDragMouse(e);
+    startDragMouse(e, element.x, element.y);
   };
 
   // ── Touch handlers ────────────────────────────────────────────────────────
@@ -516,7 +527,7 @@ export function DraggableText({
     dismissPill();
 
     const t = e.touches[0];
-    startDragTouch(t.clientX, t.clientY);
+    startDragTouch(t.clientX, t.clientY, element.x, element.y);
     startLongPress(t.clientX, t.clientY, () => {
       // cancel drag on long-press trigger
     });
@@ -787,12 +798,9 @@ export function DraggableDivider({
   const color = element.color ?? '#000000';
 
   // ── Drag ──────────────────────────────────────────────────────────────────
-  const elPosRef = useRef({ x: element.x, y: element.y });
-  elPosRef.current = { x: element.x, y: element.y };
-
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
-    onMove: (dx, dy) => onUpdate({ x: elPosRef.current.x + dx, y: elPosRef.current.y + dy }),
+    onMove: (x, y) => onUpdate({ x, y }),
     onEnd: onDragEnd,
   });
 
@@ -838,7 +846,7 @@ export function DraggableDivider({
     e.stopPropagation();
     e.preventDefault();
     onSelect();
-    startDragMouse(e);
+    startDragMouse(e, element.x, element.y);
   };
 
   // ── Touch handlers ────────────────────────────────────────────────────────
@@ -848,7 +856,7 @@ export function DraggableDivider({
     onSelect();
     dismissPill();
     const t = e.touches[0];
-    startDragTouch(t.clientX, t.clientY);
+    startDragTouch(t.clientX, t.clientY, element.x, element.y);
     startLongPress(t.clientX, t.clientY, () => {});
   };
 
@@ -919,4 +927,226 @@ export function DraggableDivider({
       )}
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─── DraggableIcon ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+import type { IconElement } from '../context/IconContext';
+import { IconToolbar } from '../tool_sidebar/icons_set/icons.tools';
+import { getNextFlip, flipToTransform, type FlipState } from './flip.element';
+import { IconColorOverlay } from '../tool_sidebar/icons_set/color.overlay';
+
+export type { IconElement } from '../context/IconContext';
+
+type IconResizeHandle = 'nw' | 'ne' | 'se' | 'sw';
+
+const MIN_ICON_SIZE = 16;
+const MAX_ICON_SIZE = 400;
+
+interface DraggableIconProps {
+  element: IconElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onUpdate: (updates: Partial<IconElement>) => void;
+  onDelete: () => void;
+  onDragEnd?: () => void;
+  onLongPress?: () => void;
+}
+
+export function DraggableIcon({
+  element,
+  isSelected,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onDragEnd,
+  onLongPress,
+}: DraggableIconProps) {
+  const { zoom } = useCanvas();
+
+  // ── Drag ──────────────────────────────────────────────────────────────────
+  const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
+    zoom,
+    onMove: (x, y) => onUpdate({ x, y }),
+    onEnd: onDragEnd,
+  });
+
+  // ── Resize — uniform scale from all 4 corners ─────────────────────────────
+  // We reuse ResizeSnapshot.fontSize to store the element size at drag start.
+  const applyIconResize = useCallback(
+    (handle: IconResizeHandle, snap: ResizeSnapshot, dx: number, dy: number) => {
+      const scaleDelta =
+        handle === 'se' ? dx + dy :
+        handle === 'sw' ? -dx + dy :
+        handle === 'ne' ? dx - dy :
+        -dx - dy; // nw
+      const newSize = Math.max(MIN_ICON_SIZE, Math.min(MAX_ICON_SIZE, snap.fontSize + scaleDelta));
+      if (handle === 'nw' || handle === 'sw') {
+        // Keep right edge fixed: move x left as size grows
+        onUpdate({ x: snap.x + (snap.fontSize - newSize), size: newSize });
+      } else {
+        onUpdate({ size: newSize });
+      }
+    },
+    [onUpdate],
+  );
+
+  const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
+    useResize<IconResizeHandle>({ zoom, applyResize: applyIconResize });
+
+  // ── Long-press ────────────────────────────────────────────────────────────
+  const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
+
+  // ── Keyboard delete ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (isSelected && (e.key === 'Backspace' || e.key === 'Delete')) {
+        e.preventDefault();
+        onDelete();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isSelected, onDelete]);
+
+  // ── Mouse handlers ────────────────────────────────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onSelect();
+    startDragMouse(e, element.x, element.y);
+  };
+
+  // ── Touch handlers ────────────────────────────────────────────────────────
+  const lastTapRef = useRef<number>(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    e.stopPropagation();
+    const now = Date.now();
+    lastTapRef.current = now;
+    onSelect();
+    dismissPill();
+    const t = e.touches[0];
+    startDragTouch(t.clientX, t.clientY, element.x, element.y);
+    startLongPress(t.clientX, t.clientY, () => {});
+  };
+
+  // Snapshot reuses ResizeSnapshot.fontSize to store size
+  const snapBase: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'> = {
+    x: element.x,
+    y: element.y,
+    width: element.size, // unused for icon resize but required by type
+    fontSize: element.size,
+  };
+
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: element.x,
+        top: element.y,
+        width: element.size,
+        height: element.size,
+        cursor: isDragging ? 'grabbing' : 'move',
+        pointerEvents: 'auto',
+        touchAction: 'none',
+        userSelect: 'none',
+      }}
+      onMouseDown={handleMouseDown}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onTouchStart={handleTouchStart}
+    >
+      {/* Icon — rendered via CSS mask overlay for accurate color */}
+      <IconColorOverlay
+        svgUrl={element.svgUrl}
+        color={element.color ?? '#000000'}
+        size={element.size}
+        flipTransform={flipToTransform((element.flip ?? 0) as FlipState)}
+      />
+
+      {/* Selection UI */}
+      {isSelected && !isDragging && (
+        <>
+          {/* Toolbar above element */}
+          <IconToolbar
+            elementX={0}
+            elementY={0}
+            elementSize={element.size}
+            color={element.color ?? '#000000'}
+            onColorChange={(color) => onUpdate({ color })}
+            flip={(element.flip ?? 0) as FlipState}
+            onFlip={() => onUpdate({ flip: getNextFlip((element.flip ?? 0) as FlipState) })}
+          />
+
+          {/* Selection border */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              border: '2px solid #000000',
+              marginTop: -2,
+              marginLeft: -2,
+              width: 'calc(100% + 4px)',
+              height: 'calc(100% + 4px)',
+            }}
+          />
+
+          {/* 4 corner handles only — uniform scale */}
+          <ResizeHandleNode
+            cursor="nwse-resize"
+            style={{ left: -8, top: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)}
+          />
+          <ResizeHandleNode
+            cursor="nesw-resize"
+            style={{ right: -8, top: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)}
+          />
+          <ResizeHandleNode
+            cursor="nwse-resize"
+            style={{ right: -8, bottom: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)}
+          />
+          <ResizeHandleNode
+            cursor="nesw-resize"
+            style={{ left: -8, bottom: -8 }}
+            onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)}
+            onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)}
+          />
+        </>
+      )}
+
+      {/* Mobile Copy/Delete pill */}
+      {showPill && isSelected && (
+        <CopyDeletePill
+          onCopy={() => { dismissPill(); onLongPress?.(); }}
+          onDelete={() => { dismissPill(); onDelete(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utility — approximate hue rotation from a hex colour
+// Good enough for basic tinting; for precise recolouring use an SVG filter.
+// ─────────────────────────────────────────────────────────────────────────────
+function colorToHue(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 0;
+  let h = 0;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return Math.round(h * 60);
 }
