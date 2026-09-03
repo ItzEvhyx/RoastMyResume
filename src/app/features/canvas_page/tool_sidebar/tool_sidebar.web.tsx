@@ -6,6 +6,7 @@ import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
+import { usePen } from '../context/PenContext';
 import GooeyTooltip from '../components/GooeyTooltip';
 
 const glassStyle: React.CSSProperties = {
@@ -50,6 +51,7 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
   const [expanded, setExpanded] = useState(false);
   const { addTextElement, setToolbarExpanded, activeTool, setActiveTool, setSelectedId } = useText();
   const { addDividerElement, setSelectedDividerId } = useDivider();
+  const { setIsPenActive } = usePen();
 
   // Auto-expand once stage 4 is reached
   useEffect(() => {
@@ -85,6 +87,15 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
     if (toolId === 'divider') {
       setSelectedId(null); // only one kind of element selected at a time
       addDividerElement(300, 300);
+    }
+
+    // Activate pen tool
+    if (toolId === 'pen') {
+      setIsPenActive(true);
+      setSelectedId(null);
+      setSelectedDividerId(null);
+    } else {
+      setIsPenActive(false);
     }
   };
 

@@ -19,6 +19,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Poppins } from 'next/font/google';
 import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
+import { useText } from '@/app/features/canvas_page/context/TextContext';
+import { useDivider } from '@/app/features/canvas_page/context/DividerContext';
+import { useIcon } from '@/app/features/canvas_page/context/IconContext';
 import { TextToolbar } from '../tool_sidebar/texts/text.tools';
 import { DividerToolbar } from '../tool_sidebar/divider/divider.tools';
 import { CATEGORIES } from '../tool_sidebar/texts/font.size';
@@ -80,9 +83,11 @@ interface UseDragOptions {
   /** Called with the new absolute (x, y) the element should move to */
   onMove: (x: number, y: number) => void;
   onEnd?: () => void;
+  /** Called when drag starts, for undo batching */
+  onStart?: () => void;
 }
 
-function useDrag({ zoom, onMove, onEnd }: UseDragOptions) {
+function useDrag({ zoom, onMove, onEnd, onStart }: UseDragOptions) {
   const [isDragging, setIsDragging] = useState(false);
   // Store both the pointer origin AND the element origin at drag-start
   const snapshot = useRef<{ mouseX: number; mouseY: number; elX: number; elY: number } | null>(null);
@@ -90,8 +95,10 @@ function useDrag({ zoom, onMove, onEnd }: UseDragOptions) {
   // Use a ref for the callbacks so the event listeners never go stale
   const onMoveRef = useRef(onMove);
   const onEndRef = useRef(onEnd);
+  const onStartRef = useRef(onStart);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
+  useEffect(() => { onStartRef.current = onStart; }, [onStart]);
   const zoomRef = useRef(zoom);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
@@ -153,12 +160,14 @@ function useDrag({ zoom, onMove, onEnd }: UseDragOptions) {
   const startMouse = useCallback((e: React.MouseEvent, elX: number, elY: number) => {
     snapshot.current = { mouseX: e.clientX, mouseY: e.clientY, elX, elY };
     setIsDragging(true);
+    onStartRef.current?.();
   }, []);
 
   /** Call on touchstart — pass touch position AND element's current position */
   const startTouch = useCallback((clientX: number, clientY: number, elX: number, elY: number) => {
     snapshot.current = { mouseX: clientX, mouseY: clientY, elX, elY };
     setIsDragging(true);
+    onStartRef.current?.();
   }, []);
 
   return { isDragging, startMouse, startTouch };
@@ -183,9 +192,13 @@ interface ResizeSnapshot {
 interface UseResizeOptions<H extends string> {
   zoom: number;
   applyResize: (handle: H, snap: ResizeSnapshot, dx: number, dy: number) => void;
+  /** Called when resize starts, for undo batching */
+  onStart?: () => void;
+  /** Called when resize ends */
+  onEnd?: () => void;
 }
 
-function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>) {
+function useResize<H extends string>({ zoom, applyResize, onStart, onEnd }: UseResizeOptions<H>) {
   const [activeHandle, setActiveHandle] = useState<H | null>(null);
   const snapshot = useRef<ResizeSnapshot | null>(null);
 
@@ -202,7 +215,8 @@ function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>)
   const handleMouseUp = useCallback(() => {
     setActiveHandle(null);
     snapshot.current = null;
-  }, []);
+    onEnd?.();
+  }, [onEnd]);
 
   useEffect(() => {
     if (!activeHandle) return;
@@ -229,7 +243,8 @@ function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>)
   const handleTouchEnd = useCallback(() => {
     setActiveHandle(null);
     snapshot.current = null;
-  }, []);
+    onEnd?.();
+  }, [onEnd]);
 
   useEffect(() => {
     if (!activeHandle) return;
@@ -249,8 +264,9 @@ function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>)
       e.preventDefault();
       snapshot.current = { mouseX: e.clientX, mouseY: e.clientY, ...snap };
       setActiveHandle(handle);
+      onStart?.();
     },
-    [],
+    [onStart],
   );
 
   const startTouch = useCallback(
@@ -261,8 +277,9 @@ function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>)
       const t = e.touches[0];
       snapshot.current = { mouseX: t.clientX, mouseY: t.clientY, ...snap };
       setActiveHandle(handle);
+      onStart?.();
     },
-    [],
+    [onStart],
   );
 
   return { activeHandle, startMouse, startTouch };
@@ -431,12 +448,17 @@ export function DraggableText({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastTapRef = useRef<number>(0);
   const { zoom } = useCanvas();
+  const { startUpdateBatch, endUpdateBatch } = useText();
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
     onMove: (x, y) => onUpdate({ x, y }),
-    onEnd: onDragEnd,
+    onStart: startUpdateBatch,
+    onEnd: () => {
+      endUpdateBatch();
+      onDragEnd?.();
+    },
   });
 
   // ── Resize ────────────────────────────────────────────────────────────────
@@ -470,7 +492,12 @@ export function DraggableText({
   );
 
   const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
-    useResize<ResizeHandleAll>({ zoom, applyResize: applyTextResize });
+    useResize<ResizeHandleAll>({ 
+      zoom, 
+      applyResize: applyTextResize,
+      onStart: startUpdateBatch,
+      onEnd: endUpdateBatch,
+    });
 
   // ── Long-press ────────────────────────────────────────────────────────────
   const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
@@ -794,6 +821,7 @@ export function DraggableDivider({
   onLongPress,
 }: DraggableDividerProps) {
   const { zoom } = useCanvas();
+  const { startUpdateBatch, endUpdateBatch } = useDivider();
   const thickness = element.thickness ?? 2;
   const color = element.color ?? '#000000';
 
@@ -801,7 +829,11 @@ export function DraggableDivider({
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
     onMove: (x, y) => onUpdate({ x, y }),
-    onEnd: onDragEnd,
+    onStart: startUpdateBatch,
+    onEnd: () => {
+      endUpdateBatch();
+      onDragEnd?.();
+    },
   });
 
   // ── Resize ────────────────────────────────────────────────────────────────
@@ -824,7 +856,12 @@ export function DraggableDivider({
   );
 
   const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
-    useResize<DividerResizeHandle>({ zoom, applyResize: applyDividerResizeFull });
+    useResize<DividerResizeHandle>({ 
+      zoom, 
+      applyResize: applyDividerResizeFull,
+      onStart: startUpdateBatch,
+      onEnd: endUpdateBatch,
+    });
 
   // ── Long-press ────────────────────────────────────────────────────────────
   const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
@@ -965,12 +1002,17 @@ export function DraggableIcon({
   onLongPress,
 }: DraggableIconProps) {
   const { zoom } = useCanvas();
+  const { startUpdateBatch, endUpdateBatch } = useIcon();
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
     onMove: (x, y) => onUpdate({ x, y }),
-    onEnd: onDragEnd,
+    onStart: startUpdateBatch,
+    onEnd: () => {
+      endUpdateBatch();
+      onDragEnd?.();
+    },
   });
 
   // ── Resize — uniform scale from all 4 corners ─────────────────────────────
@@ -994,7 +1036,12 @@ export function DraggableIcon({
   );
 
   const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
-    useResize<IconResizeHandle>({ zoom, applyResize: applyIconResize });
+    useResize<IconResizeHandle>({ 
+      zoom, 
+      applyResize: applyIconResize,
+      onStart: startUpdateBatch,
+      onEnd: endUpdateBatch,
+    });
 
   // ── Long-press ────────────────────────────────────────────────────────────
   const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);

@@ -7,6 +7,7 @@ import { CanvasProvider } from '@/app/features/canvas_page/context/CanvasContext
 import { TextProvider } from '@/app/features/canvas_page/context/TextContext';
 import { DividerProvider } from '@/app/features/canvas_page/context/DividerContext';
 import { IconProvider } from '@/app/features/canvas_page/context/IconContext';
+import { PenProvider } from '@/app/features/canvas_page/context/PenContext';
 import ToolbarWeb from '@/app/features/canvas_page/toolbar/toolbar.web';
 import ToolbarMobile from '@/app/features/canvas_page/toolbar/toolbar.mobile';
 import ToolSidebarWeb from '@/app/features/canvas_page/tool_sidebar/tool_sidebar.web';
@@ -15,10 +16,12 @@ import AssistPanelWeb from '@/app/features/canvas_page/assist_panel/assist.panel
 import AssistPanelMobile from '@/app/features/canvas_page/assist_panel/assist.panel.mobile';
 import FontSelector from '@/app/features/canvas_page/tool_sidebar/texts/select.font';
 import IconPicker from '@/app/features/canvas_page/tool_sidebar/icons_set/pick.icon';
+import { PenTools } from '@/app/features/canvas_page/tool_sidebar/pen/pen.tools';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
 import { ClipboardProvider } from '@/app/features/canvas_page/globals/pasting';
 import { UndoProvider } from '@/app/features/canvas_page/globals/undo';
+import { usePen } from '@/app/features/canvas_page/context/PenContext';
 
 /**
  * Animation sequence:
@@ -52,7 +55,8 @@ export default function CanvasPage() {
         <TextProvider>
           <DividerProvider>
             <IconProvider>
-            <ClipboardProvider>
+              <PenProvider>
+                <ClipboardProvider>
             <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
 
               {/* Toolbar — pops in at stage 2 */}
@@ -70,6 +74,9 @@ export default function CanvasPage() {
 
               {/* Icon Picker — appears when iconset tool is active (desktop only) */}
               {!isMobile && <IconPicker />}
+
+              {/* Pen Tools — appears when pen tool is active (desktop only) */}
+              {!isMobile && <PenToolsWrapper />}
 
               {/* Assistant Panel — appears at stage 2 */}
               {isMobile === undefined ? null : isMobile
@@ -90,10 +97,26 @@ export default function CanvasPage() {
               </div>
             </main>
             </ClipboardProvider>
+              </PenProvider>
             </IconProvider>
           </DividerProvider>
         </TextProvider>
       </UndoProvider>
     </CanvasProvider>
+  );
+}
+
+// Wrapper component to use the pen context
+function PenToolsWrapper() {
+  const { isPenActive, penColor, setPenColor, penThickness, setPenThickness } = usePen();
+  
+  return (
+    <PenTools
+      isActive={isPenActive}
+      color={penColor}
+      thickness={penThickness}
+      onColorChange={setPenColor}
+      onThicknessChange={setPenThickness}
+    />
   );
 }
