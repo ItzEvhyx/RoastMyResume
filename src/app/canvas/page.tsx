@@ -93,7 +93,9 @@ export default function CanvasPage() {
               <div
                 style={{
                   opacity: stage >= 1 ? 1 : 0,
-                  transform: stage >= 1 ? 'translateY(0)' : 'translateY(18px)',
+                  // `translateY(0)` still creates a containing block for
+                  // fixed descendants. Clear it once the entrance finishes.
+                  transform: stage >= 1 ? 'none' : 'translateY(18px)',
                   transition: 'opacity 0.55s ease-out, transform 0.55s ease-out',
                 }}
               >

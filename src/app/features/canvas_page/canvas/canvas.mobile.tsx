@@ -485,106 +485,100 @@ export default function CanvasMobile() {
   return (
     <div
       ref={viewportRef}
-      className="fixed inset-0 overflow-hidden"
+      className="absolute inset-0 overflow-hidden"
       style={{ touchAction: 'none' }}
     >
-      {/* Pannable and zoomable container */}
+      {/* Keep pan and zoom on one compositor layer. Nested transforms inside a
+          fixed mobile viewport can leave stale tiles behind on Android. */}
       <div
         style={{
           position: 'absolute',
           left: '50%',
           top: '50%',
-          transform: `translate(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px))`,
-          willChange: 'transform',
+          width: PAGE_WIDTH,
+          height: PAGE_HEIGHT,
+          transform: `translate3d(calc(-50% + ${pan.x}px), calc(-50% + ${pan.y}px), 0) scale(${zoom})`,
+          transformOrigin: 'center center',
         }}
       >
-        {/* Canvas at current zoom */}
         <div
+          ref={canvasRef}
+          id="resume-canvas"
+          data-canvas-area
           style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'center center',
-            willChange: 'transform',
+            width: PAGE_WIDTH,
+            height: PAGE_HEIGHT,
+            position: 'relative',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           }}
+          // Tap on canvas background → deselect or show paste target
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedId(null);
+              setSelectedDividerId(null);
+              setSelectedIconId(null);
+              setSelectedStrokeId(null);
+            }
+          }}
+          onTouchEnd={handleCanvasTap}
         >
-          <div
-            ref={canvasRef}
-            id="resume-canvas"
-            data-canvas-area
-            style={{
-              width: PAGE_WIDTH,
-              height: PAGE_HEIGHT,
-              position: 'relative',
-              backgroundColor: '#ffffff',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            }}
-            // Tap on canvas background → deselect or show paste target
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setSelectedId(null);
+          {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
+          <PenCanvas />
+          {textElements.map(element => (
+            <DraggableText
+              key={element.id}
+              element={element}
+              isSelected={selectedId === element.id}
+              onSelect={() => {
                 setSelectedDividerId(null);
                 setSelectedIconId(null);
                 setSelectedStrokeId(null);
-              }
-            }}
-            onTouchEnd={handleCanvasTap}
-          >
-            {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
-            <PenCanvas />
-            {textElements.map(element => (
-              <DraggableText
-                key={element.id}
-                element={element}
-                isSelected={selectedId === element.id}
-                onSelect={() => {
-                  setSelectedDividerId(null);
-                  setSelectedIconId(null);
-                  setSelectedStrokeId(null);
-                  setSelectedId(element.id);
-                  setPasteTarget(null);
-                }}
-                onUpdate={(updates) => updateTextSafely(element, updates)}
-                onDelete={() => deleteElement(element.id)}
-                onDragEnd={clearEdgeWarning}
-                onLongPress={handleElementLongPress}
-              />
-            ))}
-            {dividerElements.map(element => (
-              <DraggableDivider
-                key={element.id}
-                element={element}
-                isSelected={selectedDividerId === element.id}
-                onSelect={() => {
-                  setSelectedId(null);
-                  setSelectedIconId(null);
-                  setSelectedStrokeId(null);
-                  setSelectedDividerId(element.id);
-                  setPasteTarget(null);
-                }}
-                onUpdate={(updates) => updateDividerSafely(element, updates)}
-                onDelete={() => deleteDivider(element.id)}
-                onDragEnd={clearEdgeWarning}
-                onLongPress={handleElementLongPress}
-              />
-            ))}
-            {iconElements.map(element => (
-              <DraggableIcon
-                key={element.id}
-                element={element}
-                isSelected={selectedIconId === element.id}
-                onSelect={() => {
-                  setSelectedId(null);
-                  setSelectedDividerId(null);
-                  setSelectedStrokeId(null);
-                  setSelectedIconId(element.id);
-                  setPasteTarget(null);
-                }}
-                onUpdate={(updates) => updateIconSafely(element, updates)}
-                onDelete={() => deleteIcon(element.id)}
-                onDragEnd={clearEdgeWarning}
-                onLongPress={handleElementLongPress}
-              />
-            ))}
-          </div>
+                setSelectedId(element.id);
+                setPasteTarget(null);
+              }}
+              onUpdate={(updates) => updateTextSafely(element, updates)}
+              onDelete={() => deleteElement(element.id)}
+              onDragEnd={clearEdgeWarning}
+              onLongPress={handleElementLongPress}
+            />
+          ))}
+          {dividerElements.map(element => (
+            <DraggableDivider
+              key={element.id}
+              element={element}
+              isSelected={selectedDividerId === element.id}
+              onSelect={() => {
+                setSelectedId(null);
+                setSelectedIconId(null);
+                setSelectedStrokeId(null);
+                setSelectedDividerId(element.id);
+                setPasteTarget(null);
+              }}
+              onUpdate={(updates) => updateDividerSafely(element, updates)}
+              onDelete={() => deleteDivider(element.id)}
+              onDragEnd={clearEdgeWarning}
+              onLongPress={handleElementLongPress}
+            />
+          ))}
+          {iconElements.map(element => (
+            <DraggableIcon
+              key={element.id}
+              element={element}
+              isSelected={selectedIconId === element.id}
+              onSelect={() => {
+                setSelectedId(null);
+                setSelectedDividerId(null);
+                setSelectedStrokeId(null);
+                setSelectedIconId(element.id);
+                setPasteTarget(null);
+              }}
+              onUpdate={(updates) => updateIconSafely(element, updates)}
+              onDelete={() => deleteIcon(element.id)}
+              onDragEnd={clearEdgeWarning}
+              onLongPress={handleElementLongPress}
+            />
+          ))}
         </div>
       </div>
 
