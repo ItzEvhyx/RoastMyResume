@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Poppins } from 'next/font/google';
 import { usePen } from '../../context/PenContext';
 import { useCanvas } from '../../context/CanvasContext';
 import { useText } from '../../context/TextContext';
@@ -8,6 +9,12 @@ import { useDivider } from '../../context/DividerContext';
 import { useIcon } from '../../context/IconContext';
 import { useClipboard } from '../../globals/pasting';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_MARGIN } from '../../canvas/safe.area';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  variable: '--font-poppins',
+});
 
 type Point = { x: number; y: number };
 
@@ -413,6 +420,7 @@ export function PenCanvas() {
       >
         <button
           type="button"
+          className={poppins.className}
           onTouchEnd={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -425,6 +433,7 @@ export function PenCanvas() {
         </button>
         <button
           type="button"
+          className={poppins.className}
           onTouchEnd={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -451,5 +460,6 @@ const strokeActionStyle: React.CSSProperties = {
   padding: '8px 18px',
   fontSize: 15,
   fontWeight: 600,
+  fontFamily: 'var(--font-poppins), Arial, sans-serif',
   whiteSpace: 'nowrap',
 };

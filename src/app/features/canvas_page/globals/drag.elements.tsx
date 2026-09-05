@@ -353,6 +353,7 @@ function CopyDeletePill({
     padding: '8px 22px',
     fontSize: '15px',
     fontWeight: 600,
+    fontFamily: 'var(--font-poppins), Arial, sans-serif',
     letterSpacing: '0.01em',
     boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
     whiteSpace: 'nowrap',
@@ -377,6 +378,7 @@ function CopyDeletePill({
       onTouchStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
     >
       <button
+        className={poppins.className}
         onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onCopy(); }}
         style={{ ...btnBase, color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}
@@ -384,6 +386,7 @@ function CopyDeletePill({
         <span style={{ fontSize: '17px' }}>⎘</span> Copy
       </button>
       <button
+        className={poppins.className}
         onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); onDelete(); }}
         style={{ ...btnBase, color: '#ef4444', border: '1px solid rgba(239,68,68,0.45)' }}
@@ -415,7 +418,7 @@ function ResizeHandleNode({
   return (
     <div
       className={`absolute bg-white border-2 border-black ${variant === 'circle' ? 'rounded-full' : 'rounded-sm'}`}
-      style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, cursor, ...style }}
+      style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, cursor, zIndex: 2, ...style }}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
     />
@@ -1042,6 +1045,10 @@ export function DraggableIcon({
   const { startUpdateBatch, endUpdateBatch } = useIcon();
   const elementWidth = element.width ?? element.size;
   const elementHeight = element.height ?? element.size;
+  // Mobile's fitted canvas makes a 48px icon appear much smaller than a
+  // comfortable finger target. This transparent extension preserves the
+  // visible geometry while giving icons and shapes a ~48px on-screen target.
+  const touchHitPadding = Math.max(10, Math.min(28, 24 / zoom));
   const pendingUpdateRef = useRef<Partial<IconElement> | null>(null);
   const updateFrameRef = useRef<number | null>(null);
   const onUpdateRef = useRef(onUpdate);
@@ -1192,7 +1199,7 @@ export function DraggableIcon({
   return (
     <div
       data-canvas-element
-      className="absolute"
+      className={`absolute ${poppins.variable}`}
       style={{
         left: element.x,
         top: element.y,
@@ -1223,6 +1230,17 @@ export function DraggableIcon({
           flipTransform={flipToTransform((element.flip ?? 0) as FlipState)}
         />
       )}
+
+      {/* Enlarged invisible touch target for small icons on the fitted mobile canvas. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: -touchHitPadding,
+          zIndex: 0,
+          background: 'transparent',
+        }}
+      />
 
       {/* Selection UI */}
       {isSelected && !isDragging && (
