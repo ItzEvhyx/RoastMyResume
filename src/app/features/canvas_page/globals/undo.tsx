@@ -3,77 +3,146 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useRef } from 'react';
 
 type UndoAction = () => void;
+type RedoAction = () => void;
+
+interface HistoryEntry {
+  undo: UndoAction;
+  redo: RedoAction;
+}
 
 interface UndoContextType {
-  record: (action: UndoAction) => void;
+  record: (undoAction: UndoAction, redoAction: RedoAction) => void;
+  /** Start batching consecutive updates into a single undo action */
+  startBatch: () => void;
+  /** End batching and commit the batch as a single undo action */
+  endBatch: () => void;
   undo: () => void;
-  /** Begin a transaction that batches multiple updates into a single undo action */
-  startTransaction: () => void;
-  /** Commit the transaction - records the first snapshot as the undo action */
-  commitTransaction: () => void;
-  /** Cancel the transaction without recording anything */
-  cancelTransaction: () => void;
+  redo: () => void;
 }
 
 const UndoContext = createContext<UndoContextType | undefined>(undefined);
 const HISTORY_LIMIT = 100;
+const BATCH_TIMEOUT = 300; // ms - auto-commit batch after this time of inactivity
 
 export function UndoProvider({ children }: { children: ReactNode }) {
-  const historyRef = useRef<UndoAction[]>([]);
-  const pendingActionRef = useRef<UndoAction | null>(null);
-  const inTransactionRef = useRef(false);
+  const historyRef = useRef<HistoryEntry[]>([]);
+  const redoStackRef = useRef<HistoryEntry[]>([]);
+  const batchRef = useRef<{ isBatching: boolean; firstEntry: HistoryEntry | null }>({
+    isBatching: false,
+    firstEntry: null,
+  });
+  const batchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const record = useCallback((action: UndoAction) => {
-    // If we're in a transaction, only store the first action (the "before" state)
-    if (inTransactionRef.current) {
-      if (!pendingActionRef.current) {
-        pendingActionRef.current = action;
+  const endBatch = useCallback(() => {
+    if (batchRef.current.isBatching && batchRef.current.firstEntry) {
+      // Commit the batched entry
+      historyRef.current.push(batchRef.current.firstEntry);
+      if (historyRef.current.length > HISTORY_LIMIT) historyRef.current.shift();
+      // Clear redo stack when a new action is recorded
+      redoStackRef.current = [];
+    }
+    batchRef.current.isBatching = false;
+    batchRef.current.firstEntry = null;
+    if (batchTimerRef.current) {
+      clearTimeout(batchTimerRef.current);
+      batchTimerRef.current = null;
+    }
+  }, []);
+
+  const record = useCallback((undoAction: UndoAction, redoAction: RedoAction) => {
+    const entry: HistoryEntry = { undo: undoAction, redo: redoAction };
+
+    if (batchRef.current.isBatching) {
+      // Only store the first entry during batch (captures initial state)
+      if (!batchRef.current.firstEntry) {
+        batchRef.current.firstEntry = entry;
       }
+      // Reset the auto-commit timer
+      if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
+      batchTimerRef.current = setTimeout(endBatch, BATCH_TIMEOUT);
       return;
     }
-    
-    // Normal recording outside of transactions
-    historyRef.current.push(action);
+
+    // Normal recording outside of batch
+    historyRef.current.push(entry);
     if (historyRef.current.length > HISTORY_LIMIT) historyRef.current.shift();
-  }, []);
+    // Clear redo stack when a new action is recorded
+    redoStackRef.current = [];
+  }, [endBatch]);
 
-  const startTransaction = useCallback(() => {
-    inTransactionRef.current = true;
-    pendingActionRef.current = null;
-  }, []);
-
-  const commitTransaction = useCallback(() => {
-    if (pendingActionRef.current) {
-      historyRef.current.push(pendingActionRef.current);
-      if (historyRef.current.length > HISTORY_LIMIT) historyRef.current.shift();
-    }
-    inTransactionRef.current = false;
-    pendingActionRef.current = null;
-  }, []);
-
-  const cancelTransaction = useCallback(() => {
-    inTransactionRef.current = false;
-    pendingActionRef.current = null;
+  const startBatch = useCallback(() => {
+    batchRef.current.isBatching = true;
+    batchRef.current.firstEntry = null;
+    if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
   }, []);
 
   const undo = useCallback(() => {
-    historyRef.current.pop()?.();
-  }, []);
+    // If there's an active batch, commit it first
+    if (batchRef.current.isBatching) {
+      endBatch();
+    }
+
+    const entry = historyRef.current.pop();
+    if (!entry) return;
+
+    // Execute the undo action
+    entry.undo();
+    
+    // Move to redo stack
+    redoStackRef.current.push(entry);
+    if (redoStackRef.current.length > HISTORY_LIMIT) redoStackRef.current.shift();
+  }, [endBatch]);
+
+  const redo = useCallback(() => {
+    // If there's an active batch, commit it first
+    if (batchRef.current.isBatching) {
+      endBatch();
+    }
+
+    const entry = redoStackRef.current.pop();
+    if (!entry) return;
+
+    // Execute the redo action
+    entry.redo();
+    
+    // Add it back to history so it can be undone again
+    historyRef.current.push(entry);
+    if (historyRef.current.length > HISTORY_LIMIT) historyRef.current.shift();
+  }, [endBatch]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== 'z') return;
+      if (!(event.ctrlKey || event.metaKey)) return;
       const target = event.target as HTMLElement | null;
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
-      event.preventDefault();
-      undo();
+      
+      // Ctrl+Y or Ctrl+Shift+Z for redo
+      if (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z')) {
+        event.preventDefault();
+        redo();
+        return;
+      }
+      
+      // Ctrl+Z for undo (without shift)
+      if (!event.shiftKey && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        undo();
+        return;
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo]);
+  }, [undo, redo]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (batchTimerRef.current) clearTimeout(batchTimerRef.current);
+    };
+  }, []);
 
   return (
-    <UndoContext.Provider value={{ record, undo, startTransaction, commitTransaction, cancelTransaction }}>
+    <UndoContext.Provider value={{ record, startBatch, endBatch, undo, redo }}>
       {children}
     </UndoContext.Provider>
   );

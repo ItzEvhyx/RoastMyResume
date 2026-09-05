@@ -32,10 +32,10 @@ interface TextContextType {
   /** Paste a full element snapshot (all props), used by the clipboard system */
   addFullTextElement: (el: Omit<TextElement, 'id'>) => string;
   updateElement: (id: string, updates: Partial<TextElement>) => void;
-  /** Begin batching updates - call before starting drag/resize operations */
-  beginBatchUpdate: (id: string) => void;
-  /** End batching - call after drag/resize completes */
-  endBatchUpdate: () => void;
+  /** Start batching updates (for drag/resize operations) */
+  startUpdateBatch: () => void;
+  /** End batching updates */
+  endUpdateBatch: () => void;
   deleteElement: (id: string) => void;
   setSelectedId: (id: string | null) => void;
   setToolbarExpanded: (expanded: boolean) => void;
@@ -49,19 +49,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const { record, startTransaction, commitTransaction } = useUndo();
-
-  const beginBatchUpdate = (id: string) => {
-    const current = textElements.find(el => el.id === id);
-    if (!current) return;
-    startTransaction();
-    // Record the initial state - this will be stored as the undo action
-    record(() => setTextElements(elements => elements.map(element => element.id === id ? current : element)));
-  };
-
-  const endBatchUpdate = () => {
-    commitTransaction();
-  };
+  const { record, startBatch, endBatch } = useUndo();
 
   const addTextElement = (x: number, y: number, initialContent?: string, initialWidth?: number) => {
     const content = initialContent ?? 'Add text';
@@ -85,17 +73,43 @@ export function TextProvider({ children }: { children: ReactNode }) {
     
     setTextElements(prev => [...prev, newElement]);
     setSelectedId(newElement.id);
-    record(() => {
-      setTextElements(prev => prev.filter(element => element.id !== newElement.id));
-      setSelectedId(current => current === newElement.id ? null : current);
-    });
+    
+    // Undo: remove the element, Redo: add it back
+    record(
+      () => {
+        setTextElements(prev => prev.filter(element => element.id !== newElement.id));
+        setSelectedId(current => current === newElement.id ? null : current);
+      },
+      () => {
+        setTextElements(prev => [...prev, newElement]);
+        setSelectedId(newElement.id);
+      }
+    );
     return newElement.id;
   };
 
   const updateElement = (id: string, updates: Partial<TextElement>) => {
+    const previous = textElements.find(element => element.id === id);
+    if (!previous) return;
+    const next = { ...previous, ...updates };
+    
+    // Undo: restore previous state, Redo: apply updates
+    record(
+      () => setTextElements(elements => elements.map(element => element.id === id ? previous : element)),
+      () => setTextElements(elements => elements.map(element => element.id === id ? next : element))
+    );
+    
     setTextElements(textElements.map(el => 
-      el.id === id ? { ...el, ...updates } : el
+      el.id === id ? next : el
     ));
+  };
+
+  const startUpdateBatch = () => {
+    startBatch();
+  };
+
+  const endUpdateBatch = () => {
+    endBatch();
   };
 
   const addFullTextElement = (el: Omit<TextElement, 'id'>) => {
@@ -105,10 +119,18 @@ export function TextProvider({ children }: { children: ReactNode }) {
     };
     setTextElements(prev => [...prev, newElement]);
     setSelectedId(newElement.id);
-    record(() => {
-      setTextElements(prev => prev.filter(element => element.id !== newElement.id));
-      setSelectedId(current => current === newElement.id ? null : current);
-    });
+    
+    // Undo: remove the element, Redo: add it back
+    record(
+      () => {
+        setTextElements(prev => prev.filter(element => element.id !== newElement.id));
+        setSelectedId(current => current === newElement.id ? null : current);
+      },
+      () => {
+        setTextElements(prev => [...prev, newElement]);
+        setSelectedId(newElement.id);
+      }
+    );
     return newElement.id;
   };
 
@@ -117,10 +139,19 @@ export function TextProvider({ children }: { children: ReactNode }) {
     const deleted = textElements[index];
     if (!deleted) return;
     const previousSelection = selectedId;
-    record(() => {
-      setTextElements(elements => [...elements.slice(0, index), deleted, ...elements.slice(index)]);
-      setSelectedId(previousSelection);
-    });
+    
+    // Undo: restore the element, Redo: delete it again
+    record(
+      () => {
+        setTextElements(elements => [...elements.slice(0, index), deleted, ...elements.slice(index)]);
+        setSelectedId(previousSelection);
+      },
+      () => {
+        setTextElements(elements => elements.filter(el => el.id !== id));
+        setSelectedId(current => current === id ? null : current);
+      }
+    );
+    
     setTextElements(textElements.filter(el => el.id !== id));
     if (selectedId === id) {
       setSelectedId(null);
@@ -137,8 +168,8 @@ export function TextProvider({ children }: { children: ReactNode }) {
         addTextElement,
         addFullTextElement,
         updateElement,
-        beginBatchUpdate,
-        endBatchUpdate,
+        startUpdateBatch,
+        endUpdateBatch,
         deleteElement,
         setSelectedId,
         setToolbarExpanded,

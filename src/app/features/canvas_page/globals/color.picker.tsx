@@ -111,7 +111,18 @@ export function ColorPicker({ color, onSelect }: ColorPickerProps) {
         onClick={(event) => { event.stopPropagation(); setOpen(value => !value); }}
       />
       {open && (
-        <div className="absolute" style={{ top: 'calc(100% + 12px)', left: '50%', transform: 'translateX(-50%) scale(1.2)', transformOrigin: 'top center', zIndex: 110 }} onMouseDown={(event) => event.stopPropagation()}>
+        <div 
+          data-color-picker-popup
+          className="absolute" 
+          style={{ 
+            top: 'calc(100% + 12px)', 
+            left: '50%', 
+            transform: 'translateX(-50%) scale(1.2)', 
+            transformOrigin: 'top center', 
+            zIndex: 110 
+          }} 
+          onMouseDown={(event) => event.stopPropagation()}
+        >
           <div style={{ ...glassPanel, padding: 20, width: 340 }}>
             {!showAdvanced ? (
               <>

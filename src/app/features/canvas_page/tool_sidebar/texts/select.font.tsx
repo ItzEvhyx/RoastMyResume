@@ -119,6 +119,24 @@ export default function FontSelector() {
   return (
     <>
       <style>{FUTURA_STYLE}</style>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+        rel="stylesheet"
+      />
+      <style>{`
+        .font-search-input,
+        .font-search-input::placeholder {
+          font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          font-weight: 400 !important;
+        }
+        .font-search-input::placeholder {
+          color: rgba(255, 255, 255, 0.4) !important;
+        }
+        .font-name-text {
+          font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          font-weight: 400 !important;
+        }
+      `}</style>
       <div
         className="fixed left-[110px] z-40 flex flex-col rounded-3xl transition-all duration-400 ease-out"
         onMouseDown={(e) => e.stopPropagation()}
@@ -168,9 +186,9 @@ export default function FontSelector() {
             <button
               key={idx}
               onClick={() => handleFontSelect(font.family, font.name)}
-              className={`rounded-lg px-4 py-3 text-left text-sm text-white/80 transition-all duration-150 hover:bg-white/10 active:scale-95 ${poppins.className}`}
+              className="font-name-text rounded-lg px-4 py-3 text-left text-sm text-white/80 transition-all duration-150 hover:bg-white/10 active:scale-95"
               style={{
-                fontFamily: 'var(--font-poppins)',
+                fontFamily: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                 fontWeight: 400,
                 background: selectedElement?.fontFamily === font.family 
                   ? 'rgba(255, 255, 255, 0.15)' 
@@ -182,7 +200,7 @@ export default function FontSelector() {
           ))}
           
           {displayFonts.length === 0 && (
-            <div className="py-8 text-center text-sm text-white/40" style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}>
+            <div className="font-name-text py-8 text-center text-sm text-white/40" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 400 }}>
               No fonts found
             </div>
           )}
@@ -190,27 +208,28 @@ export default function FontSelector() {
       </div>
 
       {/* Search input - sticky at bottom */}
-      <div className="px-3 pb-3 shrink-0">
-        <div
-          className="flex items-center gap-2 rounded-2xl px-3 py-2.5"
-          style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
-        >
+      <div className="border-t border-white/10 p-3 shrink-0">
+        <div className="relative w-full">
           <input
             type="text"
             placeholder="Search fonts..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            className="flex-1 bg-transparent text-sm text-white outline-none"
+            className="font-search-input"
             style={{
-              fontFamily: 'var(--font-poppins)',
+              width: '100%',
+              borderRadius: '14px',
+              border: '1px solid rgba(255,255,255,0.10)',
+              background: 'rgba(255,255,255,0.05)',
+              padding: '10px 12px',
+              fontSize: '14px',
+              color: '#ffffff',
+              outline: 'none',
+              fontFamily: "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
               fontWeight: 400,
             }}
           />
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-55">
-            <circle cx="11" cy="11" r="7" stroke="white" strokeWidth="2.2" />
-            <path d="M16.5 16.5L21 21" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
         </div>
       </div>
       </div>

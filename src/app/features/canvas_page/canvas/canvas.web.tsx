@@ -8,6 +8,7 @@ import { useIcon } from '../context/IconContext';
 import { useClipboard } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
 import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
 import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
 import type { IconElement } from '../context/IconContext';
@@ -389,6 +390,7 @@ export default function CanvasWeb() {
             <div
               ref={canvasRef}
               id="resume-canvas"
+              data-canvas-area="true"
               style={{
                 width: PAGE_WIDTH,
                 height: PAGE_HEIGHT,
@@ -405,6 +407,9 @@ export default function CanvasWeb() {
               onDrop={handleDrop}
               onDragOver={handleDragOver}
             >
+              {/* Pen drawing layer */}
+              <PenCanvas />
+              
               {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
               {/* Render text elements */}
               {textElements.map(element => (
