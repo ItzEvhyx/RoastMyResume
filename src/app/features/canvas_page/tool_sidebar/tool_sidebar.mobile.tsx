@@ -82,6 +82,7 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
 
   return (
     <div
+      data-mobile-tool-sidebar
       className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-4"
       style={sidebarPopStyle}
     >

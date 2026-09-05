@@ -23,6 +23,7 @@ import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
 import { ClipboardProvider } from '@/app/features/canvas_page/globals/pasting';
 import { UndoProvider } from '@/app/features/canvas_page/globals/undo';
 import { usePen } from '@/app/features/canvas_page/context/PenContext';
+import { useText } from '@/app/features/canvas_page/context/TextContext';
 
 /**
  * Animation sequence:
@@ -69,6 +70,8 @@ export default function CanvasPage() {
               {isMobile === undefined ? null : isMobile
                 ? <ToolSidebarMobile stage={stage} />
                 : <ToolSidebarWeb stage={stage} />}
+
+              {isMobile && <MobilePanelDismissal />}
 
               {/* Font Selector — appears when text is selected (desktop only) */}
               {!isMobile && <FontSelector />}
@@ -136,4 +139,25 @@ function PenToolsWrapper() {
       onEraserToggle={() => setIsEraserActive(!isEraserActive)}
     />
   );
+}
+
+/** Closes mobile pickers when the user taps anywhere outside their panel. */
+function MobilePanelDismissal() {
+  const { activeTool, setActiveTool } = useText();
+
+  useEffect(() => {
+    if (activeTool !== 'iconset' && activeTool !== 'shapes') return;
+
+    const dismissOnOutsideTouch = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest('[data-mobile-tool-sidebar], [data-mobile-tool-panel]')) return;
+      setActiveTool(null);
+    };
+
+    document.addEventListener('pointerdown', dismissOnOutsideTouch);
+    return () => document.removeEventListener('pointerdown', dismissOnOutsideTouch);
+  }, [activeTool, setActiveTool]);
+
+  return null;
 }

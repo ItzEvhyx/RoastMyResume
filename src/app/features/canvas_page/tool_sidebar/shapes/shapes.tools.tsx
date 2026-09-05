@@ -220,6 +220,7 @@ export default function ShapesTools() {
       <style dangerouslySetInnerHTML={{ __html: FUTURA_STYLE }} />
 
       <aside
+        data-mobile-tool-panel
         aria-label="Shapes"
         className={`fixed z-50 flex flex-col overflow-hidden rounded-3xl ${poppins.variable}`}
         style={{

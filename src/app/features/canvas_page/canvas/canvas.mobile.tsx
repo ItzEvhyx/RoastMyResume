@@ -62,15 +62,24 @@ export default function CanvasMobile() {
     deleteDivider,
   } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
-  const { strokes, selectedStrokeId, setSelectedStrokeId, addStroke } = usePen();
+  const { strokes, selectedStrokeId, setSelectedStrokeId, addStroke, isPenActive } = usePen();
   const { clipboard, register, unregister, copy } = useClipboard();
 
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [lastTouchDistance, setLastTouchDistance] = useState(0);
   const [pasteTarget, setPasteTarget] = useState<PasteTarget | null>(null);
   const [edgeWarning, setEdgeWarning] = useState<EdgeWarning | null>(null);
   const warningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gestureRef = useRef({ isPanning: false, startX: 0, startY: 0, lastDistance: 0 });
+  const panRef = useRef(pan);
+  const zoomRef = useRef(zoom);
+  const selectionRef = useRef({ text: selectedId, divider: selectedDividerId, icon: selectedIconId });
+  const penActiveRef = useRef(isPenActive);
+
+  useEffect(() => { panRef.current = pan; }, [pan]);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => {
+    selectionRef.current = { text: selectedId, divider: selectedDividerId, icon: selectedIconId };
+  }, [selectedId, selectedDividerId, selectedIconId]);
+  useEffect(() => { penActiveRef.current = isPenActive; }, [isPenActive]);
 
   const showEdgeWarning = useCallback((warning: EdgeWarning) => {
     if (warningTimer.current) clearTimeout(warningTimer.current);
@@ -396,65 +405,70 @@ export default function CanvasMobile() {
     if (!viewport) return;
 
     const handleTouchStart = (e: TouchEvent) => {
-      // Lock canvas pan/zoom whenever a text element is selected
-      if (selectedId !== null || selectedDividerId !== null) return;
-
-      if (e.touches.length === 1) {
-        setIsPanning(true);
-        setPanStart({
-          x: e.touches[0].clientX - pan.x,
-          y: e.touches[0].clientY - pan.y,
-        });
-      } else if (e.touches.length === 2) {
-        const distance = Math.hypot(
+      const gesture = gestureRef.current;
+      if (e.touches.length === 2) {
+        gesture.lastDistance = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
+          e.touches[0].clientY - e.touches[1].clientY,
         );
-        setLastTouchDistance(distance);
-        setIsPanning(false);
+        gesture.isPanning = false;
+        return;
+      }
+
+      const selection = selectionRef.current;
+      if (e.touches.length === 1 && !penActiveRef.current && !selection.text && !selection.divider && !selection.icon) {
+        gesture.isPanning = true;
+        gesture.startX = e.touches[0].clientX - panRef.current.x;
+        gesture.startY = e.touches[0].clientY - panRef.current.y;
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      // Lock canvas pan/zoom whenever a text element is selected
-      if (selectedId !== null || selectedDividerId !== null) return;
-
-      e.preventDefault();
-
-      if (e.touches.length === 1 && isPanning) {
-        setPan({
-          x: e.touches[0].clientX - panStart.x,
-          y: e.touches[0].clientY - panStart.y,
-        });
-      } else if (e.touches.length === 2) {
+      const gesture = gestureRef.current;
+      if (e.touches.length === 2) {
+        e.preventDefault();
         const distance = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
+          e.touches[0].clientY - e.touches[1].clientY,
         );
-        if (lastTouchDistance > 0) {
-          const scale = distance / lastTouchDistance;
-          const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * scale));
-          setZoom(newZoom);
+        if (gesture.lastDistance > 0) {
+          const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * (distance / gesture.lastDistance)));
+          zoomRef.current = nextZoom;
+          setZoom(nextZoom);
         }
-        setLastTouchDistance(distance);
+        gesture.lastDistance = distance;
+        gesture.isPanning = false;
+        return;
+      }
+
+      if (e.touches.length === 1 && gesture.isPanning) {
+        e.preventDefault();
+        const nextPan = {
+          x: e.touches[0].clientX - gesture.startX,
+          y: e.touches[0].clientY - gesture.startY,
+        };
+        panRef.current = nextPan;
+        setPan(nextPan);
       }
     };
 
     const handleTouchEnd = () => {
-      setIsPanning(false);
-      setLastTouchDistance(0);
+      gestureRef.current.lastDistance = 0;
+      gestureRef.current.isPanning = false;
     };
 
-    viewport.addEventListener('touchstart', handleTouchStart, { passive: false });
-    viewport.addEventListener('touchmove', handleTouchMove, { passive: false });
-    viewport.addEventListener('touchend', handleTouchEnd);
+    // Capture phase means an element's own touch handler cannot swallow a
+    // pinch before the canvas sees both fingers.
+    viewport.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    viewport.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+    viewport.addEventListener('touchend', handleTouchEnd, { capture: true });
 
     return () => {
-      viewport.removeEventListener('touchstart', handleTouchStart);
-      viewport.removeEventListener('touchmove', handleTouchMove);
-      viewport.removeEventListener('touchend', handleTouchEnd);
+      viewport.removeEventListener('touchstart', handleTouchStart, true);
+      viewport.removeEventListener('touchmove', handleTouchMove, true);
+      viewport.removeEventListener('touchend', handleTouchEnd, true);
     };
-  }, [isPanning, panStart, pan, zoom, lastTouchDistance, selectedId, selectedDividerId, setPan, setZoom]);
+  }, [setPan, setZoom]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -486,6 +500,7 @@ export default function CanvasMobile() {
           <div
             ref={canvasRef}
             id="resume-canvas"
+            data-canvas-area
             style={{
               width: PAGE_WIDTH,
               height: PAGE_HEIGHT,

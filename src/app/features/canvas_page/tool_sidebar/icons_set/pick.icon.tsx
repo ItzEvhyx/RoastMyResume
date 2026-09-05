@@ -450,6 +450,7 @@ export default function IconPicker() {
       <style dangerouslySetInnerHTML={{ __html: FUTURA_STYLE }} />
 
       <div
+        data-mobile-tool-panel
         className={`fixed z-50 flex flex-col rounded-3xl ${poppins.variable}`}
         style={{
           left: isMobile ? 16 : 110,
