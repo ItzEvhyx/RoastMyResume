@@ -18,6 +18,8 @@ export interface IconElement {
   borderWidth?: number;
   /** Outline colour for shapes; defaults to white when a border is enabled. */
   borderColor?: string;
+  /** Corner radius for shapes, expressed from 0% (square) to 100% (fully rounded). */
+  cornerRadius?: number;
   /** Direct Iconify SVG URL (or Cloudinary CDN URL) */
   svgUrl: string;
   /** Tint color applied via CSS filter; defaults to '#000000' */

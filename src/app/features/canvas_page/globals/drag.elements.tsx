@@ -1013,7 +1013,11 @@ function ShapeFill({ element }: { element: IconElement }) {
         backgroundColor: element.color ?? '#000000',
         border: `${element.borderWidth ?? 0}px solid ${element.borderColor ?? '#ffffff'}`,
         boxSizing: 'border-box',
-        borderRadius: element.shapeKind === 'circle' ? '50%' : 4,
+        borderRadius: element.cornerRadius === undefined
+          ? (element.shapeKind === 'circle' ? '50%' : '0%')
+          // CSS reaches a fully round capsule at 50%; map the user-facing
+          // 0–100% control into that 0–50% rendering range.
+          : `${element.cornerRadius / 2}%`,
         transform: flipToTransform((element.flip ?? 0) as FlipState),
         transformOrigin: 'center',
         pointerEvents: 'none',
@@ -1229,6 +1233,8 @@ export function DraggableIcon({
               onBorderWidthChange={(borderWidth) => onUpdate({ borderWidth })}
               borderColor={element.borderColor ?? '#ffffff'}
               onBorderColorChange={(borderColor) => onUpdate({ borderColor })}
+              cornerRadius={element.cornerRadius ?? (element.shapeKind === 'circle' ? 100 : 0)}
+              onCornerRadiusChange={(cornerRadius) => onUpdate({ cornerRadius })}
             />
           ) : (
             <IconToolbar

@@ -8,6 +8,7 @@ import { useIcon } from '../../context/IconContext';
 import { ColorPicker } from '../../globals/color.picker';
 import { useMediaQuery } from '@/lib/use_media_query';
 import { ShapeBorderPicker } from './shapes.border';
+import { ShapeCornerRoundingPicker } from './shapes.corner.rounding';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -44,12 +45,14 @@ interface ShapeToolbarProps {
   onBorderWidthChange: (borderWidth: number) => void;
   borderColor: string;
   onBorderColorChange: (color: string) => void;
+  cornerRadius: number;
+  onCornerRadiusChange: (cornerRadius: number) => void;
 }
 
 const FLOATING_TOOLBAR_HEIGHT = 60;
 const FLOATING_TOOLBAR_GAP = 16;
 
-/** Controls displayed above a selected shape. Corner rounding remains visual-only for now. */
+/** Controls displayed above a selected shape. */
 export function ShapeToolbar({
   elementX,
   elementY,
@@ -60,6 +63,8 @@ export function ShapeToolbar({
   onBorderWidthChange,
   borderColor,
   onBorderColorChange,
+  cornerRadius,
+  onCornerRadiusChange,
 }: ShapeToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const centerX = elementX + elementWidth / 2;
@@ -111,7 +116,10 @@ export function ShapeToolbar({
             triggerLabel="Border color"
           />
         )}
-        <ShapeToolbarButton icon="/assets/tools_icons/shape_corner.png" label="Corner rounding" />
+        <ShapeCornerRoundingPicker
+          radius={cornerRadius}
+          onChange={onCornerRadiusChange}
+        />
       </div>
     </div>
   );
@@ -119,20 +127,6 @@ export function ShapeToolbar({
 
 function ShapeToolbarDivider() {
   return <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.2)', marginInline: 4, flexShrink: 0 }} />;
-}
-
-function ShapeToolbarButton({ icon, label }: { icon: string; label: string }) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      aria-disabled="true"
-      className="flex h-10 w-12 cursor-default items-center justify-center rounded-lg"
-    >
-      <Image src={icon} alt="" width={24} height={24} className="pointer-events-none select-none opacity-80" draggable={false} />
-    </button>
-  );
 }
 
 const SHAPES: { id: ShapeKind; label: string; svgUrl: string }[] = [
@@ -199,6 +193,9 @@ export default function ShapesTools() {
       height: size,
       isShape: true,
       shapeKind: shape.id,
+      // A circle defaults to fully rounded so it remains an oval when resized.
+      // The slider writes an explicit percentage only after the user adjusts it.
+      cornerRadius: shape.id === 'circle' ? undefined : 0,
       svgUrl: shape.svgUrl,
       color: '#000000',
     });
