@@ -7,8 +7,12 @@ export interface IconElement {
   id: string;
   x: number;
   y: number;
-  /** Uniform size — icon is always square */
+  /** Uniform size used by standard icons. */
   size: number;
+  /** Shapes may use independent dimensions while standard icons remain square. */
+  width?: number;
+  height?: number;
+  isShape?: boolean;
   /** Direct Iconify SVG URL (or Cloudinary CDN URL) */
   svgUrl: string;
   /** Tint color applied via CSS filter; defaults to '#000000' */

@@ -16,6 +16,7 @@ import AssistPanelWeb from '@/app/features/canvas_page/assist_panel/assist.panel
 import AssistPanelMobile from '@/app/features/canvas_page/assist_panel/assist.panel.mobile';
 import FontSelector from '@/app/features/canvas_page/tool_sidebar/texts/select.font';
 import IconPicker from '@/app/features/canvas_page/tool_sidebar/icons_set/pick.icon';
+import ShapesTools from '@/app/features/canvas_page/tool_sidebar/shapes/shapes.tools';
 import { PenTools } from '@/app/features/canvas_page/tool_sidebar/pen/pen.tools';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
@@ -74,6 +75,9 @@ export default function CanvasPage() {
 
               {/* Icon Picker — appears when iconset tool is active (desktop only) */}
               {!isMobile && <IconPicker />}
+
+              {/* Shapes Picker — appears when the shapes tool is active (desktop only) */}
+              {!isMobile && <ShapesTools />}
 
               {/* Pen Tools — appears when pen tool is active (desktop only) */}
               {!isMobile && <PenToolsWrapper />}

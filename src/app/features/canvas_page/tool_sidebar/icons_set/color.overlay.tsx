@@ -23,8 +23,10 @@ interface IconColorOverlayProps {
   svgUrl: string;
   /** Exact hex or CSS color to apply */
   color: string;
-  /** Width = height (icon is always square) */
+  /** Default square size used by regular icons. */
   size: number;
+  width?: number;
+  height?: number;
   /** CSS transform for flip state */
   flipTransform?: string;
   className?: string;
@@ -34,6 +36,8 @@ export function IconColorOverlay({
   svgUrl,
   color,
   size,
+  width = size,
+  height = size,
   flipTransform,
   className,
 }: IconColorOverlayProps) {
@@ -42,8 +46,8 @@ export function IconColorOverlay({
       className={className}
       style={{
         position: 'relative',
-        width: size,
-        height: size,
+        width,
+        height,
         flexShrink: 0,
         transform: flipTransform && flipTransform !== 'none' ? flipTransform : undefined,
         // Contain the mask overlay precisely
@@ -59,12 +63,12 @@ export function IconColorOverlay({
         alt=""
         aria-hidden
         draggable={false}
-        width={size}
-        height={size}
+        width={width}
+        height={height}
         style={{
           display: 'block',
-          width: size,
-          height: size,
+          width,
+          height,
           opacity: 0,
           pointerEvents: 'none',
           userSelect: 'none',
@@ -81,11 +85,11 @@ export function IconColorOverlay({
           backgroundColor: color,
           // Standard + WebKit mask properties for full browser coverage
           maskImage: `url(${svgUrl})`,
-          maskSize: 'contain',
+          maskSize: '100% 100%',
           maskRepeat: 'no-repeat',
           maskPosition: 'center',
           WebkitMaskImage: `url(${svgUrl})`,
-          WebkitMaskSize: 'contain',
+          WebkitMaskSize: '100% 100%',
           WebkitMaskRepeat: 'no-repeat',
           WebkitMaskPosition: 'center',
           pointerEvents: 'none',

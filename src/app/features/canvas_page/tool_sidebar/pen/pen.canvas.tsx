@@ -3,8 +3,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePen } from '../../context/PenContext';
 import { useCanvas } from '../../context/CanvasContext';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_MARGIN } from '../../canvas/safe.area';
 
 type Point = { x: number; y: number };
+
+function isInsidePenSafeArea(point: Point, radius: number) {
+  return (
+    point.x >= SAFE_MARGIN + radius
+    && point.x <= CANVAS_WIDTH - SAFE_MARGIN - radius
+    && point.y >= SAFE_MARGIN + radius
+    && point.y <= CANVAS_HEIGHT - SAFE_MARGIN - radius
+  );
+}
 
 export function PenCanvas() {
   const {
@@ -21,8 +31,11 @@ export function PenCanvas() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
+  const [cursorPoint, setCursorPoint] = useState<Point | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const lastEraserPointRef = useRef<Point | null>(null);
+  const brushRadius = penThickness / (2 * zoom);
+  const brushGuideRadius = Math.max(brushRadius, 10 / zoom);
 
   useEffect(() => {
     if (!isPenActive) return;
@@ -69,6 +82,12 @@ export function PenCanvas() {
       e.stopPropagation();
       
       const coords = getCanvasCoordinates(e.clientX, e.clientY);
+      const interactionRadius = (isEraserActive ? eraserSize : penThickness) / (2 * zoom);
+      if (!isInsidePenSafeArea(coords, interactionRadius)) {
+        setCursorPoint(null);
+        return;
+      }
+
       if (isEraserActive) {
         lastEraserPointRef.current = null;
         setIsErasing(true);
@@ -76,16 +95,23 @@ export function PenCanvas() {
         return;
       }
 
+      setCursorPoint(coords);
       setIsDrawing(true);
       setCurrentPoints([coords]);
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isPenActive || (isEraserActive ? !isErasing : !isDrawing)) return;
+      if (!isPenActive) return;
+      const coords = getCanvasCoordinates(e.clientX, e.clientY);
+      const interactionRadius = (isEraserActive ? eraserSize : penThickness) / (2 * zoom);
+      const isInsideSafeArea = isInsidePenSafeArea(coords, interactionRadius);
+      if (!isEraserActive) setCursorPoint(isInsideSafeArea ? coords : null);
+
+      if (isEraserActive ? !isErasing : !isDrawing) return;
+      if (!isInsideSafeArea) return;
       e.preventDefault();
       e.stopPropagation();
-      
-      const coords = getCanvasCoordinates(e.clientX, e.clientY);
+
       if (isEraserActive) {
         if (isErasing) eraseAt(coords);
         return;
@@ -93,6 +119,10 @@ export function PenCanvas() {
 
       if (!isDrawing) return;
       setCurrentPoints(prev => [...prev, coords]);
+    };
+
+    const handleMouseLeave = () => {
+      setCursorPoint(null);
     };
 
     const handleMouseUp = () => {
@@ -128,6 +158,9 @@ export function PenCanvas() {
       
       const touch = e.touches[0];
       const coords = getCanvasCoordinates(touch.clientX, touch.clientY);
+      const interactionRadius = (isEraserActive ? eraserSize : penThickness) / (2 * zoom);
+      if (!isInsidePenSafeArea(coords, interactionRadius)) return;
+
       if (isEraserActive) {
         lastEraserPointRef.current = null;
         setIsErasing(true);
@@ -135,6 +168,7 @@ export function PenCanvas() {
         return;
       }
 
+      setCursorPoint(null);
       setIsDrawing(true);
       setCurrentPoints([coords]);
     };
@@ -146,6 +180,9 @@ export function PenCanvas() {
       
       const touch = e.touches[0];
       const coords = getCanvasCoordinates(touch.clientX, touch.clientY);
+      const interactionRadius = (isEraserActive ? eraserSize : penThickness) / (2 * zoom);
+      if (!isInsidePenSafeArea(coords, interactionRadius)) return;
+
       if (isEraserActive) {
         if (isErasing) eraseAt(coords);
         return;
@@ -161,6 +198,7 @@ export function PenCanvas() {
 
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('mouseup', handleMouseUp);
@@ -169,6 +207,7 @@ export function PenCanvas() {
     return () => {
       canvas.removeEventListener('mousedown', handleMouseDown);
       canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseleave', handleMouseLeave);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -225,9 +264,19 @@ export function PenCanvas() {
         height: '100%',
         pointerEvents: isPenActive ? 'auto' : 'none',
         zIndex: 10,
-        cursor: isPenActive ? (isEraserActive ? 'cell' : 'crosshair') : 'default',
+        cursor: isPenActive ? (isEraserActive ? 'cell' : 'none') : 'default',
       }}
     >
+      {/* The print-danger zone is visible whenever the pen is active. */}
+      {isPenActive && (
+        <g pointerEvents="none" fill="rgba(239,68,68,0.14)">
+          <rect x={0} y={0} width={CANVAS_WIDTH} height={SAFE_MARGIN} />
+          <rect x={0} y={CANVAS_HEIGHT - SAFE_MARGIN} width={CANVAS_WIDTH} height={SAFE_MARGIN} />
+          <rect x={0} y={SAFE_MARGIN} width={SAFE_MARGIN} height={CANVAS_HEIGHT - SAFE_MARGIN * 2} />
+          <rect x={CANVAS_WIDTH - SAFE_MARGIN} y={SAFE_MARGIN} width={SAFE_MARGIN} height={CANVAS_HEIGHT - SAFE_MARGIN * 2} />
+        </g>
+      )}
+
       {/* Render saved strokes */}
       {strokes.map(stroke => (
         <path
@@ -251,6 +300,27 @@ export function PenCanvas() {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+      )}
+
+      {/* The centre disc is the exact stroke diameter; the outer ring keeps thin pens visible. */}
+      {isPenActive && !isEraserActive && cursorPoint && (
+        <g pointerEvents="none">
+          <circle
+            cx={cursorPoint.x}
+            cy={cursorPoint.y}
+            r={brushGuideRadius}
+            fill="rgba(255,255,255,0.08)"
+            stroke="rgba(15,16,21,0.7)"
+            strokeWidth={1.5 / zoom}
+          />
+          <circle
+            cx={cursorPoint.x}
+            cy={cursorPoint.y}
+            r={brushRadius}
+            fill={penColor}
+            fillOpacity={0.35}
+          />
+        </g>
       )}
     </svg>
   );

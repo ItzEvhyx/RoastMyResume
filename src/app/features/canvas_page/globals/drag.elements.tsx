@@ -185,6 +185,7 @@ interface ResizeSnapshot {
   x: number;
   y: number;
   width: number;
+  height?: number;
   fontSize: number;
   textCategory?: string | null;
 }
@@ -199,22 +200,31 @@ interface UseResizeOptions<H extends string> {
 function useResize<H extends string>({ zoom, applyResize, onStart, onEnd }: UseResizeOptions<H>) {
   const [activeHandle, setActiveHandle] = useState<H | null>(null);
   const snapshot = useRef<ResizeSnapshot | null>(null);
+  const applyResizeRef = useRef(applyResize);
+  const onStartRef = useRef(onStart);
+  const onEndRef = useRef(onEnd);
+  const zoomRef = useRef(zoom);
+
+  useEffect(() => { applyResizeRef.current = applyResize; }, [applyResize]);
+  useEffect(() => { onStartRef.current = onStart; }, [onStart]);
+  useEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!activeHandle || !snapshot.current) return;
-    applyResize(
+    applyResizeRef.current(
       activeHandle,
       snapshot.current,
-      (e.clientX - snapshot.current.mouseX) / zoom,
-      (e.clientY - snapshot.current.mouseY) / zoom,
+      (e.clientX - snapshot.current.mouseX) / zoomRef.current,
+      (e.clientY - snapshot.current.mouseY) / zoomRef.current,
     );
-  }, [activeHandle, zoom, applyResize]);
+  }, [activeHandle]);
 
   const handleMouseUp = useCallback(() => {
     setActiveHandle(null);
     snapshot.current = null;
-    onEnd?.();
-  }, [onEnd]);
+    onEndRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (!activeHandle) return;
@@ -230,19 +240,19 @@ function useResize<H extends string>({ zoom, applyResize, onStart, onEnd }: UseR
     if (!activeHandle || !snapshot.current || e.touches.length < 1) return;
     e.stopPropagation();
     const t = e.touches[0];
-    applyResize(
+    applyResizeRef.current(
       activeHandle,
       snapshot.current,
-      (t.clientX - snapshot.current.mouseX) / zoom,
-      (t.clientY - snapshot.current.mouseY) / zoom,
+      (t.clientX - snapshot.current.mouseX) / zoomRef.current,
+      (t.clientY - snapshot.current.mouseY) / zoomRef.current,
     );
-  }, [activeHandle, zoom, applyResize]);
+  }, [activeHandle]);
 
   const handleTouchEnd = useCallback(() => {
     setActiveHandle(null);
     snapshot.current = null;
-    onEnd?.();
-  }, [onEnd]);
+    onEndRef.current?.();
+  }, []);
 
   useEffect(() => {
     if (!activeHandle) return;
@@ -262,9 +272,9 @@ function useResize<H extends string>({ zoom, applyResize, onStart, onEnd }: UseR
       e.preventDefault();
       snapshot.current = { mouseX: e.clientX, mouseY: e.clientY, ...snap };
       setActiveHandle(handle);
-      onStart?.();
+      onStartRef.current?.();
     },
-    [onStart],
+    [],
   );
 
   const startTouch = useCallback(
@@ -275,9 +285,9 @@ function useResize<H extends string>({ zoom, applyResize, onStart, onEnd }: UseR
       const t = e.touches[0];
       snapshot.current = { mouseX: t.clientX, mouseY: t.clientY, ...snap };
       setActiveHandle(handle);
-      onStart?.();
+      onStartRef.current?.();
     },
-    [onStart],
+    [],
   );
 
   return { activeHandle, startMouse, startTouch };
@@ -975,10 +985,12 @@ import { IconColorOverlay } from '../tool_sidebar/icons_set/color.overlay';
 
 export type { IconElement } from '../context/IconContext';
 
-type IconResizeHandle = 'nw' | 'ne' | 'se' | 'sw';
+type IconResizeHandle = 'nw' | 'ne' | 'se' | 'sw' | 'n' | 'e' | 's' | 'w';
 
 const MIN_ICON_SIZE = 16;
 const MAX_ICON_SIZE = 400;
+const MIN_SHAPE_SIZE = 24;
+const MAX_SHAPE_SIZE = 700;
 
 interface DraggableIconProps {
   element: IconElement;
@@ -1001,22 +1013,81 @@ export function DraggableIcon({
 }: DraggableIconProps) {
   const { zoom } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useIcon();
+  const elementWidth = element.width ?? element.size;
+  const elementHeight = element.height ?? element.size;
+  const pendingUpdateRef = useRef<Partial<IconElement> | null>(null);
+  const updateFrameRef = useRef<number | null>(null);
+  const onUpdateRef = useRef(onUpdate);
+
+  useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
+
+  const flushPendingUpdate = useCallback(() => {
+    if (updateFrameRef.current !== null) {
+      cancelAnimationFrame(updateFrameRef.current);
+      updateFrameRef.current = null;
+    }
+    const pending = pendingUpdateRef.current;
+    pendingUpdateRef.current = null;
+    if (pending) onUpdateRef.current(pending);
+  }, []);
+
+  const queueUpdate = useCallback((updates: Partial<IconElement>) => {
+    pendingUpdateRef.current = { ...pendingUpdateRef.current, ...updates };
+    if (updateFrameRef.current !== null) return;
+    updateFrameRef.current = requestAnimationFrame(() => {
+      updateFrameRef.current = null;
+      const pending = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      if (pending) onUpdateRef.current(pending);
+    });
+  }, []);
+
+  useEffect(() => () => {
+    if (updateFrameRef.current !== null) cancelAnimationFrame(updateFrameRef.current);
+  }, []);
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
-    onMove: (x, y) => onUpdate({ x, y }),
+    onMove: (x, y) => queueUpdate({ x, y }),
     onStart: startUpdateBatch,
     onEnd: () => {
+      flushPendingUpdate();
       endUpdateBatch();
       onDragEnd?.();
     },
   });
 
-  // ── Resize — uniform scale from all 4 corners ─────────────────────────────
-  // We reuse ResizeSnapshot.fontSize to store the element size at drag start.
+  // ── Resize — shapes resize freely; standard icons keep their uniform scale ──
   const applyIconResize = useCallback(
     (handle: IconResizeHandle, snap: ResizeSnapshot, dx: number, dy: number) => {
+      if (element.isShape) {
+        const startWidth = snap.width;
+        const startHeight = snap.height ?? snap.width;
+        let x = snap.x;
+        let y = snap.y;
+        let width = startWidth;
+        let height = startHeight;
+
+        if (handle === 'w' || handle === 'nw' || handle === 'sw') {
+          width = Math.max(MIN_SHAPE_SIZE, Math.min(MAX_SHAPE_SIZE, startWidth - dx));
+          x = snap.x + (startWidth - width);
+        }
+        if (handle === 'e' || handle === 'ne' || handle === 'se') {
+          width = Math.max(MIN_SHAPE_SIZE, Math.min(MAX_SHAPE_SIZE, startWidth + dx));
+        }
+        if (handle === 'n' || handle === 'nw' || handle === 'ne') {
+          height = Math.max(MIN_SHAPE_SIZE, Math.min(MAX_SHAPE_SIZE, startHeight - dy));
+          y = snap.y + (startHeight - height);
+        }
+        if (handle === 's' || handle === 'sw' || handle === 'se') {
+          height = Math.max(MIN_SHAPE_SIZE, Math.min(MAX_SHAPE_SIZE, startHeight + dy));
+        }
+
+        queueUpdate({ x, y, width, height });
+        return;
+      }
+
       const scaleDelta =
         handle === 'se' ? dx + dy :
         handle === 'sw' ? -dx + dy :
@@ -1025,12 +1096,12 @@ export function DraggableIcon({
       const newSize = Math.max(MIN_ICON_SIZE, Math.min(MAX_ICON_SIZE, snap.fontSize + scaleDelta));
       if (handle === 'nw' || handle === 'sw') {
         // Keep right edge fixed: move x left as size grows
-        onUpdate({ x: snap.x + (snap.fontSize - newSize), size: newSize });
+        queueUpdate({ x: snap.x + (snap.fontSize - newSize), size: newSize });
       } else {
-        onUpdate({ size: newSize });
+        queueUpdate({ size: newSize });
       }
     },
-    [onUpdate],
+    [element.isShape, queueUpdate],
   );
 
   const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
@@ -1038,7 +1109,10 @@ export function DraggableIcon({
       zoom, 
       applyResize: applyIconResize,
       onStart: startUpdateBatch,
-      onEnd: endUpdateBatch,
+      onEnd: () => {
+        flushPendingUpdate();
+        endUpdateBatch();
+      },
     });
 
   // ── Long-press ────────────────────────────────────────────────────────────
@@ -1079,11 +1153,12 @@ export function DraggableIcon({
     startLongPress(t.clientX, t.clientY, () => {});
   };
 
-  // Snapshot reuses ResizeSnapshot.fontSize to store size
+  // Snapshot records the independent shape bounds at resize start.
   const snapBase: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'> = {
     x: element.x,
     y: element.y,
-    width: element.size, // unused for icon resize but required by type
+    width: elementWidth,
+    height: elementHeight,
     fontSize: element.size,
   };
 
@@ -1093,8 +1168,8 @@ export function DraggableIcon({
       style={{
         left: element.x,
         top: element.y,
-        width: element.size,
-        height: element.size,
+        width: elementWidth,
+        height: elementHeight,
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',
@@ -1109,6 +1184,8 @@ export function DraggableIcon({
         svgUrl={element.svgUrl}
         color={element.color ?? '#000000'}
         size={element.size}
+        width={elementWidth}
+        height={elementHeight}
         flipTransform={flipToTransform((element.flip ?? 0) as FlipState)}
       />
 
@@ -1120,6 +1197,7 @@ export function DraggableIcon({
             elementX={0}
             elementY={0}
             elementSize={element.size}
+            elementWidth={elementWidth}
             color={element.color ?? '#000000'}
             onColorChange={(color) => onUpdate({ color })}
             flip={(element.flip ?? 0) as FlipState}
@@ -1130,7 +1208,7 @@ export function DraggableIcon({
           <div
             className="pointer-events-none absolute inset-0"
             style={{
-              border: '2px solid #000000',
+              border: element.isShape ? '2px solid #8b5cf6' : '2px solid #000000',
               marginTop: -2,
               marginLeft: -2,
               width: 'calc(100% + 4px)',
@@ -1138,31 +1216,25 @@ export function DraggableIcon({
             }}
           />
 
-          {/* 4 corner handles only — uniform scale */}
-          <ResizeHandleNode
-            cursor="nwse-resize"
-            style={{ left: -8, top: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)}
-          />
-          <ResizeHandleNode
-            cursor="nesw-resize"
-            style={{ right: -8, top: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)}
-          />
-          <ResizeHandleNode
-            cursor="nwse-resize"
-            style={{ right: -8, bottom: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)}
-          />
-          <ResizeHandleNode
-            cursor="nesw-resize"
-            style={{ left: -8, bottom: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)}
-          />
+          {element.isShape ? (
+            <>
+              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ left: -8, top: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ right: -8, top: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ right: -8, bottom: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ left: -8, bottom: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', top: -6, width: 20, height: 12, transform: 'translateX(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'n', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'n', snapBase)} />
+              <ResizeHandleNode cursor="ew-resize" style={{ right: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
+              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', bottom: -6, width: 20, height: 12, transform: 'translateX(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 's', snapBase)} onTouchStart={(e) => startResizeTouch(e, 's', snapBase)} />
+              <ResizeHandleNode cursor="ew-resize" style={{ left: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
+            </>
+          ) : (
+            <>
+              <ResizeHandleNode cursor="nwse-resize" style={{ left: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+              <ResizeHandleNode cursor="nesw-resize" style={{ right: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+              <ResizeHandleNode cursor="nwse-resize" style={{ right: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+              <ResizeHandleNode cursor="nesw-resize" style={{ left: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+            </>
+          )}
         </>
       )}
 
@@ -1195,4 +1267,3 @@ function colorToHue(hex: string): number {
   else h = (r - g) / d + 4;
   return Math.round(h * 60);
 }
-

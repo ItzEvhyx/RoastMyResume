@@ -8,6 +8,7 @@ interface IconToolbarProps {
   elementX: number;
   elementY: number;
   elementSize: number;
+  elementWidth?: number;
   color: string;
   onColorChange: (color: string) => void;
   flip: FlipState;
@@ -21,13 +22,14 @@ export function IconToolbar({
   elementX,
   elementY,
   elementSize,
+  elementWidth,
   color,
   onColorChange,
   flip,
   onFlip,
 }: IconToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const centerX = elementX + elementSize / 2;
+  const centerX = elementX + (elementWidth ?? elementSize) / 2;
   const topY = elementY - TOOLBAR_HEIGHT - TOOLBAR_GAP;
 
   const stopAll = (e: React.SyntheticEvent) => {
