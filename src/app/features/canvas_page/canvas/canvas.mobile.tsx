@@ -416,7 +416,16 @@ export default function CanvasMobile() {
       }
 
       const selection = selectionRef.current;
-      if (e.touches.length === 1 && !penActiveRef.current && !selection.text && !selection.divider && !selection.icon) {
+      const target = e.target;
+      const startedOnElement = target instanceof Element && Boolean(target.closest('[data-canvas-element]'));
+      if (
+        e.touches.length === 1
+        && !startedOnElement
+        && !penActiveRef.current
+        && !selection.text
+        && !selection.divider
+        && !selection.icon
+      ) {
         gesture.isPanning = true;
         gesture.startX = e.touches[0].clientX - panRef.current.x;
         gesture.startY = e.touches[0].clientY - panRef.current.y;

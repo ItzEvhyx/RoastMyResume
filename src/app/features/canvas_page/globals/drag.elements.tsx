@@ -701,6 +701,7 @@ export function DraggableText({
 
   return (
     <div
+      data-canvas-element
       className={`absolute ${poppins.variable}`}
       style={{
         left: element.x,
@@ -909,6 +910,7 @@ export function DraggableDivider({
 
   return (
     <div
+      data-canvas-element
       className="absolute"
       style={{
         left: element.x,
@@ -1189,6 +1191,7 @@ export function DraggableIcon({
 
   return (
     <div
+      data-canvas-element
       className="absolute"
       style={{
         left: element.x,
