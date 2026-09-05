@@ -18,9 +18,11 @@ interface PenToolsProps {
   color: string;
   thickness: number;
   eraserSize: number;
+  isEraserActive: boolean;
   onColorChange: (color: string) => void;
   onThicknessChange: (thickness: number) => void;
   onEraserSizeChange: (size: number) => void;
+  onEraserToggle: () => void;
 }
 
 export function PenTools({
@@ -28,9 +30,11 @@ export function PenTools({
   color,
   thickness,
   eraserSize,
+  isEraserActive,
   onColorChange,
   onThicknessChange,
   onEraserSizeChange,
+  onEraserToggle,
 }: PenToolsProps) {
   
   // Apply custom cursor when pen tool is active
@@ -40,7 +44,9 @@ export function PenTools({
     // Find the canvas element
     const canvas = document.querySelector('[data-canvas-area]') as HTMLElement;
     if (canvas) {
-      canvas.style.cursor = `url('/assets/tools_icons/pen.png') 8 24, crosshair`;
+      canvas.style.cursor = isEraserActive
+        ? 'cell'
+        : `url('/assets/tools_icons/pen.png') 8 24, crosshair`;
     }
     
     return () => {
@@ -48,7 +54,7 @@ export function PenTools({
         canvas.style.cursor = '';
       }
     };
-  }, [isActive, thickness, color]);
+  }, [isActive, thickness, color, isEraserActive]);
 
   return (
     <div
@@ -70,30 +76,11 @@ export function PenTools({
         pointerEvents: isActive ? 'auto' : 'none',
       }}
     >
-      {/* Global styles for popup positioning */}
-      <style>{`
-        /* Color picker popup - appears above the button and to the right */
-        .pen-tools-sidebar [data-color-picker-popup] {
-          position: absolute !important;
-          left: calc(100% + 12px) !important;
-          bottom: -10px !important;
-          top: auto !important;
-          transform: none !important;
-          transform-origin: left center !important;
-        }
-        
-        /* Ensure all nested absolute positioned elements follow this pattern */
-        .pen-tools-sidebar .relative > .absolute {
-          left: auto !important;
-          right: auto !important;
-        }
-      `}</style>
-      
       {/* Vertical layout */}
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex w-full flex-col items-center gap-3">
         {/* Color picker */}
         <div className="flex items-center justify-center w-full">
-          <ColorPicker color={color} onSelect={onColorChange} />
+          <ColorPicker color={color} onSelect={onColorChange} openOnHover popupPlacement="right" />
         </div>
 
         {/* Divider */}
@@ -103,7 +90,12 @@ export function PenTools({
         <PenThicknessPicker thickness={thickness} onSelect={onThicknessChange} />
 
         {/* Eraser */}
-        <PenEraserPicker eraserSize={eraserSize} onSelect={onEraserSizeChange} />
+        <PenEraserPicker
+          eraserSize={eraserSize}
+          isActive={isEraserActive}
+          onSelect={onEraserSizeChange}
+          onToggle={onEraserToggle}
+        />
       </div>
     </div>
   );

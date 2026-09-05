@@ -10,6 +10,88 @@ export interface PenStroke {
   thickness: number;
 }
 
+type Point = { x: number; y: number };
+
+function pointsMatch(first: Point, second: Point) {
+  return Math.abs(first.x - second.x) < 0.001 && Math.abs(first.y - second.y) < 0.001;
+}
+
+function outsideCircleSegments(start: Point, end: Point, center: Point, radius: number) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const fromCenterX = start.x - center.x;
+  const fromCenterY = start.y - center.y;
+  const segmentLengthSquared = dx * dx + dy * dy;
+
+  if (segmentLengthSquared === 0) return [];
+
+  const discriminant = (
+    2 * (fromCenterX * dx + fromCenterY * dy)
+  ) ** 2 - 4 * segmentLengthSquared * (
+    fromCenterX ** 2 + fromCenterY ** 2 - radius ** 2
+  );
+
+  if (discriminant <= 0) {
+    const midpointX = start.x + dx / 2 - center.x;
+    const midpointY = start.y + dy / 2 - center.y;
+    return midpointX ** 2 + midpointY ** 2 > radius ** 2 ? [[start, end]] : [];
+  }
+
+  const root = Math.sqrt(discriminant);
+  const firstIntersection = (-2 * (fromCenterX * dx + fromCenterY * dy) - root) / (2 * segmentLengthSquared);
+  const secondIntersection = (-2 * (fromCenterX * dx + fromCenterY * dy) + root) / (2 * segmentLengthSquared);
+  const insideStart = Math.max(0, firstIntersection);
+  const insideEnd = Math.min(1, secondIntersection);
+
+  if (insideStart >= insideEnd) {
+    const midpointX = start.x + dx / 2 - center.x;
+    const midpointY = start.y + dy / 2 - center.y;
+    return midpointX ** 2 + midpointY ** 2 > radius ** 2 ? [[start, end]] : [];
+  }
+
+  const at = (progress: number): Point => ({ x: start.x + dx * progress, y: start.y + dy * progress });
+  const segments: [Point, Point][] = [];
+  if (insideStart > 0) segments.push([start, at(insideStart)]);
+  if (insideEnd < 1) segments.push([at(insideEnd), end]);
+  return segments;
+}
+
+function eraseCircleFromStroke(stroke: PenStroke, center: Point, radius: number) {
+  if (stroke.points.length < 2) return [stroke.points];
+
+  let removedPart = false;
+  const fragments: Point[][] = [];
+  let currentFragment: Point[] | null = null;
+
+  for (let index = 1; index < stroke.points.length; index += 1) {
+    const start = stroke.points[index - 1];
+    const end = stroke.points[index];
+    const outsideSegments = outsideCircleSegments(start, end, center, radius);
+
+    const keptWholeSegment = outsideSegments.length === 1
+      && pointsMatch(outsideSegments[0][0], start)
+      && pointsMatch(outsideSegments[0][1], end);
+    if (!keptWholeSegment) removedPart = true;
+
+    for (const [outsideStart, outsideEnd] of outsideSegments) {
+      if (!currentFragment || !pointsMatch(currentFragment[currentFragment.length - 1], outsideStart)) {
+        if (currentFragment && currentFragment.length > 1) fragments.push(currentFragment);
+        currentFragment = [outsideStart, outsideEnd];
+      } else if (!pointsMatch(currentFragment[currentFragment.length - 1], outsideEnd)) {
+        currentFragment.push(outsideEnd);
+      }
+    }
+
+    if (outsideSegments.length === 0 && currentFragment) {
+      if (currentFragment.length > 1) fragments.push(currentFragment);
+      currentFragment = null;
+    }
+  }
+
+  if (currentFragment && currentFragment.length > 1) fragments.push(currentFragment);
+  return removedPart ? fragments : [stroke.points];
+}
+
 interface PenContextType {
   isPenActive: boolean;
   setIsPenActive: (active: boolean) => void;
@@ -19,6 +101,9 @@ interface PenContextType {
   setPenThickness: (thickness: number) => void;
   eraserSize: number;
   setEraserSize: (size: number) => void;
+  isEraserActive: boolean;
+  setIsEraserActive: (active: boolean) => void;
+  eraseStrokesAt: (point: Point, eraserSize: number, zoom: number) => void;
   strokes: PenStroke[];
   addStroke: (stroke: PenStroke) => void;
   removeStroke: (id: string) => void;
@@ -32,6 +117,7 @@ export function PenProvider({ children }: { children: ReactNode }) {
   const [penColor, setPenColor] = useState('#000000');
   const [penThickness, setPenThickness] = useState(4);
   const [eraserSize, setEraserSize] = useState(20);
+  const [isEraserActive, setIsEraserActive] = useState(false);
   const [strokes, setStrokes] = useState<PenStroke[]>([]);
   const { record } = useUndo();
 
@@ -73,6 +159,22 @@ export function PenProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const eraseStrokesAt = (point: Point, eraserDiameter: number, zoom: number) => {
+    setStrokes((previousStrokes) => previousStrokes.flatMap((stroke) => {
+      // Include half the visible pen width so the eraser removes every touched pixel.
+      const radius = (eraserDiameter + stroke.thickness) / (2 * zoom);
+      const fragments = eraseCircleFromStroke(stroke, point, radius);
+
+      if (fragments.length === 1 && fragments[0] === stroke.points) return [stroke];
+
+      return fragments.map((points, index) => ({
+        ...stroke,
+        id: `${stroke.id}-erased-${Date.now()}-${index}`,
+        points,
+      }));
+    }));
+  };
+
   return (
     <PenContext.Provider
       value={{
@@ -84,6 +186,9 @@ export function PenProvider({ children }: { children: ReactNode }) {
         setPenThickness,
         eraserSize,
         setEraserSize,
+        isEraserActive,
+        setIsEraserActive,
+        eraseStrokesAt,
         strokes,
         addStroke,
         removeStroke,

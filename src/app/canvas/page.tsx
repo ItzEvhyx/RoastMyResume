@@ -108,15 +108,29 @@ export default function CanvasPage() {
 
 // Wrapper component to use the pen context
 function PenToolsWrapper() {
-  const { isPenActive, penColor, setPenColor, penThickness, setPenThickness } = usePen();
+  const {
+    isPenActive,
+    penColor,
+    setPenColor,
+    penThickness,
+    setPenThickness,
+    eraserSize,
+    setEraserSize,
+    isEraserActive,
+    setIsEraserActive,
+  } = usePen();
   
   return (
     <PenTools
       isActive={isPenActive}
       color={penColor}
       thickness={penThickness}
+      eraserSize={eraserSize}
+      isEraserActive={isEraserActive}
       onColorChange={setPenColor}
       onThicknessChange={setPenThickness}
+      onEraserSizeChange={setEraserSize}
+      onEraserToggle={() => setIsEraserActive(!isEraserActive)}
     />
   );
 }

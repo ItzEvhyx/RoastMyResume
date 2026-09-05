@@ -10,12 +10,12 @@ const poppins = Poppins({
 });
 
 const glassPanel: React.CSSProperties = {
-  background: 'rgba(30, 32, 38, 0.92)',
+  background: 'rgba(30, 32, 38, 0.55)',
   backdropFilter: 'blur(20px) saturate(140%)',
   WebkitBackdropFilter: 'blur(20px) saturate(140%)',
   border: '1px solid rgba(255,255,255,0.10)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.55)',
-  borderRadius: 18,
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
+  borderRadius: 24,
 };
 
 const PRESETS = ['#000000', '#ffffff', '#6b7280', '#4b5563', '#1e3a8a', '#065f46', '#14532d', '#7c2d12', '#991b1b', '#7e22ce', '#c2410c', '#ff3b30'];
@@ -52,14 +52,36 @@ function isValidHex(hex: string) {
 interface ColorPickerProps {
   color: string;
   onSelect: (color: string) => void;
+  /** Open the picker from hover instead of click, used by the pen toolbar. */
+  openOnHover?: boolean;
+  popupPlacement?: 'bottom' | 'right';
 }
 
-export function ColorPicker({ color, onSelect }: ColorPickerProps) {
+export function ColorPicker({
+  color,
+  onSelect,
+  openOnHover = false,
+  popupPlacement = 'bottom',
+}: ColorPickerProps) {
   const [open, setOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [hexInput, setHexInput] = useState(color.replace('#', '').toUpperCase());
   const [hsv, setHsv] = useState(() => hexToHsv(color));
   const rootRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const openPicker = () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    setOpen(true);
+  };
+
+  const closePicker = () => {
+    if (!openOnHover) return;
+    closeTimeoutRef.current = setTimeout(() => {
+      setOpen(false);
+      setShowAdvanced(false);
+    }, 100);
+  };
 
   useEffect(() => {
     // Sync the picker when its externally controlled color changes.
@@ -80,6 +102,10 @@ export function ColorPicker({ color, onSelect }: ColorPickerProps) {
     return () => document.removeEventListener('pointerdown', close);
   }, [open]);
 
+  useEffect(() => () => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+  }, []);
+
   const applyColor = (hex: string) => {
     onSelect(hex);
     setHexInput(hex.replace('#', '').toUpperCase());
@@ -99,7 +125,13 @@ export function ColorPicker({ color, onSelect }: ColorPickerProps) {
   const previewColor = isValidHex(hexInput) ? `#${hexInput.toLowerCase()}` : color;
 
   return (
-    <div ref={rootRef} className={`relative ${poppins.variable}`} style={{ userSelect: 'none', flexShrink: 0 }}>
+    <div
+      ref={rootRef}
+      className={`relative ${poppins.variable} ${popupPlacement === 'right' ? 'flex w-full justify-center' : ''}`}
+      style={{ userSelect: 'none', flexShrink: 0 }}
+      onMouseEnter={openOnHover ? openPicker : undefined}
+      onMouseLeave={openOnHover ? closePicker : undefined}
+    >
       <button
         className="rounded-full transition-opacity hover:opacity-80 active:opacity-60"
         style={{ width: 30, height: 30, background: color, border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0, cursor: 'pointer' }}
@@ -108,19 +140,25 @@ export function ColorPicker({ color, onSelect }: ColorPickerProps) {
         onMouseDown={(event) => { event.stopPropagation(); event.preventDefault(); }}
         onPointerDown={(event) => event.stopPropagation()}
         onDoubleClick={(event) => { event.stopPropagation(); event.preventDefault(); }}
-        onClick={(event) => { event.stopPropagation(); setOpen(value => !value); }}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (openOnHover) openPicker();
+          else setOpen(value => !value);
+        }}
       />
       {open && (
         <div 
           data-color-picker-popup
           className="absolute" 
           style={{ 
-            top: 'calc(100% + 12px)', 
-            left: '50%', 
-            transform: 'translateX(-50%) scale(1.2)', 
-            transformOrigin: 'top center', 
+            top: popupPlacement === 'right' ? '50%' : 'calc(100% + 12px)',
+            left: popupPlacement === 'right' ? 'calc(100% + 12px)' : '50%',
+            transform: popupPlacement === 'right' ? 'translateY(-50%)' : 'translateX(-50%) scale(1.2)',
+            transformOrigin: popupPlacement === 'right' ? 'left center' : 'top center',
             zIndex: 110 
-          }} 
+          }}
+          onMouseEnter={openOnHover ? openPicker : undefined}
+          onMouseLeave={openOnHover ? closePicker : undefined}
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div style={{ ...glassPanel, padding: 20, width: 340 }}>

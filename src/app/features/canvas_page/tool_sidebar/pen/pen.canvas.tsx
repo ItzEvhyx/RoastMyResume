@@ -4,12 +4,25 @@ import { useEffect, useRef, useState } from 'react';
 import { usePen } from '../../context/PenContext';
 import { useCanvas } from '../../context/CanvasContext';
 
+type Point = { x: number; y: number };
+
 export function PenCanvas() {
-  const { isPenActive, penColor, penThickness, strokes, addStroke } = usePen();
+  const {
+    isPenActive,
+    isEraserActive,
+    eraserSize,
+    penColor,
+    penThickness,
+    strokes,
+    addStroke,
+    eraseStrokesAt,
+  } = usePen();
   const { zoom, pan } = useCanvas();
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isErasing, setIsErasing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
   const svgRef = useRef<SVGSVGElement>(null);
+  const lastEraserPointRef = useRef<Point | null>(null);
 
   useEffect(() => {
     if (!isPenActive) return;
@@ -30,26 +43,65 @@ export function PenCanvas() {
       return { x: svgP.x, y: svgP.y };
     };
 
+    const eraseAt = (point: Point) => {
+      const previousPoint = lastEraserPointRef.current;
+      if (!previousPoint) {
+        eraseStrokesAt(point, eraserSize, zoom);
+        lastEraserPointRef.current = point;
+        return;
+      }
+
+      const distance = Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y);
+      const maxStep = Math.max(1, eraserSize / (zoom * 3));
+      const steps = Math.max(1, Math.ceil(distance / maxStep));
+      for (let step = 1; step <= steps; step += 1) {
+        eraseStrokesAt({
+          x: previousPoint.x + ((point.x - previousPoint.x) * step) / steps,
+          y: previousPoint.y + ((point.y - previousPoint.y) * step) / steps,
+        }, eraserSize, zoom);
+      }
+      lastEraserPointRef.current = point;
+    };
+
     const handleMouseDown = (e: MouseEvent) => {
       if (!isPenActive) return;
       e.preventDefault();
       e.stopPropagation();
       
       const coords = getCanvasCoordinates(e.clientX, e.clientY);
+      if (isEraserActive) {
+        lastEraserPointRef.current = null;
+        setIsErasing(true);
+        eraseAt(coords);
+        return;
+      }
+
       setIsDrawing(true);
       setCurrentPoints([coords]);
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDrawing || !isPenActive) return;
+      if (!isPenActive || (isEraserActive ? !isErasing : !isDrawing)) return;
       e.preventDefault();
       e.stopPropagation();
       
       const coords = getCanvasCoordinates(e.clientX, e.clientY);
+      if (isEraserActive) {
+        if (isErasing) eraseAt(coords);
+        return;
+      }
+
+      if (!isDrawing) return;
       setCurrentPoints(prev => [...prev, coords]);
     };
 
     const handleMouseUp = () => {
+      if (isErasing) {
+        setIsErasing(false);
+        lastEraserPointRef.current = null;
+        return;
+      }
+
       if (!isDrawing || currentPoints.length < 2) {
         setIsDrawing(false);
         setCurrentPoints([]);
@@ -76,17 +128,30 @@ export function PenCanvas() {
       
       const touch = e.touches[0];
       const coords = getCanvasCoordinates(touch.clientX, touch.clientY);
+      if (isEraserActive) {
+        lastEraserPointRef.current = null;
+        setIsErasing(true);
+        eraseAt(coords);
+        return;
+      }
+
       setIsDrawing(true);
       setCurrentPoints([coords]);
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!isDrawing || !isPenActive || e.touches.length !== 1) return;
+      if (!isPenActive || e.touches.length !== 1 || (isEraserActive ? !isErasing : !isDrawing)) return;
       e.preventDefault();
       e.stopPropagation();
       
       const touch = e.touches[0];
       const coords = getCanvasCoordinates(touch.clientX, touch.clientY);
+      if (isEraserActive) {
+        if (isErasing) eraseAt(coords);
+        return;
+      }
+
+      if (!isDrawing) return;
       setCurrentPoints(prev => [...prev, coords]);
     };
 
@@ -109,7 +174,20 @@ export function PenCanvas() {
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isPenActive, isDrawing, currentPoints, penColor, penThickness, addStroke, zoom, pan]);
+  }, [
+    isPenActive,
+    isEraserActive,
+    isDrawing,
+    isErasing,
+    currentPoints,
+    eraserSize,
+    penColor,
+    penThickness,
+    addStroke,
+    eraseStrokesAt,
+    zoom,
+    pan,
+  ]);
 
   // Convert points array to SVG path with smoothing
   const pointsToPath = (points: { x: number; y: number }[]) => {
@@ -147,7 +225,7 @@ export function PenCanvas() {
         height: '100%',
         pointerEvents: isPenActive ? 'auto' : 'none',
         zIndex: 10,
-        cursor: isPenActive ? 'crosshair' : 'default',
+        cursor: isPenActive ? (isEraserActive ? 'cell' : 'crosshair') : 'default',
       }}
     >
       {/* Render saved strokes */}
@@ -164,7 +242,7 @@ export function PenCanvas() {
       ))}
 
       {/* Render current drawing stroke */}
-      {isDrawing && currentPoints.length > 1 && (
+      {isDrawing && !isEraserActive && currentPoints.length > 1 && (
         <path
           d={pointsToPath(currentPoints)}
           stroke={penColor}

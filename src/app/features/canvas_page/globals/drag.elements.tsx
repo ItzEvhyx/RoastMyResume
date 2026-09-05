@@ -533,7 +533,6 @@ export function DraggableText({
     e.preventDefault();
     if (isEditing) return;
     onSelect();
-    beginBatchUpdate(element.id);
     startDragMouse(e, element.x, element.y);
   };
 
@@ -553,7 +552,6 @@ export function DraggableText({
     dismissPill();
 
     const t = e.touches[0];
-    beginBatchUpdate(element.id);
     startDragTouch(t.clientX, t.clientY, element.x, element.y);
     startLongPress(t.clientX, t.clientY, () => {
       // cancel drag on long-press trigger
@@ -883,7 +881,6 @@ export function DraggableDivider({
     e.stopPropagation();
     e.preventDefault();
     onSelect();
-    beginBatchUpdate(element.id);
     startDragMouse(e, element.x, element.y);
   };
 
@@ -894,7 +891,6 @@ export function DraggableDivider({
     onSelect();
     dismissPill();
     const t = e.touches[0];
-    beginBatchUpdate(element.id);
     startDragTouch(t.clientX, t.clientY, element.x, element.y);
     startLongPress(t.clientX, t.clientY, () => {});
   };
@@ -1198,8 +1194,5 @@ function colorToHue(hex: string): number {
   else if (max === g) h = (b - r) / d + 2;
   else h = (r - g) / d + 4;
   return Math.round(h * 60);
-}
-function beginBatchUpdate(id: string) {
-  throw new Error('Function not implemented.');
 }
 

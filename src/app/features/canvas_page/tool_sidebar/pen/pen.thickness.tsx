@@ -4,12 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 
 const glassPanel: React.CSSProperties = {
-  background: 'rgba(30, 32, 38, 0.85)',
+  background: 'rgba(30, 32, 38, 0.55)',
   backdropFilter: 'blur(20px) saturate(140%)',
   WebkitBackdropFilter: 'blur(20px) saturate(140%)',
   border: '1px solid rgba(255,255,255,0.10)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.5)',
-  borderRadius: 14,
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
+  borderRadius: 24,
 };
 
 export interface PenThicknessOption {
@@ -58,7 +58,7 @@ export function PenThicknessPicker({ thickness, onSelect }: PenThicknessPickerPr
   return (
     <div
       ref={rootRef}
-      className="relative"
+      className="relative w-full"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{ userSelect: 'none' }}
@@ -67,7 +67,7 @@ export function PenThicknessPicker({ thickness, onSelect }: PenThicknessPickerPr
       <button
         className="flex items-center justify-center w-full py-3 transition-colors hover:bg-white/10 rounded-lg"
         style={{
-          background: thickness ? 'rgba(255,255,255,0.06)' : 'transparent',
+          background: hovering ? 'rgba(255,255,255,0.10)' : 'transparent',
         }}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
@@ -86,10 +86,12 @@ export function PenThicknessPicker({ thickness, onSelect }: PenThicknessPickerPr
       {/* Thickness submenu - appears on right on hover */}
       {hovering && (
         <div
+          data-thickness-popup
           className="absolute"
           style={{
-            bottom: 0, // Align with bottom of button
-            left: 'calc(100% + 8px)',
+            top: '50%',
+            left: 'calc(100% + 12px)',
+            transform: 'translateY(-50%)',
             zIndex: 110,
           }}
           onMouseEnter={handleMouseEnter}
