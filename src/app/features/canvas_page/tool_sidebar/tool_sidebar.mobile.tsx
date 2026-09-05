@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import Image from 'next/image';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
+import { useIcon } from '../context/IconContext';
+import { usePen } from '../context/PenContext';
 
 const glassStyle: React.CSSProperties = {
   background: 'rgba(30, 32, 38, 0.55)',
@@ -30,9 +32,21 @@ const CANVAS_WIDTH = 794;
 const CANVAS_HEIGHT = 1123;
 
 export default function ToolSidebarMobile({ stage }: { stage: number }) {
-  const [activeTool, setActiveTool] = useState<string | null>(null);
-  const { addTextElement, setSelectedId } = useText();
+  const {
+    addTextElement,
+    setSelectedId,
+    toolbarExpanded,
+    setToolbarExpanded,
+    activeTool,
+    setActiveTool,
+  } = useText();
   const { addDividerElement, setSelectedDividerId } = useDivider();
+  const { setSelectedIconId } = useIcon();
+  const { setIsPenActive } = usePen();
+
+  useEffect(() => {
+    setToolbarExpanded(stage >= 3);
+  }, [stage, setToolbarExpanded]);
 
   const sidebarVisible = stage >= 3;
   const sidebarPopStyle: React.CSSProperties = {
@@ -42,17 +56,27 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
   };
 
   const handleToolTap = (toolId: string) => {
-    setActiveTool(t => t === toolId ? null : toolId);
+    const nextTool = activeTool === toolId ? null : toolId;
+    setActiveTool(nextTool);
 
     if (toolId === 'fontstyle') {
       // Place new text element at canvas center, slightly above vertical midpoint
       setSelectedDividerId(null);
+      setSelectedIconId(null);
       addTextElement(CANVAS_WIDTH / 2 - 75, CANVAS_HEIGHT / 4);
     }
 
     if (toolId === 'divider') {
       setSelectedId(null);
+      setSelectedIconId(null);
       addDividerElement(CANVAS_WIDTH / 2 - 150, CANVAS_HEIGHT / 4);
+    }
+
+    setIsPenActive(nextTool === 'pen');
+    if (nextTool === 'pen') {
+      setSelectedId(null);
+      setSelectedDividerId(null);
+      setSelectedIconId(null);
     }
   };
 
@@ -74,7 +98,7 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
             title={tool.label}
             onClick={() => handleToolTap(tool.id)}
             className="flex h-[50px] w-[50px] flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
-            style={{ opacity: activeTool === tool.id ? 1 : 0.55 }}
+            style={{ opacity: toolbarExpanded && activeTool === tool.id ? 1 : 0.55 }}
           >
             <Image
               src={tool.src}

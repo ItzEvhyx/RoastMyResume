@@ -73,14 +73,13 @@ export default function CanvasPage() {
               {/* Font Selector — appears when text is selected (desktop only) */}
               {!isMobile && <FontSelector />}
 
-              {/* Icon Picker — appears when iconset tool is active (desktop only) */}
-              {!isMobile && <IconPicker />}
+              {/* Tool panels position themselves beside the desktop toolbar or
+                  directly above the mobile toolbar. */}
+              <IconPicker />
 
-              {/* Shapes Picker — appears when the shapes tool is active (desktop only) */}
-              {!isMobile && <ShapesTools />}
+              <ShapesTools />
 
-              {/* Pen Tools — appears when pen tool is active (desktop only) */}
-              {!isMobile && <PenToolsWrapper />}
+              <PenToolsWrapper />
 
               {/* Assistant Panel — appears at stage 2 */}
               {isMobile === undefined ? null : isMobile

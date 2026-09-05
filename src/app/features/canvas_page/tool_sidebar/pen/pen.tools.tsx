@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ColorPicker } from '../../globals/color.picker';
 import { PenThicknessPicker } from './pen.thickness';
 import { PenEraserPicker } from './pen.eraser';
+import { useMediaQuery } from '@/lib/use_media_query';
 
 const glassStyle: React.CSSProperties = {
   background: 'rgba(30, 32, 38, 0.55)',
@@ -36,6 +37,7 @@ export function PenTools({
   onEraserSizeChange,
   onEraserToggle,
 }: PenToolsProps) {
+  const isMobile = useMediaQuery('(max-width: 767px)');
   
   // Apply custom cursor when pen tool is active
   useEffect(() => {
@@ -58,7 +60,7 @@ export function PenTools({
 
   return (
     <div
-      className="fixed left-[110px] z-40 flex flex-col rounded-3xl transition-all duration-400 ease-out pen-tools-sidebar"
+      className="fixed z-50 flex flex-col rounded-3xl transition-all duration-400 ease-out pen-tools-sidebar"
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
@@ -68,11 +70,15 @@ export function PenTools({
       }}
       style={{
         ...glassStyle,
+        left: isMobile ? '50%' : 110,
         width: '70px',
         padding: '16px 12px',
-        bottom: '180px',
+        bottom: isMobile ? 92 : 180,
         opacity: isActive ? 1 : 0,
-        transform: isActive ? 'scale(1) translateX(0)' : 'scale(0.85) translateX(-12px)',
+        transform: isActive
+          ? (isMobile ? 'translateX(-50%) scale(1)' : 'scale(1) translateX(0)')
+          : (isMobile ? 'translateX(-50%) scale(0.85) translateY(12px)' : 'scale(0.85) translateX(-12px)'),
+        transformOrigin: isMobile ? 'bottom center' : 'left center',
         pointerEvents: isActive ? 'auto' : 'none',
       }}
     >
@@ -80,7 +86,12 @@ export function PenTools({
       <div className="flex w-full flex-col items-center gap-3">
         {/* Color picker */}
         <div className="flex items-center justify-center w-full">
-          <ColorPicker color={color} onSelect={onColorChange} openOnHover popupPlacement="right" />
+          <ColorPicker
+            color={color}
+            onSelect={onColorChange}
+            openOnHover
+            popupPlacement={isMobile ? 'bottom' : 'right'}
+          />
         </div>
 
         {/* Divider */}

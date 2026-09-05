@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePen } from '../../context/PenContext';
 import { useCanvas } from '../../context/CanvasContext';
+import { useText } from '../../context/TextContext';
+import { useDivider } from '../../context/DividerContext';
+import { useIcon } from '../../context/IconContext';
+import { useClipboard } from '../../globals/pasting';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, SAFE_MARGIN } from '../../canvas/safe.area';
 
 type Point = { x: number; y: number };
@@ -26,16 +30,65 @@ export function PenCanvas() {
     strokes,
     addStroke,
     eraseStrokesAt,
+    removeStroke,
+    selectedStrokeId,
+    setSelectedStrokeId,
   } = usePen();
   const { zoom, pan } = useCanvas();
+  const { setSelectedId } = useText();
+  const { setSelectedDividerId } = useDivider();
+  const { setSelectedIconId } = useIcon();
+  const { copy } = useClipboard();
   const [isDrawing, setIsDrawing] = useState(false);
   const [isErasing, setIsErasing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
   const [cursorPoint, setCursorPoint] = useState<Point | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const lastEraserPointRef = useRef<Point | null>(null);
+  const strokeHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [strokePillId, setStrokePillId] = useState<string | null>(null);
   const brushRadius = penThickness / (2 * zoom);
   const brushGuideRadius = Math.max(brushRadius, 10 / zoom);
+
+  useEffect(() => () => {
+    if (strokeHoldTimer.current) clearTimeout(strokeHoldTimer.current);
+  }, []);
+
+  const handleStrokeTouchStart = (event: React.TouchEvent<SVGPathElement>, strokeId: string) => {
+    if (isPenActive || event.touches.length !== 1) return;
+    event.stopPropagation();
+    const touch = event.touches[0];
+    const startX = touch.clientX;
+    const startY = touch.clientY;
+    const cancelHold = () => {
+      if (strokeHoldTimer.current) {
+        clearTimeout(strokeHoldTimer.current);
+        strokeHoldTimer.current = null;
+      }
+      document.removeEventListener('touchmove', cancelOnMove);
+      document.removeEventListener('touchend', cancelHold);
+    };
+    const cancelOnMove = (moveEvent: TouchEvent) => {
+      const nextTouch = moveEvent.touches[0];
+      if (!nextTouch || Math.hypot(nextTouch.clientX - startX, nextTouch.clientY - startY) > 8) {
+        cancelHold();
+      }
+    };
+
+    if (strokeHoldTimer.current) clearTimeout(strokeHoldTimer.current);
+    strokeHoldTimer.current = setTimeout(() => {
+      strokeHoldTimer.current = null;
+      setSelectedId(null);
+      setSelectedDividerId(null);
+      setSelectedIconId(null);
+      setSelectedStrokeId(strokeId);
+      setStrokePillId(strokeId);
+      document.removeEventListener('touchmove', cancelOnMove);
+      document.removeEventListener('touchend', cancelHold);
+    }, 600);
+    document.addEventListener('touchmove', cancelOnMove, { passive: true });
+    document.addEventListener('touchend', cancelHold, { once: true });
+  };
 
   useEffect(() => {
     if (!isPenActive) return;
@@ -253,7 +306,11 @@ export function PenCanvas() {
 
   if (!isPenActive && strokes.length === 0) return null;
 
+  const selectedStroke = strokes.find(stroke => stroke.id === strokePillId);
+  const selectedStrokePoint = selectedStroke?.points[Math.floor(selectedStroke.points.length / 2)];
+
   return (
+    <>
     <svg
       ref={svgRef}
       style={{
@@ -287,6 +344,21 @@ export function PenCanvas() {
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
+          style={{ pointerEvents: isPenActive ? 'none' : 'stroke' }}
+          onTouchStart={(event) => handleStrokeTouchStart(event, stroke.id)}
+        />
+      ))}
+
+      {selectedStrokeId && !isPenActive && strokes.map(stroke => stroke.id === selectedStrokeId && (
+        <path
+          key={`${stroke.id}-selection`}
+          d={pointsToPath(stroke.points)}
+          stroke="rgba(99,102,241,0.7)"
+          strokeWidth={(stroke.thickness + 8) / zoom}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pointerEvents="none"
         />
       ))}
 
@@ -323,5 +395,59 @@ export function PenCanvas() {
         </g>
       )}
     </svg>
+    {selectedStroke && selectedStrokePoint && !isPenActive && (
+      <div
+        style={{
+          position: 'absolute',
+          left: selectedStrokePoint.x,
+          top: selectedStrokePoint.y,
+          transform: 'translate(-50%, 18px)',
+          zIndex: 60,
+          display: 'flex',
+          gap: 8,
+          pointerEvents: 'auto',
+        }}
+        onTouchStart={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          onTouchEnd={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            copy();
+            setStrokePillId(null);
+          }}
+          style={strokeActionStyle}
+        >
+          Copy
+        </button>
+        <button
+          type="button"
+          onTouchEnd={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            removeStroke(selectedStroke.id);
+            setSelectedStrokeId(null);
+            setStrokePillId(null);
+          }}
+          style={{ ...strokeActionStyle, color: '#fca5a5' }}
+        >
+          Delete
+        </button>
+      </div>
+    )}
+    </>
   );
 }
+
+const strokeActionStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,255,255,0.18)',
+  borderRadius: 20,
+  background: 'rgba(20, 22, 30, 0.94)',
+  boxShadow: '0 4px 24px rgba(0,0,0,0.42)',
+  color: '#ffffff',
+  padding: '8px 18px',
+  fontSize: 15,
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+};

@@ -89,8 +89,9 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
       addDividerElement(300, 300);
     }
 
-    // Activate pen tool
-    if (toolId === 'pen') {
+    // Activate the pen only while it remains the selected tool. Clicking the
+    // active pen button again clears `newTool`, so this also disables drawing.
+    if (newTool === 'pen') {
       setIsPenActive(true);
       setSelectedId(null);
       setSelectedDividerId(null);

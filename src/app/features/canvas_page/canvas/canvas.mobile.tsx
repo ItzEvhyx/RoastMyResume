@@ -5,11 +5,14 @@ import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { useIcon } from '../context/IconContext';
+import { usePen } from '../context/PenContext';
 import { useClipboard, ClipboardEntry } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
+import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
 import type { TextElement } from '../context/TextContext';
 import type { DividerElement } from '../context/DividerContext';
 import type { IconElement } from '../context/IconContext';
+import type { PenStroke } from '../context/PenContext';
 import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 
 /**
@@ -59,6 +62,7 @@ export default function CanvasMobile() {
     deleteDivider,
   } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
+  const { strokes, selectedStrokeId, setSelectedStrokeId, addStroke } = usePen();
   const { clipboard, register, unregister, copy } = useClipboard();
 
   const [isPanning, setIsPanning] = useState(false);
@@ -184,18 +188,46 @@ export default function CanvasMobile() {
         return el ? { type: 'icon', data: { ...el } } : null;
       },
       paste: (entry: ClipboardEntry, dx: number, dy: number) => {
-        const src = entry.data as Record<string, unknown>;
+        const src = entry.data as IconElement;
         addFullIconElement({
-          x: ((src.x as number) ?? 100) + dx,
-          y: ((src.y as number) ?? 100) + dy,
-          size: (src.size as number) ?? 48,
-          svgUrl: (src.svgUrl as string) ?? '',
-          color: (src.color as string) ?? '#000000',
+          x: (src.x ?? 100) + dx,
+          y: (src.y ?? 100) + dy,
+          size: src.size ?? 48,
+          width: src.width,
+          height: src.height,
+          isShape: src.isShape,
+          shapeKind: src.shapeKind,
+          borderWidth: src.borderWidth,
+          borderColor: src.borderColor,
+          cornerRadius: src.cornerRadius,
+          svgUrl: src.svgUrl ?? '',
+          color: src.color ?? '#000000',
+          flip: src.flip,
         });
       },
     });
     return () => unregister('icon');
   }, [selectedIconId, iconElements, register, unregister, addFullIconElement]);
+
+  // Pen strokes use the same hold → Copy/Delete → tap canvas → Paste flow.
+  useEffect(() => {
+    register('pen-stroke', {
+      getCurrent: () => {
+        if (!selectedStrokeId) return null;
+        const stroke = strokes.find(item => item.id === selectedStrokeId);
+        return stroke ? { type: 'pen-stroke', data: { ...stroke } } : null;
+      },
+      paste: (entry: ClipboardEntry, dx: number, dy: number) => {
+        const src = entry.data as unknown as PenStroke;
+        addStroke({
+          ...src,
+          id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          points: src.points.map(point => ({ x: point.x + dx, y: point.y + dy })),
+        });
+      },
+    });
+    return () => unregister('pen-stroke');
+  }, [selectedStrokeId, strokes, register, unregister, addStroke]);
 
   // ---------------------------------------------------------------------------
   // Convert screen touch position → canvas-space coordinates
@@ -228,6 +260,7 @@ export default function CanvasMobile() {
       setSelectedId(null);
       setSelectedDividerId(null);
       setSelectedIconId(null);
+      setSelectedStrokeId(null);
       return;
     }
 
@@ -242,7 +275,9 @@ export default function CanvasMobile() {
     });
     setSelectedId(null);
     setSelectedDividerId(null);
-  }, [clipboard, screenToCanvas, setSelectedId, setSelectedDividerId]);
+    setSelectedIconId(null);
+    setSelectedStrokeId(null);
+  }, [clipboard, screenToCanvas, setSelectedId, setSelectedDividerId, setSelectedIconId, setSelectedStrokeId]);
 
   // Paste the element at the tapped location
   const executePaste = useCallback(() => {
@@ -258,14 +293,41 @@ export default function CanvasMobile() {
       setPasteTarget(null);
       return;
     }
+    if (clipboard.type === 'pen-stroke') {
+      const stroke = src as unknown as PenStroke;
+      const anchor = stroke.points[0];
+      if (anchor) {
+        addStroke({
+          ...stroke,
+          id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          points: stroke.points.map(point => ({
+            x: point.x + pasteTarget.canvasX - anchor.x,
+            y: point.y + pasteTarget.canvasY - anchor.y,
+          })),
+        });
+      }
+      setPasteTarget(null);
+      return;
+    }
     if (clipboard.type === 'icon') {
-      const size = (src.size as number) ?? 48;
+      const icon = src as unknown as IconElement;
+      const size = icon.size ?? 48;
+      const width = icon.width ?? size;
+      const height = icon.height ?? size;
       addFullIconElement({
-        x: pasteTarget.canvasX - size / 2,
-        y: pasteTarget.canvasY - size / 2,
+        x: pasteTarget.canvasX - width / 2,
+        y: pasteTarget.canvasY - height / 2,
         size,
-        svgUrl: (src.svgUrl as string) ?? '',
-        color: (src.color as string) ?? '#000000',
+        width: icon.width,
+        height: icon.height,
+        isShape: icon.isShape,
+        shapeKind: icon.shapeKind,
+        borderWidth: icon.borderWidth,
+        borderColor: icon.borderColor,
+        cornerRadius: icon.cornerRadius,
+        svgUrl: icon.svgUrl ?? '',
+        color: icon.color ?? '#000000',
+        flip: icon.flip,
       });
       setPasteTarget(null);
       return;
@@ -286,7 +348,7 @@ export default function CanvasMobile() {
       textCategory:   src.textCategory as 'header' | 'subheader' | 'body' | 'meta' | null | undefined,
     } as Omit<TextElement, 'id'>);
     setPasteTarget(null);
-  }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider, addFullIconElement]);
+  }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider, addFullIconElement, addStroke]);
 
   // ---------------------------------------------------------------------------
   // Global clipboard paste (system paste event fallback)
@@ -436,11 +498,14 @@ export default function CanvasMobile() {
               if (e.target === e.currentTarget) {
                 setSelectedId(null);
                 setSelectedDividerId(null);
+                setSelectedIconId(null);
+                setSelectedStrokeId(null);
               }
             }}
             onTouchEnd={handleCanvasTap}
           >
             {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
+            <PenCanvas />
             {textElements.map(element => (
               <DraggableText
                 key={element.id}
@@ -449,6 +514,7 @@ export default function CanvasMobile() {
                 onSelect={() => {
                   setSelectedDividerId(null);
                   setSelectedIconId(null);
+                  setSelectedStrokeId(null);
                   setSelectedId(element.id);
                   setPasteTarget(null);
                 }}
@@ -466,6 +532,7 @@ export default function CanvasMobile() {
                 onSelect={() => {
                   setSelectedId(null);
                   setSelectedIconId(null);
+                  setSelectedStrokeId(null);
                   setSelectedDividerId(element.id);
                   setPasteTarget(null);
                 }}
@@ -483,6 +550,7 @@ export default function CanvasMobile() {
                 onSelect={() => {
                   setSelectedId(null);
                   setSelectedDividerId(null);
+                  setSelectedStrokeId(null);
                   setSelectedIconId(element.id);
                   setPasteTarget(null);
                 }}

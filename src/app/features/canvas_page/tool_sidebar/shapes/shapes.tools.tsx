@@ -146,10 +146,12 @@ function ShapeTile({
   shape,
   isSelected,
   onSelect,
+  onDragStart,
 }: {
   shape: { id: ShapeKind; label: string; svgUrl: string };
   isSelected: boolean;
   onSelect: () => void;
+  onDragStart: (event: React.DragEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <button
@@ -157,6 +159,8 @@ function ShapeTile({
       aria-pressed={isSelected}
       title={shape.label}
       onClick={onSelect}
+      draggable
+      onDragStart={onDragStart}
       className="flex flex-col items-center justify-center gap-3 rounded-2xl transition-all duration-150 hover:bg-white/15 active:scale-95"
       style={{
         minHeight: 124,
@@ -179,6 +183,7 @@ function ShapeTile({
 export default function ShapesTools() {
   const { toolbarExpanded, activeTool } = useText();
   const { addFullIconElement } = useIcon();
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const [selectedShape, setSelectedShape] = useState<ShapeKind | null>(null);
   const shouldShow = toolbarExpanded && activeTool === 'shapes';
 
@@ -201,21 +206,36 @@ export default function ShapesTools() {
     });
   };
 
+  const startShapeDrag = (
+    event: React.DragEvent<HTMLButtonElement>,
+    shape: { id: ShapeKind },
+  ) => {
+    event.dataTransfer.setData('tool', 'shape');
+    event.dataTransfer.setData('shape-kind', shape.id);
+    event.dataTransfer.effectAllowed = 'copy';
+  };
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: FUTURA_STYLE }} />
 
       <aside
         aria-label="Shapes"
-        className={`fixed left-[110px] z-40 flex flex-col overflow-hidden rounded-3xl ${poppins.variable}`}
+        className={`fixed z-50 flex flex-col overflow-hidden rounded-3xl ${poppins.variable}`}
         style={{
-          top: 'calc(50% - (100vh - 200px) / 2 + 40px)',
-          width: 290,
-          height: 'calc(100vh - 200px)',
-          maxHeight: 600,
+          left: isMobile ? 16 : 110,
+          right: isMobile ? 16 : undefined,
+          top: isMobile ? undefined : 'calc(50% - (100vh - 200px) / 2 + 40px)',
+          bottom: isMobile ? 92 : undefined,
+          width: isMobile ? 'auto' : 290,
+          height: isMobile ? 'min(360px, calc(100dvh - 180px))' : 'calc(100vh - 200px)',
+          maxHeight: isMobile ? 'calc(100dvh - 180px)' : 600,
           ...glassStyle,
           opacity: shouldShow ? 1 : 0,
-          transform: shouldShow ? 'scale(1) translateX(0)' : 'scale(0.85) translateX(-12px)',
+          transform: shouldShow
+            ? 'scale(1) translate(0, 0)'
+            : (isMobile ? 'scale(0.92) translateY(16px)' : 'scale(0.85) translateX(-12px)'),
+          transformOrigin: isMobile ? 'bottom center' : 'left center',
           transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
           pointerEvents: shouldShow ? 'auto' : 'none',
         }}
@@ -255,6 +275,7 @@ export default function ShapesTools() {
                 shape={shape}
                 isSelected={selectedShape === shape.id}
                 onSelect={() => selectShape(shape)}
+                onDragStart={(event) => startShapeDrag(event, shape)}
               />
             ))}
           </div>

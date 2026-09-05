@@ -105,6 +105,8 @@ interface PenContextType {
   setIsEraserActive: (active: boolean) => void;
   eraseStrokesAt: (point: Point, eraserSize: number, zoom: number) => void;
   strokes: PenStroke[];
+  selectedStrokeId: string | null;
+  setSelectedStrokeId: (id: string | null) => void;
   addStroke: (stroke: PenStroke) => void;
   removeStroke: (id: string) => void;
   clearStrokes: () => void;
@@ -119,6 +121,7 @@ export function PenProvider({ children }: { children: ReactNode }) {
   const [eraserSize, setEraserSize] = useState(20);
   const [isEraserActive, setIsEraserActive] = useState(false);
   const [strokes, setStrokes] = useState<PenStroke[]>([]);
+  const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
   const { record } = useUndo();
 
   const addStroke = (stroke: PenStroke) => {
@@ -190,6 +193,8 @@ export function PenProvider({ children }: { children: ReactNode }) {
         setIsEraserActive,
         eraseStrokesAt,
         strokes,
+        selectedStrokeId,
+        setSelectedStrokeId,
         addStroke,
         removeStroke,
         clearStrokes,

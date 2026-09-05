@@ -195,6 +195,37 @@ export default function CanvasWeb() {
       addDividerElement(result.updates.x!, result.updates.y!, result.updates.width);
       if (result.wasClamped) showEdgeWarning({ x: result.updates.x!, y: result.updates.y!, height: 2 });
     }
+
+    const shapeKind = e.dataTransfer.getData('shape-kind');
+    if (tool === 'shape' && (shapeKind === 'square' || shapeKind === 'circle')) {
+      const size = 110;
+      // Drop the centre of the new shape where the pointer is released, then
+      // constrain its actual bounds to the canvas safe area.
+      const draft: IconElement = {
+        id: '',
+        x: x - size / 2,
+        y: y - size / 2,
+        size,
+        width: size,
+        height: size,
+        isShape: true,
+        shapeKind,
+        cornerRadius: shapeKind === 'circle' ? undefined : 0,
+        svgUrl: shapeKind === 'circle'
+          ? '/assets/tools_icons/circle_shape.svg'
+          : '/assets/tools_icons/square_shape.svg',
+        color: '#000000',
+      };
+      const result = clampIconToSafeArea(draft, {});
+      addFullIconElement({ ...draft, ...result.updates });
+      if (result.wasClamped) {
+        showEdgeWarning({
+          x: result.updates.x ?? draft.x,
+          y: result.updates.y ?? draft.y,
+          height: size,
+        });
+      }
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {

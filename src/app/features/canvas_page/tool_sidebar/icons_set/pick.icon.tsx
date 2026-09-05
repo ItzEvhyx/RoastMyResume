@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Poppins } from 'next/font/google';
 import { useText } from '../../context/TextContext';
 import { useIcon } from '../../context/IconContext';
+import { useMediaQuery } from '@/lib/use_media_query';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fonts
@@ -376,6 +377,7 @@ function SlidePanel({
 export default function IconPicker() {
   const { toolbarExpanded, activeTool } = useText();
   const { addIconElement } = useIcon();
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<IconItem[]>([]);
@@ -448,15 +450,21 @@ export default function IconPicker() {
       <style dangerouslySetInnerHTML={{ __html: FUTURA_STYLE }} />
 
       <div
-        className={`fixed left-[110px] z-40 flex flex-col rounded-3xl ${poppins.variable}`}
+        className={`fixed z-50 flex flex-col rounded-3xl ${poppins.variable}`}
         style={{
-          top: 'calc(50% - (100vh - 200px) / 2 + 40px)',
-          width: '290px',
-          height: 'calc(100vh - 200px)',
-          maxHeight: '600px',
+          left: isMobile ? 16 : 110,
+          right: isMobile ? 16 : undefined,
+          top: isMobile ? undefined : 'calc(50% - (100vh - 200px) / 2 + 40px)',
+          bottom: isMobile ? 92 : undefined,
+          width: isMobile ? 'auto' : '290px',
+          height: isMobile ? 'min(520px, calc(100dvh - 180px))' : 'calc(100vh - 200px)',
+          maxHeight: isMobile ? 'calc(100dvh - 180px)' : '600px',
           ...glassStyle,
           opacity: shouldShow ? 1 : 0,
-          transform: shouldShow ? 'scale(1) translateX(0)' : 'scale(0.85) translateX(-12px)',
+          transform: shouldShow
+            ? 'scale(1) translate(0, 0)'
+            : (isMobile ? 'scale(0.92) translateY(16px)' : 'scale(0.85) translateX(-12px)'),
+          transformOrigin: isMobile ? 'bottom center' : 'left center',
           transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
           pointerEvents: shouldShow ? 'auto' : 'none',
           overflow: 'hidden', // clip slide panels
