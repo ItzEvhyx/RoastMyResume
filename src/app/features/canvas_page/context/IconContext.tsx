@@ -20,6 +20,10 @@ export interface IconElement {
   borderColor?: string;
   /** Corner radius for shapes, expressed from 0% (square) to 100% (fully rounded). */
   cornerRadius?: number;
+  /** A shape can become an image frame while retaining its geometry. */
+  isFrame?: boolean;
+  /** Data URL for the image dropped into an image frame. */
+  frameImage?: string;
   /** Direct Iconify SVG URL (or Cloudinary CDN URL) */
   svgUrl: string;
   /** Tint color applied via CSS filter; defaults to '#000000' */

@@ -9,6 +9,7 @@ import { ColorPicker } from '../../globals/color.picker';
 import { useMediaQuery } from '@/lib/use_media_query';
 import { ShapeBorderPicker } from './shapes.border';
 import { ShapeCornerRoundingPicker } from './shapes.corner.rounding';
+import { ShapeFrameToggle } from './shapes.frame';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -47,6 +48,8 @@ interface ShapeToolbarProps {
   onBorderColorChange: (color: string) => void;
   cornerRadius: number;
   onCornerRadiusChange: (cornerRadius: number) => void;
+  isFrame: boolean;
+  onFrameToggle: () => void;
 }
 
 const FLOATING_TOOLBAR_HEIGHT = 60;
@@ -65,6 +68,8 @@ export function ShapeToolbar({
   onBorderColorChange,
   cornerRadius,
   onCornerRadiusChange,
+  isFrame,
+  onFrameToggle,
 }: ShapeToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const centerX = elementX + elementWidth / 2;
@@ -120,6 +125,7 @@ export function ShapeToolbar({
           radius={cornerRadius}
           onChange={onCornerRadiusChange}
         />
+        <ShapeFrameToggle isFrame={isFrame} onToggle={onFrameToggle} />
       </div>
     </div>
   );
@@ -128,6 +134,7 @@ export function ShapeToolbar({
 function ShapeToolbarDivider() {
   return <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.2)', marginInline: 4, flexShrink: 0 }} />;
 }
+
 
 const SHAPES: { id: ShapeKind; label: string; svgUrl: string }[] = [
   { id: 'square', label: 'Square', svgUrl: '/assets/tools_icons/square_shape.svg' },

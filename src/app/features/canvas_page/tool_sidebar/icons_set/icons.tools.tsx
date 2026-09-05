@@ -13,6 +13,8 @@ interface IconToolbarProps {
   onColorChange: (color: string) => void;
   flip: FlipState;
   onFlip: () => void;
+  /** When true the color picker is hidden — raster images can't be tinted. */
+  isRaster?: boolean;
 }
 
 const TOOLBAR_HEIGHT = 60;
@@ -27,6 +29,7 @@ export function IconToolbar({
   onColorChange,
   flip,
   onFlip,
+  isRaster = false,
 }: IconToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const centerX = elementX + (elementWidth ?? elementSize) / 2;
@@ -75,10 +78,13 @@ export function IconToolbar({
           transformOrigin: 'center bottom',
         }}
       >
-        {/* Color picker */}
-        <ColorPicker color={color} onSelect={onColorChange} />
-
-        <ToolbarDivider />
+        {/* Color picker — hidden for raster images */}
+        {!isRaster && (
+          <>
+            <ColorPicker color={color} onSelect={onColorChange} />
+            <ToolbarDivider />
+          </>
+        )}
 
         {/* Flip */}
         <FlipButton flip={flip} onFlip={onFlip} />

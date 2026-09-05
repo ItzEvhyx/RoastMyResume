@@ -17,6 +17,7 @@ import AssistPanelMobile from '@/app/features/canvas_page/assist_panel/assist.pa
 import FontSelector from '@/app/features/canvas_page/tool_sidebar/texts/select.font';
 import IconPicker from '@/app/features/canvas_page/tool_sidebar/icons_set/pick.icon';
 import ShapesTools from '@/app/features/canvas_page/tool_sidebar/shapes/shapes.tools';
+import ImageTools from '@/app/features/canvas_page/tool_sidebar/image/image.tools';
 import { PenTools } from '@/app/features/canvas_page/tool_sidebar/pen/pen.tools';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
@@ -83,6 +84,8 @@ export default function CanvasPage() {
               <IconPicker />
 
               <ShapesTools />
+
+              <ImageTools />
 
               <PenToolsWrapper />
 

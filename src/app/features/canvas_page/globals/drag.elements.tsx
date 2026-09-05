@@ -1000,6 +1000,7 @@ import { IconToolbar } from '../tool_sidebar/icons_set/icons.tools';
 import { ShapeToolbar } from '../tool_sidebar/shapes/shapes.tools';
 import { getNextFlip, flipToTransform, type FlipState } from './flip.element';
 import { IconColorOverlay } from '../tool_sidebar/icons_set/color.overlay';
+import { isImagePanelDrag, extractImageDataUrl } from '../tool_sidebar/image/image.attach.frame';
 
 export type { IconElement } from '../context/IconContext';
 
@@ -1021,6 +1022,55 @@ interface DraggableIconProps {
 }
 
 function ShapeFill({ element }: { element: IconElement }) {
+  const borderRadius = element.cornerRadius === undefined
+    ? (element.shapeKind === 'circle' ? '50%' : '0%')
+    : `${element.cornerRadius / 2}%`;
+
+  if (element.isFrame) {
+    return (
+      <div
+        aria-hidden
+        style={{
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          background: '#f5f5f6',
+          border: element.frameImage
+            ? `${element.borderWidth ?? 0}px solid ${element.borderColor ?? '#ffffff'}`
+            : '2px dashed #626370',
+          boxSizing: 'border-box',
+          borderRadius,
+          pointerEvents: 'none',
+        }}
+      >
+        {element.frameImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={element.frameImage} alt="" draggable={false} style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#9899a5', fontFamily: 'var(--font-poppins, Arial), sans-serif', fontSize: 16, overflow: 'hidden', textAlign: 'center' }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                flexShrink: 0,
+                backgroundColor: 'currentColor',
+                WebkitMaskImage: "url('/assets/tools_icons/frame_icon.png')",
+                maskImage: "url('/assets/tools_icons/frame_icon.png')",
+                WebkitMaskSize: 'contain',
+                maskSize: 'contain',
+                WebkitMaskPosition: 'center',
+                maskPosition: 'center',
+                WebkitMaskRepeat: 'no-repeat',
+                maskRepeat: 'no-repeat',
+              }}
+            />
+            <span style={{ fontWeight: 400, flexShrink: 0 }}>Drop photo here</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       aria-hidden
@@ -1030,11 +1080,9 @@ function ShapeFill({ element }: { element: IconElement }) {
         backgroundColor: element.color ?? '#000000',
         border: `${element.borderWidth ?? 0}px solid ${element.borderColor ?? '#ffffff'}`,
         boxSizing: 'border-box',
-        borderRadius: element.cornerRadius === undefined
-          ? (element.shapeKind === 'circle' ? '50%' : '0%')
-          // CSS reaches a fully round capsule at 50%; map the user-facing
-          // 0–100% control into that 0–50% rendering range.
-          : `${element.cornerRadius / 2}%`,
+        // CSS reaches a fully round capsule at 50%; map the user-facing
+        // 0–100% control into that 0–50% rendering range.
+        borderRadius,
         transform: flipToTransform((element.flip ?? 0) as FlipState),
         transformOrigin: 'center',
         pointerEvents: 'none',
@@ -1109,10 +1157,11 @@ export function DraggableIcon({
     },
   });
 
-  // ── Resize — shapes resize freely; standard icons keep their uniform scale ──
+  // ── Resize — shapes and raster images resize freely; standard icons keep uniform scale ──
   const applyIconResize = useCallback(
     (handle: IconResizeHandle, snap: ResizeSnapshot, dx: number, dy: number) => {
-      if (element.isShape) {
+      const isRaster = element.svgUrl.startsWith('data:image/');
+      if (element.isShape || isRaster) {
         const startWidth = snap.width;
         const startHeight = snap.height ?? snap.width;
         let x = snap.x;
@@ -1152,7 +1201,7 @@ export function DraggableIcon({
         queueUpdate({ size: newSize });
       }
     },
-    [element.isShape, queueUpdate],
+    [element.isShape, element.svgUrl, queueUpdate],
   );
 
   const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
@@ -1204,6 +1253,40 @@ export function DraggableIcon({
     startLongPress(t.clientX, t.clientY, () => {});
   };
 
+  const handleFrameDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!element.isShape || !element.isFrame) return;
+    const acceptsFiles = event.dataTransfer.types.includes('Files');
+    const acceptsPanel = isImagePanelDrag(event);
+    if (!acceptsFiles && !acceptsPanel) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleFrameDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!element.isShape || !element.isFrame) return;
+
+    // ── Drop from Photos panel ────────────────────────────────────────────
+    const panelDataUrl = extractImageDataUrl(event);
+    if (panelDataUrl) {
+      event.preventDefault();
+      event.stopPropagation();
+      onUpdate({ frameImage: panelDataUrl });
+      return;
+    }
+
+    // ── Drop from OS filesystem ───────────────────────────────────────────
+    const image = Array.from(event.dataTransfer.files).find(file => file.type.startsWith('image/'));
+    if (!image) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') onUpdate({ frameImage: reader.result });
+    };
+    reader.readAsDataURL(image);
+  };
+
   // Snapshot records the independent shape bounds at resize start.
   const snapBase: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'> = {
     x: element.x,
@@ -1233,10 +1316,33 @@ export function DraggableIcon({
       onMouseDown={handleMouseDown}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       onTouchStart={handleTouchStart}
+      onDragOver={handleFrameDragOver}
+      onDrop={handleFrameDrop}
     >
-      {/* Shapes fill their full independent bounding box; icons retain SVG masking. */}
+      {/* Shapes fill their full independent bounding box; icons retain SVG masking.
+          Raster images (PNG/JPEG data URLs) bypass the CSS mask overlay and render
+          directly as an <img> — the mask approach turns them into a solid black square. */}
       {element.isShape ? (
         <ShapeFill element={element} />
+      ) : (element.svgUrl.startsWith('data:image/png') || element.svgUrl.startsWith('data:image/jpeg') || element.svgUrl.startsWith('data:image/jpg')) ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={element.svgUrl}
+          alt=""
+          aria-hidden
+          draggable={false}
+          style={{
+            display: 'block',
+            width: elementWidth,
+            height: elementHeight,
+            objectFit: 'cover',
+            transform: flipToTransform((element.flip ?? 0) as FlipState),
+            transformOrigin: 'center',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            borderRadius: 0,
+          }}
+        />
       ) : (
         <IconColorOverlay
           svgUrl={element.svgUrl}
@@ -1276,6 +1382,8 @@ export function DraggableIcon({
               onBorderColorChange={(borderColor) => onUpdate({ borderColor })}
               cornerRadius={element.cornerRadius ?? (element.shapeKind === 'circle' ? 100 : 0)}
               onCornerRadiusChange={(cornerRadius) => onUpdate({ cornerRadius })}
+              isFrame={element.isFrame ?? false}
+              onFrameToggle={() => onUpdate({ isFrame: !element.isFrame, frameImage: undefined })}
             />
           ) : (
             <IconToolbar
@@ -1287,6 +1395,7 @@ export function DraggableIcon({
               onColorChange={(color) => onUpdate({ color })}
               flip={(element.flip ?? 0) as FlipState}
               onFlip={() => onUpdate({ flip: getNextFlip((element.flip ?? 0) as FlipState) })}
+              isRaster={element.svgUrl.startsWith('data:image/')}
             />
           )}
 

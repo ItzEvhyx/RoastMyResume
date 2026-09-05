@@ -166,13 +166,23 @@ export default function CanvasWeb() {
         return el ? { type: 'icon', data: { ...el } } : null;
       },
       paste: (entry, dx, dy) => {
-        const src = entry.data as Record<string, unknown>;
+        const src = entry.data as IconElement;
         addFullIconElement({
-          x: ((src.x as number) ?? 100) + dx,
-          y: ((src.y as number) ?? 100) + dy,
-          size: (src.size as number) ?? 48,
-          svgUrl: (src.svgUrl as string) ?? '',
-          color: (src.color as string) ?? '#000000',
+          x: (src.x ?? 100) + dx,
+          y: (src.y ?? 100) + dy,
+          size: src.size ?? 48,
+          width: src.width,
+          height: src.height,
+          isShape: src.isShape,
+          shapeKind: src.shapeKind,
+          borderWidth: src.borderWidth,
+          borderColor: src.borderColor,
+          cornerRadius: src.cornerRadius,
+          isFrame: src.isFrame,
+          frameImage: src.frameImage,
+          svgUrl: src.svgUrl ?? '',
+          color: src.color ?? '#000000',
+          flip: src.flip,
         });
       },
     });
