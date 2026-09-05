@@ -5,6 +5,9 @@ import Image from 'next/image';
 import { Poppins } from 'next/font/google';
 import { useText } from '../../context/TextContext';
 import { useIcon } from '../../context/IconContext';
+import { ColorPicker } from '../../globals/color.picker';
+import { useMediaQuery } from '@/lib/use_media_query';
+import { ShapeBorderPicker } from './shapes.border';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -30,6 +33,107 @@ const glassStyle: React.CSSProperties = {
 };
 
 type ShapeKind = 'square' | 'circle';
+
+interface ShapeToolbarProps {
+  elementX: number;
+  elementY: number;
+  elementWidth: number;
+  color: string;
+  onColorChange: (color: string) => void;
+  borderWidth: number;
+  onBorderWidthChange: (borderWidth: number) => void;
+  borderColor: string;
+  onBorderColorChange: (color: string) => void;
+}
+
+const FLOATING_TOOLBAR_HEIGHT = 60;
+const FLOATING_TOOLBAR_GAP = 16;
+
+/** Controls displayed above a selected shape. Corner rounding remains visual-only for now. */
+export function ShapeToolbar({
+  elementX,
+  elementY,
+  elementWidth,
+  color,
+  onColorChange,
+  borderWidth,
+  onBorderWidthChange,
+  borderColor,
+  onBorderColorChange,
+}: ShapeToolbarProps) {
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const centerX = elementX + elementWidth / 2;
+  const topY = elementY - FLOATING_TOOLBAR_HEIGHT - FLOATING_TOOLBAR_GAP;
+  const stopAll = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+    if ('preventDefault' in event) event.preventDefault();
+  };
+
+  return (
+    <div
+      className="absolute pointer-events-auto select-none"
+      style={{
+        left: centerX,
+        top: topY,
+        transform: 'translateX(-50%)',
+        zIndex: 50,
+        whiteSpace: 'nowrap',
+        userSelect: 'none',
+      }}
+      onMouseDown={stopAll}
+      onPointerDown={stopAll}
+      onClick={stopAll}
+      onDoubleClick={stopAll}
+      onTouchStart={stopAll}
+    >
+      <div
+        className="flex items-center gap-3 px-6"
+        style={{
+          height: FLOATING_TOOLBAR_HEIGHT,
+          background: 'rgba(30, 32, 38, 0.92)',
+          backdropFilter: 'blur(20px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(140%)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
+          borderRadius: 999,
+          transform: isMobile ? 'scale(1.35)' : undefined,
+          transformOrigin: 'center bottom',
+        }}
+      >
+        <ColorPicker color={color} onSelect={onColorChange} />
+        <ShapeToolbarDivider />
+        <ShapeBorderPicker borderWidth={borderWidth} onSelect={onBorderWidthChange} />
+        {borderWidth > 0 && (
+          <ColorPicker
+            color={borderColor}
+            onSelect={onBorderColorChange}
+            triggerIconSrc="/assets/tools_icons/shape_borders.png"
+            triggerLabel="Border color"
+          />
+        )}
+        <ShapeToolbarButton icon="/assets/tools_icons/shape_corner.png" label="Corner rounding" />
+      </div>
+    </div>
+  );
+}
+
+function ShapeToolbarDivider() {
+  return <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.2)', marginInline: 4, flexShrink: 0 }} />;
+}
+
+function ShapeToolbarButton({ icon, label }: { icon: string; label: string }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      aria-disabled="true"
+      className="flex h-10 w-12 cursor-default items-center justify-center rounded-lg"
+    >
+      <Image src={icon} alt="" width={24} height={24} className="pointer-events-none select-none opacity-80" draggable={false} />
+    </button>
+  );
+}
 
 const SHAPES: { id: ShapeKind; label: string; svgUrl: string }[] = [
   { id: 'square', label: 'Square', svgUrl: '/assets/tools_icons/square_shape.svg' },
@@ -94,6 +198,7 @@ export default function ShapesTools() {
       width: size,
       height: size,
       isShape: true,
+      shapeKind: shape.id,
       svgUrl: shape.svgUrl,
       color: '#000000',
     });

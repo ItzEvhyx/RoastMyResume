@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Poppins } from 'next/font/google';
 
 const poppins = Poppins({
@@ -10,7 +11,9 @@ const poppins = Poppins({
 });
 
 const glassPanel: React.CSSProperties = {
-  background: 'rgba(30, 32, 38, 0.55)',
+  // This picker can sit above the white canvas, so keep the sidebar glass
+  // colour but make its surface opaque enough to avoid the canvas showing through.
+  background: 'rgba(30, 32, 38, 0.92)',
   backdropFilter: 'blur(20px) saturate(140%)',
   WebkitBackdropFilter: 'blur(20px) saturate(140%)',
   border: '1px solid rgba(255,255,255,0.10)',
@@ -55,6 +58,9 @@ interface ColorPickerProps {
   /** Open the picker from hover instead of click, used by the pen toolbar. */
   openOnHover?: boolean;
   popupPlacement?: 'bottom' | 'right';
+  /** Replaces the standard colour-circle trigger while retaining this picker. */
+  triggerIconSrc?: string;
+  triggerLabel?: string;
 }
 
 export function ColorPicker({
@@ -62,6 +68,8 @@ export function ColorPicker({
   onSelect,
   openOnHover = false,
   popupPlacement = 'bottom',
+  triggerIconSrc,
+  triggerLabel,
 }: ColorPickerProps) {
   const [open, setOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -133,10 +141,14 @@ export function ColorPicker({
       onMouseLeave={openOnHover ? closePicker : undefined}
     >
       <button
-        className="rounded-full transition-opacity hover:opacity-80 active:opacity-60"
-        style={{ width: 30, height: 30, background: color, border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0, cursor: 'pointer' }}
-        title="Color"
-        aria-label="Color"
+        className={triggerIconSrc
+          ? 'flex h-10 w-12 items-center justify-center rounded-lg transition-colors hover:bg-white/10 active:bg-white/20'
+          : 'rounded-full transition-opacity hover:opacity-80 active:opacity-60'}
+        style={triggerIconSrc
+          ? { flexShrink: 0, cursor: 'pointer', background: open ? 'rgba(255,255,255,0.10)' : 'transparent' }
+          : { width: 30, height: 30, background: color, border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0, cursor: 'pointer' }}
+        title={triggerLabel ?? 'Color'}
+        aria-label={triggerLabel ?? 'Color'}
         onMouseDown={(event) => { event.stopPropagation(); event.preventDefault(); }}
         onPointerDown={(event) => event.stopPropagation()}
         onDoubleClick={(event) => { event.stopPropagation(); event.preventDefault(); }}
@@ -145,7 +157,18 @@ export function ColorPicker({
           if (openOnHover) openPicker();
           else setOpen(value => !value);
         }}
-      />
+      >
+        {triggerIconSrc && (
+          <Image
+            src={triggerIconSrc}
+            alt=""
+            width={24}
+            height={24}
+            className="pointer-events-none select-none opacity-80"
+            draggable={false}
+          />
+        )}
+      </button>
       {open && (
         <div 
           data-color-picker-popup

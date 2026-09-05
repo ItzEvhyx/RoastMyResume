@@ -80,11 +80,11 @@ export function DividerToolbar({
                 style={{
                     height: TOOLBAR_HEIGHT,
                     minWidth: 120,
-                    background: 'rgba(30, 32, 38, 0.85)',
+                    background: 'rgba(30, 32, 38, 0.92)',
                     backdropFilter: 'blur(20px) saturate(140%)',
                     WebkitBackdropFilter: 'blur(20px) saturate(140%)',
                     border: '1px solid rgba(255,255,255,0.10)',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 28px rgba(0,0,0,0.5)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
                     borderRadius: 999,
                     transform: isMobile ? 'scale(1.35)' : undefined,
                     transformOrigin: 'center bottom',

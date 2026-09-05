@@ -10,7 +10,7 @@ import { usePen } from '../context/PenContext';
 import GooeyTooltip from '../components/GooeyTooltip';
 
 const glassStyle: React.CSSProperties = {
-  background: 'rgba(30, 32, 38, 0.55)',
+  background: 'rgba(30, 32, 38, 0.92)',
   backdropFilter: 'blur(20px) saturate(140%)',
   WebkitBackdropFilter: 'blur(20px) saturate(140%)',
   border: '1px solid rgba(255,255,255,0.10)',
@@ -185,7 +185,7 @@ function ZoomControls() {
     <div
       className="pointer-events-auto flex flex-col items-center gap-0.5 rounded-full px-2.5 py-2"
       style={{
-        background: 'rgba(30, 32, 38, 0.55)',
+        background: 'rgba(30, 32, 38, 0.92)',
         backdropFilter: 'blur(20px) saturate(140%)',
         WebkitBackdropFilter: 'blur(20px) saturate(140%)',
         border: '1px solid rgba(255,255,255,0.10)',

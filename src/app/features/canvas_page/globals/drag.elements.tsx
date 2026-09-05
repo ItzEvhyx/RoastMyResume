@@ -980,6 +980,7 @@ export function DraggableDivider({
 
 import type { IconElement } from '../context/IconContext';
 import { IconToolbar } from '../tool_sidebar/icons_set/icons.tools';
+import { ShapeToolbar } from '../tool_sidebar/shapes/shapes.tools';
 import { getNextFlip, flipToTransform, type FlipState } from './flip.element';
 import { IconColorOverlay } from '../tool_sidebar/icons_set/color.overlay';
 
@@ -1000,6 +1001,26 @@ interface DraggableIconProps {
   onDelete: () => void;
   onDragEnd?: () => void;
   onLongPress?: () => void;
+}
+
+function ShapeFill({ element }: { element: IconElement }) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: '100%',
+        height: '100%',
+        backgroundColor: element.color ?? '#000000',
+        border: `${element.borderWidth ?? 0}px solid ${element.borderColor ?? '#ffffff'}`,
+        boxSizing: 'border-box',
+        borderRadius: element.shapeKind === 'circle' ? '50%' : 4,
+        transform: flipToTransform((element.flip ?? 0) as FlipState),
+        transformOrigin: 'center',
+        pointerEvents: 'none',
+        transition: 'background-color 0.12s ease',
+      }}
+    />
+  );
 }
 
 export function DraggableIcon({
@@ -1179,36 +1200,54 @@ export function DraggableIcon({
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       onTouchStart={handleTouchStart}
     >
-      {/* Icon — rendered via CSS mask overlay for accurate color */}
-      <IconColorOverlay
-        svgUrl={element.svgUrl}
-        color={element.color ?? '#000000'}
-        size={element.size}
-        width={elementWidth}
-        height={elementHeight}
-        flipTransform={flipToTransform((element.flip ?? 0) as FlipState)}
-      />
+      {/* Shapes fill their full independent bounding box; icons retain SVG masking. */}
+      {element.isShape ? (
+        <ShapeFill element={element} />
+      ) : (
+        <IconColorOverlay
+          svgUrl={element.svgUrl}
+          color={element.color ?? '#000000'}
+          size={element.size}
+          width={elementWidth}
+          height={elementHeight}
+          flipTransform={flipToTransform((element.flip ?? 0) as FlipState)}
+        />
+      )}
 
       {/* Selection UI */}
       {isSelected && !isDragging && (
         <>
           {/* Toolbar above element */}
-          <IconToolbar
-            elementX={0}
-            elementY={0}
-            elementSize={element.size}
-            elementWidth={elementWidth}
-            color={element.color ?? '#000000'}
-            onColorChange={(color) => onUpdate({ color })}
-            flip={(element.flip ?? 0) as FlipState}
-            onFlip={() => onUpdate({ flip: getNextFlip((element.flip ?? 0) as FlipState) })}
-          />
+          {element.isShape ? (
+            <ShapeToolbar
+              elementX={0}
+              elementY={0}
+              elementWidth={elementWidth}
+              color={element.color ?? '#000000'}
+              onColorChange={(color) => onUpdate({ color })}
+              borderWidth={element.borderWidth ?? 0}
+              onBorderWidthChange={(borderWidth) => onUpdate({ borderWidth })}
+              borderColor={element.borderColor ?? '#ffffff'}
+              onBorderColorChange={(borderColor) => onUpdate({ borderColor })}
+            />
+          ) : (
+            <IconToolbar
+              elementX={0}
+              elementY={0}
+              elementSize={element.size}
+              elementWidth={elementWidth}
+              color={element.color ?? '#000000'}
+              onColorChange={(color) => onUpdate({ color })}
+              flip={(element.flip ?? 0) as FlipState}
+              onFlip={() => onUpdate({ flip: getNextFlip((element.flip ?? 0) as FlipState) })}
+            />
+          )}
 
           {/* Selection border */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
-              border: element.isShape ? '2px solid #8b5cf6' : '2px solid #000000',
+              border: '2px solid #000000',
               marginTop: -2,
               marginLeft: -2,
               width: 'calc(100% + 4px)',
@@ -1216,16 +1255,38 @@ export function DraggableIcon({
             }}
           />
 
+          {element.isShape && (
+            <output
+              className="pointer-events-none absolute whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs text-white"
+              aria-label={`Shape dimensions: width ${Math.round(elementWidth)} pixels, height ${Math.round(elementHeight)} pixels`}
+              style={{
+                left: 'calc(100% + 14px)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'rgba(30, 32, 38, 0.88)',
+                backdropFilter: 'blur(12px) saturate(140%)',
+                WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+                border: '1px solid rgba(139,92,246,0.55)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.28)',
+                fontFamily: "'Poppins', sans-serif",
+                fontWeight: 600,
+                zIndex: 60,
+              }}
+            >
+              W: {Math.round(elementWidth)}px&nbsp; | &nbsp;H: {Math.round(elementHeight)}px
+            </output>
+          )}
+
           {element.isShape ? (
             <>
-              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ left: -8, top: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
-              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ right: -8, top: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
-              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ right: -8, bottom: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
-              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ left: -8, bottom: -8, borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
-              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', top: -6, width: 20, height: 12, transform: 'translateX(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'n', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'n', snapBase)} />
-              <ResizeHandleNode cursor="ew-resize" style={{ right: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
-              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', bottom: -6, width: 20, height: 12, transform: 'translateX(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 's', snapBase)} onTouchStart={(e) => startResizeTouch(e, 's', snapBase)} />
-              <ResizeHandleNode cursor="ew-resize" style={{ left: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)', borderColor: '#8b5cf6' }} onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
+              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ left: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ right: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ right: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ left: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', top: -6, width: 20, height: 12, transform: 'translateX(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'n', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'n', snapBase)} />
+              <ResizeHandleNode cursor="ew-resize" style={{ right: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
+              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', bottom: -6, width: 20, height: 12, transform: 'translateX(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 's', snapBase)} onTouchStart={(e) => startResizeTouch(e, 's', snapBase)} />
+              <ResizeHandleNode cursor="ew-resize" style={{ left: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
             </>
           ) : (
             <>

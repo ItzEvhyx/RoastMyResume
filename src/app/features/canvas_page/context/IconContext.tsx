@@ -13,6 +13,11 @@ export interface IconElement {
   width?: number;
   height?: number;
   isShape?: boolean;
+  shapeKind?: 'square' | 'circle';
+  /** Visible outline width for shapes, in canvas pixels. */
+  borderWidth?: number;
+  /** Outline colour for shapes; defaults to white when a border is enabled. */
+  borderColor?: string;
   /** Direct Iconify SVG URL (or Cloudinary CDN URL) */
   svgUrl: string;
   /** Tint color applied via CSS filter; defaults to '#000000' */
