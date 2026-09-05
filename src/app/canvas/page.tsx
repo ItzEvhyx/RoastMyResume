@@ -59,7 +59,7 @@ export default function CanvasPage() {
             <IconProvider>
               <PenProvider>
                 <ClipboardProvider>
-            <main className="relative min-h-screen w-full overflow-hidden bg-[#0e1015]">
+            <main className="relative h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0e1015]">
 
               {/* Toolbar — pops in at stage 2 */}
               {isMobile === undefined ? null : isMobile

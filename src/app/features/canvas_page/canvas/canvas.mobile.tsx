@@ -130,9 +130,35 @@ export default function CanvasMobile() {
 
   // Start with the full canvas width visible instead of the desktop zoom level.
   useEffect(() => {
-    const fitToWidth = (window.innerWidth - CANVAS_HORIZONTAL_PADDING) / PAGE_WIDTH;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const fitToWidth = (viewportWidth - CANVAS_HORIZONTAL_PADDING) / PAGE_WIDTH;
     setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fitToWidth)));
   }, [setZoom]);
+
+  // The canvas is an app workspace, not a document. Lock page scrolling only
+  // while the mobile workspace is mounted so pinch/pan affects the canvas and
+  // never creates browser-level horizontal or vertical scrollbars.
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const previous = {
+      rootOverflow: root.style.overflow,
+      rootOverscroll: root.style.overscrollBehavior,
+      bodyOverflow: body.style.overflow,
+      bodyOverscroll: body.style.overscrollBehavior,
+    };
+    root.style.overflow = 'hidden';
+    root.style.overscrollBehavior = 'none';
+    body.style.overflow = 'hidden';
+    body.style.overscrollBehavior = 'none';
+
+    return () => {
+      root.style.overflow = previous.rootOverflow;
+      root.style.overscrollBehavior = previous.rootOverscroll;
+      body.style.overflow = previous.bodyOverflow;
+      body.style.overscrollBehavior = previous.bodyOverscroll;
+    };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Register text clipboard source (mirrors canvas.web.tsx)
@@ -486,7 +512,13 @@ export default function CanvasMobile() {
     <div
       ref={viewportRef}
       className="fixed inset-0 overflow-hidden"
-      style={{ touchAction: 'none', zIndex: 0 }}
+      style={{
+        width: '100vw',
+        height: '100dvh',
+        touchAction: 'none',
+        overscrollBehavior: 'none',
+        zIndex: 0,
+      }}
     >
       {/* Keep pan and zoom on one compositor layer. Nested transforms inside a
           fixed mobile viewport can leave stale tiles behind on Android. */}

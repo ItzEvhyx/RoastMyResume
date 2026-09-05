@@ -72,7 +72,7 @@ export default function StitchCanvasBackground({
   return (
     <div
       ref={containerRef}
-      className={`relative min-h-screen w-full select-none overflow-hidden bg-[#0e1015] ${className}`}
+      className={`relative h-[100dvh] min-h-0 w-full select-none overflow-hidden bg-[#0e1015] ${className}`}
       style={
         {
           '--cursor-x': '50vw',
@@ -114,7 +114,7 @@ export default function StitchCanvasBackground({
       />
 
       {/* 4. Canvas Children / Placed components */}
-      <div className="relative z-10 min-h-screen w-full">{children}</div>
+      <div className="relative z-10 h-full w-full">{children}</div>
     </div>
   );
 }
