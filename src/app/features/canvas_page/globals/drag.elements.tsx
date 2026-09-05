@@ -1198,6 +1198,9 @@ export function DraggableIcon({
         top: element.y,
         width: elementWidth,
         height: elementHeight,
+        // The pen drawing SVG occupies the canvas, so icon and shape hit areas
+        // must have their own layer instead of relying on DOM paint order.
+        zIndex: isSelected ? 20 : 2,
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',

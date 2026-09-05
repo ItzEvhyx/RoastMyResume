@@ -485,8 +485,8 @@ export default function CanvasMobile() {
   return (
     <div
       ref={viewportRef}
-      className="absolute inset-0 overflow-hidden"
-      style={{ touchAction: 'none' }}
+      className="fixed inset-0 overflow-hidden"
+      style={{ touchAction: 'none', zIndex: 0 }}
     >
       {/* Keep pan and zoom on one compositor layer. Nested transforms inside a
           fixed mobile viewport can leave stale tiles behind on Android. */}

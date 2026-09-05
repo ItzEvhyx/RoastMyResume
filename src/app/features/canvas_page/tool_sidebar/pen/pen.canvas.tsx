@@ -320,7 +320,9 @@ export function PenCanvas() {
         width: '100%',
         height: '100%',
         pointerEvents: isPenActive ? 'auto' : 'none',
-        zIndex: 10,
+        // Do not leave an inactive full-canvas SVG above selectable elements.
+        // It moves above them only while actively drawing or erasing.
+        zIndex: isPenActive ? 10 : 0,
         cursor: isPenActive ? (isEraserActive ? 'cell' : 'none') : 'default',
       }}
     >
