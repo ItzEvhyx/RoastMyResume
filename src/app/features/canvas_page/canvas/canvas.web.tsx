@@ -9,6 +9,10 @@ import { useClipboard } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
 import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
+import { LassoCanvas } from '../tool_sidebar/container/container.tools';
+import { SelectionBoundary } from '../tool_sidebar/container/container.group';
+import { DraggableGroup } from '../globals/group.element';
+import { useGroup } from '../context/GroupContext';
 import { RulerGuides, useRulerSnapping } from '../globals/ruler.snapping';
 import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
@@ -43,6 +47,10 @@ export default function CanvasWeb() {
   const { textElements, selectedId, setSelectedId, updateElement, deleteElement, addTextElement, addFullTextElement } = useText();
   const { dividerElements, selectedDividerId, setSelectedDividerId, addDividerElement, updateDivider, deleteDivider } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
+  const {
+    groupElements, selectedGroupId, setSelectedGroupId,
+    deleteGroup, ungroup,
+  } = useGroup();
   const { register, unregister } = useClipboard();
   const { setElements: setRulerElements } = useRulerSnapping();
   const [isPanning, setIsPanning] = useState(false);
@@ -390,6 +398,7 @@ export default function CanvasWeb() {
     setSelectedId(null);
     setSelectedDividerId(null);
     setSelectedIconId(null);
+    setSelectedGroupId(null);
   };
 
   return (
@@ -460,6 +469,25 @@ export default function CanvasWeb() {
             >
               {/* Pen drawing layer */}
               <PenCanvas />
+
+              {/* Lasso selection layer — sits above elements when active */}
+              <LassoCanvas />
+              {/* Selection boundary highlights — sibling SVG, same coordinate space */}
+              <svg
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: PAGE_WIDTH,
+                  height: PAGE_HEIGHT,
+                  overflow: 'visible',
+                  pointerEvents: 'none',
+                  zIndex: 200001,
+                }}
+              >
+                <SelectionBoundary />
+              </svg>
               <RulerGuides />
               
               {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
@@ -511,6 +539,49 @@ export default function CanvasWeb() {
                   onUpdate={(updates) => updateIconSafely(element, updates)}
                   onDelete={() => deleteIcon(element.id)}
                   onDragEnd={clearEdgeWarning}
+                />
+              ))}
+              {/* Render group elements */}
+              {groupElements.map(group => (
+                <DraggableGroup
+                  key={group.id}
+                  group={group}
+                  isSelected={selectedGroupId === group.id}
+                  onSelect={() => {
+                    setSelectedId(null);
+                    setSelectedDividerId(null);
+                    setSelectedIconId(null);
+                    setSelectedGroupId(group.id);
+                  }}
+                  onUngroup={() => {
+                    const members = ungroup(group.id);
+                    if (!members) return;
+                    // Re-add all scaled member elements back to their contexts
+                    members.texts.forEach(t => addFullTextElement({
+                      content: t.content,
+                      x: t.x, y: t.y, width: t.width, fontSize: t.fontSize,
+                      fontFamily: t.fontFamily, color: t.color,
+                      fontWeight: t.fontWeight, fontStyle: t.fontStyle,
+                      textDecoration: t.textDecoration, listType: t.listType,
+                      textAlign: t.textAlign, textCategory: t.textCategory,
+                    }));
+                    members.dividers.forEach(d => {
+                      const id = addDividerElement(d.x, d.y, d.width);
+                      updateDivider(id, { thickness: d.thickness, color: d.color });
+                    });
+                    members.icons.forEach(ic => addFullIconElement({
+                      x: ic.x, y: ic.y, size: ic.size, width: ic.width, height: ic.height,
+                      svgUrl: ic.svgUrl, color: ic.color, isShape: ic.isShape,
+                      shapeKind: ic.shapeKind, cornerRadius: ic.cornerRadius,
+                      isFrame: ic.isFrame, frameImage: ic.frameImage,
+                      borderWidth: ic.borderWidth, borderColor: ic.borderColor,
+                      flip: ic.flip,
+                    }));
+                  }}
+                  onDelete={() => deleteGroup(group.id)}
+                  onSafeAreaClamp={(bounds) => showEdgeWarning({ x: bounds.x, y: bounds.y, height: bounds.height })}
+                  onSafeAreaClear={clearEdgeWarning}
+                  onTransformEnd={clearEdgeWarning}
                 />
               ))}
             </div>

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { useUndo } from '../globals/undo';
+import { useLayerOrder } from '../globals/layer.order';
 
 export interface IconElement {
   id: string;
@@ -36,6 +37,7 @@ export interface IconElement {
    *   3 = flipped vertical
    */
   flip?: 0 | 1 | 2 | 3;
+  zIndex?: number;
 }
 
 interface IconContextType {
@@ -58,6 +60,7 @@ export function IconProvider({ children }: { children: ReactNode }) {
   const [iconElements, setIconElements] = useState<IconElement[]>([]);
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
   const { record, startBatch, endBatch } = useUndo();
+  const { getNextLayer } = useLayerOrder();
 
   const addIconElement = (x: number, y: number, svgUrl: string, size = 48): string => {
     const el: IconElement = {
@@ -67,6 +70,7 @@ export function IconProvider({ children }: { children: ReactNode }) {
       size,
       svgUrl,
       color: '#000000',
+      zIndex: getNextLayer(),
     };
     setIconElements(prev => [...prev, el]);
     setSelectedIconId(el.id);
@@ -89,6 +93,7 @@ export function IconProvider({ children }: { children: ReactNode }) {
     const full: IconElement = {
       ...el,
       id: `icon-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      zIndex: getNextLayer(),
     };
     setIconElements(prev => [...prev, full]);
     setSelectedIconId(full.id);

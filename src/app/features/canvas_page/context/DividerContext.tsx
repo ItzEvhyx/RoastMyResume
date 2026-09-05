@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { useUndo } from '../globals/undo';
+import { useLayerOrder } from '../globals/layer.order';
 
 export interface DividerElement {
     id: string;
@@ -10,6 +11,7 @@ export interface DividerElement {
     width: number;
     thickness?: number;
     color?: string;
+    zIndex?: number;
 }
 
 interface DividerContextType {
@@ -31,6 +33,7 @@ export function DividerProvider({ children }: { children: ReactNode }) {
     const [dividerElements, setDividerElements] = useState<DividerElement[]>([]);
     const [selectedDividerId, setSelectedDividerId] = useState<string | null>(null);
     const { record, startBatch, endBatch } = useUndo();
+    const { getNextLayer } = useLayerOrder();
 
     const addDividerElement = (x: number, y: number, initialWidth?: number) => {
         const newElement: DividerElement = {
@@ -40,6 +43,7 @@ export function DividerProvider({ children }: { children: ReactNode }) {
             width: initialWidth ?? 300,
             thickness: 2,
             color: '#000000',
+            zIndex: getNextLayer(),
         };
 
         setDividerElements(prev => [...prev, newElement]);

@@ -19,6 +19,11 @@ import IconPicker from '@/app/features/canvas_page/tool_sidebar/icons_set/pick.i
 import ShapesTools from '@/app/features/canvas_page/tool_sidebar/shapes/shapes.tools';
 import ImageTools from '@/app/features/canvas_page/tool_sidebar/image/image.tools';
 import { PenTools } from '@/app/features/canvas_page/tool_sidebar/pen/pen.tools';
+import { ContainerProvider } from '@/app/features/canvas_page/context/ContainerContext';
+import { GroupProvider } from '@/app/features/canvas_page/context/GroupContext';
+import { ContainerGroupToolbar } from '@/app/features/canvas_page/tool_sidebar/container/container.group';
+import LayersPanel from '@/app/features/canvas_page/globals/layer';
+import { LayerOrderProvider } from '@/app/features/canvas_page/globals/layer.order';
 import CanvasWeb from '@/app/features/canvas_page/canvas/canvas.web';
 import CanvasMobile from '@/app/features/canvas_page/canvas/canvas.mobile';
 import { ClipboardProvider } from '@/app/features/canvas_page/globals/pasting';
@@ -56,10 +61,13 @@ export default function CanvasPage() {
   return (
     <CanvasProvider>
       <UndoProvider>
+        <LayerOrderProvider>
         <TextProvider>
           <DividerProvider>
             <IconProvider>
               <PenProvider>
+                <ContainerProvider>
+                <GroupProvider>
                 <RulerSnappingProvider>
                 <ClipboardProvider>
             <main className="relative h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0e1015]">
@@ -85,9 +93,14 @@ export default function CanvasPage() {
 
               <ShapesTools />
 
+              <LayersPanel />
+
               <ImageTools />
 
               <PenToolsWrapper />
+
+              {/* Container group toolbar — floats above selection when committed */}
+              <ContainerGroupToolbar />
 
               {/* Assistant Panel — appears at stage 2 */}
               {isMobile === undefined ? null : isMobile
@@ -111,10 +124,13 @@ export default function CanvasPage() {
             </main>
             </ClipboardProvider>
               </RulerSnappingProvider>
+              </GroupProvider>
+              </ContainerProvider>
               </PenProvider>
             </IconProvider>
           </DividerProvider>
         </TextProvider>
+        </LayerOrderProvider>
       </UndoProvider>
     </CanvasProvider>
   );

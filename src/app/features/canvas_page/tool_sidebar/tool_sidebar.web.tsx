@@ -7,6 +7,7 @@ import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { usePen } from '../context/PenContext';
+import { useContainer } from '../context/ContainerContext';
 import GooeyTooltip from '../components/GooeyTooltip';
 
 const glassStyle: React.CSSProperties = {
@@ -52,6 +53,7 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
   const { addTextElement, setToolbarExpanded, activeTool, setActiveTool, setSelectedId } = useText();
   const { addDividerElement, setSelectedDividerId } = useDivider();
   const { setIsPenActive } = usePen();
+  const { setIsLassoActive, clearLasso } = useContainer();
 
   // Auto-expand once stage 4 is reached
   useEffect(() => {
@@ -97,6 +99,16 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
       setSelectedDividerId(null);
     } else {
       setIsPenActive(false);
+    }
+
+    // Activate lasso selection when container tool is chosen; clear when leaving.
+    if (newTool === 'container') {
+      setIsLassoActive(true);
+      setSelectedId(null);
+      setSelectedDividerId(null);
+    } else {
+      setIsLassoActive(false);
+      clearLasso();
     }
   };
 
@@ -159,7 +171,7 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
       <div className="pointer-events-auto flex flex-col items-center rounded-full py-3" style={glassStyle}>
         <GooeyTooltip label="Layers" position="right">
           <button
-            onClick={() => setActiveTool(activeTool === 'layers' ? null : 'layers')}
+            onClick={() => handleToolClick('layers')}
             className="group relative flex h-[60px] w-[60px] items-center justify-center rounded-full transition-all duration-150 hover:bg-white/10 active:scale-90"
             style={{ opacity: activeTool === 'layers' ? 1 : 0.55 }}
           >

@@ -11,6 +11,13 @@ interface ClampResult<T> {
   wasClamped: boolean;
 }
 
+export interface GroupSafeAreaBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), Math.max(min, max));
 
 export function getTextHeight(text: TextElement) {
@@ -48,6 +55,27 @@ export function clampDividerToSafeArea(element: DividerElement, updates: Partial
   return {
     updates: { ...updates, x, y, width },
     wasClamped: x !== next.x || y !== next.y || width !== next.width,
+  };
+}
+
+/** Clamp a group wrapper so every member stays within the printable safe area. */
+export function clampGroupToSafeArea(
+  group: GroupSafeAreaBounds,
+  updates: Partial<GroupSafeAreaBounds>,
+): ClampResult<GroupSafeAreaBounds> {
+  const next = { ...group, ...updates };
+  const width = Math.min(next.width, CANVAS_WIDTH - SAFE_MARGIN * 2);
+  const height = Math.min(next.height, CANVAS_HEIGHT - SAFE_MARGIN * 2);
+  const x = clamp(next.x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - width);
+  const y = clamp(next.y, SAFE_MARGIN, CANVAS_HEIGHT - SAFE_MARGIN - height);
+
+  return {
+    updates: { ...updates, x, y, width, height },
+    wasClamped:
+      x !== next.x ||
+      y !== next.y ||
+      width !== next.width ||
+      height !== next.height,
   };
 }
 

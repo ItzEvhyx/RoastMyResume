@@ -717,6 +717,7 @@ export function DraggableText({
         left: element.x,
         top: element.y,
         width: element.width,
+        zIndex: element.zIndex ?? 1,
         cursor: isDragging ? 'grabbing' : isEditing ? 'text' : 'move',
         fontFamily: element.fontFamily || 'var(--font-poppins)',
         pointerEvents: 'auto',
@@ -932,6 +933,7 @@ export function DraggableDivider({
         top: element.y - HIT_PADDING,
         width: element.width,
         height: HIT_PADDING * 2 + thickness,
+        zIndex: element.zIndex ?? 1,
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',
@@ -960,6 +962,27 @@ export function DraggableDivider({
             className="pointer-events-none absolute"
             style={{ left: -2, top: HIT_PADDING - 2, width: 'calc(100% + 4px)', height: thickness + 4, border: '1px dashed rgba(0,0,0,0.4)' }}
           />
+
+          {/* Width indicator — right side, same style as shape W/H badge */}
+          <output
+            className="pointer-events-none absolute whitespace-nowrap rounded-lg px-3.5 py-2 text-sm text-white"
+            aria-label={`Divider width: ${Math.round(element.width)} pixels`}
+            style={{
+              left: 'calc(100% + 14px)',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'rgba(30, 32, 38, 0.88)',
+              backdropFilter: 'blur(12px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(12px) saturate(140%)',
+              border: '1px solid rgba(139,92,246,0.55)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.28)',
+              fontFamily: "'Poppins', sans-serif",
+              fontWeight: 600,
+              zIndex: 60,
+            }}
+          >
+            W: {Math.round(element.width)}px
+          </output>
 
           {/* Left handle */}
           <ResizeHandleNode
@@ -1307,7 +1330,7 @@ export function DraggableIcon({
         height: elementHeight,
         // The pen drawing SVG occupies the canvas, so icon and shape hit areas
         // must have their own layer instead of relying on DOM paint order.
-        zIndex: isSelected ? 20 : 2,
+        zIndex: element.zIndex ?? 1,
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',
@@ -1413,7 +1436,7 @@ export function DraggableIcon({
 
           {element.isShape && (
             <output
-              className="pointer-events-none absolute whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs text-white"
+              className="pointer-events-none absolute whitespace-nowrap rounded-lg px-3.5 py-2 text-sm text-white"
               aria-label={`Shape dimensions: width ${Math.round(elementWidth)} pixels, height ${Math.round(elementHeight)} pixels`}
               style={{
                 left: 'calc(100% + 14px)',

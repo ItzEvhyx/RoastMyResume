@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { useUndo } from '../globals/undo';
+import { useLayerOrder } from '../globals/layer.order';
 
 export type ListType = 'none' | 'bullet' | 'number';
 export type TextAlign = 'none' | 'left' | 'right' | 'center' | 'justify';
@@ -21,6 +22,7 @@ export interface TextElement {
   listType?: ListType;
   textAlign?: TextAlign;
   textCategory?: 'header' | 'subheader' | 'body' | 'meta' | null;
+  zIndex?: number;
 }
 
 interface TextContextType {
@@ -50,6 +52,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
   const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const { record, startBatch, endBatch } = useUndo();
+  const { getNextLayer } = useLayerOrder();
 
   const addTextElement = (x: number, y: number, initialContent?: string, initialWidth?: number) => {
     const content = initialContent ?? 'Add text';
@@ -69,6 +72,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
       fontSize: 24,
       fontFamily: 'Arial, sans-serif',
       color: '#000000',
+      zIndex: getNextLayer(),
     };
     
     setTextElements(prev => [...prev, newElement]);
@@ -99,7 +103,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
       () => setTextElements(elements => elements.map(element => element.id === id ? next : element))
     );
     
-    setTextElements(textElements.map(el => 
+    setTextElements(elements => elements.map(el =>
       el.id === id ? next : el
     ));
   };
@@ -116,6 +120,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
     const newElement: TextElement = {
       ...el,
       id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      zIndex: getNextLayer(),
     };
     setTextElements(prev => [...prev, newElement]);
     setSelectedId(newElement.id);
