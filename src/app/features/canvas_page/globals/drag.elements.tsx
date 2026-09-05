@@ -19,6 +19,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Poppins } from 'next/font/google';
 import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
+import { useText } from '@/app/features/canvas_page/context/TextContext';
+import { useIcon } from '@/app/features/canvas_page/context/IconContext';
+import { useDivider } from '@/app/features/canvas_page/context/DividerContext';
 import { TextToolbar } from '../tool_sidebar/texts/text.tools';
 import { DividerToolbar } from '../tool_sidebar/divider/divider.tools';
 import { CATEGORIES } from '../tool_sidebar/texts/font.size';
@@ -183,9 +186,10 @@ interface ResizeSnapshot {
 interface UseResizeOptions<H extends string> {
   zoom: number;
   applyResize: (handle: H, snap: ResizeSnapshot, dx: number, dy: number) => void;
+  onEnd?: () => void;
 }
 
-function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>) {
+function useResize<H extends string>({ zoom, applyResize, onEnd }: UseResizeOptions<H>) {
   const [activeHandle, setActiveHandle] = useState<H | null>(null);
   const snapshot = useRef<ResizeSnapshot | null>(null);
 
@@ -202,7 +206,8 @@ function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>)
   const handleMouseUp = useCallback(() => {
     setActiveHandle(null);
     snapshot.current = null;
-  }, []);
+    onEnd?.();
+  }, [onEnd]);
 
   useEffect(() => {
     if (!activeHandle) return;
@@ -229,7 +234,8 @@ function useResize<H extends string>({ zoom, applyResize }: UseResizeOptions<H>)
   const handleTouchEnd = useCallback(() => {
     setActiveHandle(null);
     snapshot.current = null;
-  }, []);
+    onEnd?.();
+  }, [onEnd]);
 
   useEffect(() => {
     if (!activeHandle) return;
@@ -431,12 +437,16 @@ export function DraggableText({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastTapRef = useRef<number>(0);
   const { zoom } = useCanvas();
+  const { beginBatchUpdate, endBatchUpdate } = useText();
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
     onMove: (x, y) => onUpdate({ x, y }),
-    onEnd: onDragEnd,
+    onEnd: () => {
+      endBatchUpdate();
+      onDragEnd?.();
+    },
   });
 
   // ── Resize ────────────────────────────────────────────────────────────────
@@ -469,8 +479,25 @@ export function DraggableText({
     [onUpdate],
   );
 
-  const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
-    useResize<ResizeHandleAll>({ zoom, applyResize: applyTextResize });
+  const { startMouse: startResizeMouse, startTouch: startResizeTouch, activeHandle } =
+    useResize<ResizeHandleAll>({ 
+      zoom, 
+      applyResize: applyTextResize,
+      onEnd: () => {
+        endBatchUpdate();
+      }
+    });
+
+  // Wrap resize start to include batch update
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent, handle: ResizeHandleAll, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+    beginBatchUpdate(element.id);
+    startResizeMouse(e, handle, snap);
+  }, [beginBatchUpdate, element.id, startResizeMouse]);
+
+  const handleResizeTouchStart = useCallback((e: React.TouchEvent, handle: ResizeHandleAll, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+    beginBatchUpdate(element.id);
+    startResizeTouch(e, handle, snap);
+  }, [beginBatchUpdate, element.id, startResizeTouch]);
 
   // ── Long-press ────────────────────────────────────────────────────────────
   const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
@@ -508,6 +535,7 @@ export function DraggableText({
     e.preventDefault();
     if (isEditing) return;
     onSelect();
+    beginBatchUpdate(element.id);
     startDragMouse(e, element.x, element.y);
   };
 
@@ -527,6 +555,7 @@ export function DraggableText({
     dismissPill();
 
     const t = e.touches[0];
+    beginBatchUpdate(element.id);
     startDragTouch(t.clientX, t.clientY, element.x, element.y);
     startLongPress(t.clientX, t.clientY, () => {
       // cancel drag on long-press trigger
@@ -731,25 +760,25 @@ export function DraggableText({
 
           {/* Corner handles */}
           <ResizeHandleNode cursor="nwse-resize" style={{ left: -8, top: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+            onMouseDown={(e) => handleResizeMouseDown(e, 'nw', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'nw', snapBase)} />
           <ResizeHandleNode cursor="nesw-resize" style={{ right: -8, top: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+            onMouseDown={(e) => handleResizeMouseDown(e, 'ne', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'ne', snapBase)} />
           <ResizeHandleNode cursor="nwse-resize" style={{ right: -8, bottom: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+            onMouseDown={(e) => handleResizeMouseDown(e, 'se', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'se', snapBase)} />
           <ResizeHandleNode cursor="nesw-resize" style={{ left: -8, bottom: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+            onMouseDown={(e) => handleResizeMouseDown(e, 'sw', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'sw', snapBase)} />
 
           {/* Side handles */}
           <ResizeHandleNode cursor="ew-resize" style={{ left: -8, top: '50%', transform: 'translateY(-50%)' }}
-            onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
+            onMouseDown={(e) => handleResizeMouseDown(e, 'w', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'w', snapBase)} />
           <ResizeHandleNode cursor="ew-resize" style={{ right: -8, top: '50%', transform: 'translateY(-50%)' }}
-            onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
+            onMouseDown={(e) => handleResizeMouseDown(e, 'e', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'e', snapBase)} />
         </>
       )}
 
@@ -794,6 +823,7 @@ export function DraggableDivider({
   onLongPress,
 }: DraggableDividerProps) {
   const { zoom } = useCanvas();
+  const { beginBatchUpdate, endBatchUpdate } = useDivider();
   const thickness = element.thickness ?? 2;
   const color = element.color ?? '#000000';
 
@@ -801,7 +831,10 @@ export function DraggableDivider({
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
     onMove: (x, y) => onUpdate({ x, y }),
-    onEnd: onDragEnd,
+    onEnd: () => {
+      endBatchUpdate();
+      onDragEnd?.();
+    },
   });
 
   // ── Resize ────────────────────────────────────────────────────────────────
@@ -824,7 +857,24 @@ export function DraggableDivider({
   );
 
   const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
-    useResize<DividerResizeHandle>({ zoom, applyResize: applyDividerResizeFull });
+    useResize<DividerResizeHandle>({ 
+      zoom, 
+      applyResize: applyDividerResizeFull,
+      onEnd: () => {
+        endBatchUpdate();
+      }
+    });
+
+  // Wrap resize start to include batch update
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent, handle: DividerResizeHandle, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+    beginBatchUpdate(element.id);
+    startResizeMouse(e, handle, snap);
+  }, [beginBatchUpdate, element.id, startResizeMouse]);
+
+  const handleResizeTouchStart = useCallback((e: React.TouchEvent, handle: DividerResizeHandle, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+    beginBatchUpdate(element.id);
+    startResizeTouch(e, handle, snap);
+  }, [beginBatchUpdate, element.id, startResizeTouch]);
 
   // ── Long-press ────────────────────────────────────────────────────────────
   const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
@@ -846,6 +896,7 @@ export function DraggableDivider({
     e.stopPropagation();
     e.preventDefault();
     onSelect();
+    beginBatchUpdate(element.id);
     startDragMouse(e, element.x, element.y);
   };
 
@@ -856,6 +907,7 @@ export function DraggableDivider({
     onSelect();
     dismissPill();
     const t = e.touches[0];
+    beginBatchUpdate(element.id);
     startDragTouch(t.clientX, t.clientY, element.x, element.y);
     startLongPress(t.clientX, t.clientY, () => {});
   };
@@ -904,8 +956,8 @@ export function DraggableDivider({
             variant="circle"
             cursor="ew-resize"
             style={{ left: -HANDLE_SIZE / 2, top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2 }}
-            onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'w', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'w', snapBase)}
           />
 
           {/* Right handle */}
@@ -913,8 +965,8 @@ export function DraggableDivider({
             variant="circle"
             cursor="ew-resize"
             style={{ right: -HANDLE_SIZE / 2, top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2 }}
-            onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'e', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'e', snapBase)}
           />
         </>
       )}
@@ -965,12 +1017,16 @@ export function DraggableIcon({
   onLongPress,
 }: DraggableIconProps) {
   const { zoom } = useCanvas();
+  const { beginBatchUpdate, endBatchUpdate } = useIcon();
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
     onMove: (x, y) => onUpdate({ x, y }),
-    onEnd: onDragEnd,
+    onEnd: () => {
+      endBatchUpdate();
+      onDragEnd?.();
+    },
   });
 
   // ── Resize — uniform scale from all 4 corners ─────────────────────────────
@@ -994,7 +1050,24 @@ export function DraggableIcon({
   );
 
   const { startMouse: startResizeMouse, startTouch: startResizeTouch } =
-    useResize<IconResizeHandle>({ zoom, applyResize: applyIconResize });
+    useResize<IconResizeHandle>({ 
+      zoom, 
+      applyResize: applyIconResize,
+      onEnd: () => {
+        endBatchUpdate();
+      }
+    });
+
+  // Wrap resize start to include batch update
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent, handle: IconResizeHandle, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+    beginBatchUpdate(element.id);
+    startResizeMouse(e, handle, snap);
+  }, [beginBatchUpdate, element.id, startResizeMouse]);
+
+  const handleResizeTouchStart = useCallback((e: React.TouchEvent, handle: IconResizeHandle, snap: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'>) => {
+    beginBatchUpdate(element.id);
+    startResizeTouch(e, handle, snap);
+  }, [beginBatchUpdate, element.id, startResizeTouch]);
 
   // ── Long-press ────────────────────────────────────────────────────────────
   const { showPill, startLongPress, dismissPill } = useLongPress(onLongPress);
@@ -1016,6 +1089,7 @@ export function DraggableIcon({
     e.stopPropagation();
     e.preventDefault();
     onSelect();
+    beginBatchUpdate(element.id);
     startDragMouse(e, element.x, element.y);
   };
 
@@ -1030,6 +1104,7 @@ export function DraggableIcon({
     onSelect();
     dismissPill();
     const t = e.touches[0];
+    beginBatchUpdate(element.id);
     startDragTouch(t.clientX, t.clientY, element.x, element.y);
     startLongPress(t.clientX, t.clientY, () => {});
   };
@@ -1097,26 +1172,26 @@ export function DraggableIcon({
           <ResizeHandleNode
             cursor="nwse-resize"
             style={{ left: -8, top: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'nw', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'nw', snapBase)}
           />
           <ResizeHandleNode
             cursor="nesw-resize"
             style={{ right: -8, top: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'ne', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'ne', snapBase)}
           />
           <ResizeHandleNode
             cursor="nwse-resize"
             style={{ right: -8, bottom: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'se', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'se', snapBase)}
           />
           <ResizeHandleNode
             cursor="nesw-resize"
             style={{ left: -8, bottom: -8 }}
-            onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)}
+            onMouseDown={(e) => handleResizeMouseDown(e, 'sw', snapBase)}
+            onTouchStart={(e) => handleResizeTouchStart(e, 'sw', snapBase)}
           />
         </>
       )}

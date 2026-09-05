@@ -32,6 +32,10 @@ interface TextContextType {
   /** Paste a full element snapshot (all props), used by the clipboard system */
   addFullTextElement: (el: Omit<TextElement, 'id'>) => string;
   updateElement: (id: string, updates: Partial<TextElement>) => void;
+  /** Begin batching updates - call before starting drag/resize operations */
+  beginBatchUpdate: (id: string) => void;
+  /** End batching - call after drag/resize completes */
+  endBatchUpdate: () => void;
   deleteElement: (id: string) => void;
   setSelectedId: (id: string | null) => void;
   setToolbarExpanded: (expanded: boolean) => void;
@@ -45,7 +49,19 @@ export function TextProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const { record } = useUndo();
+  const { record, startTransaction, commitTransaction } = useUndo();
+
+  const beginBatchUpdate = (id: string) => {
+    const current = textElements.find(el => el.id === id);
+    if (!current) return;
+    startTransaction();
+    // Record the initial state - this will be stored as the undo action
+    record(() => setTextElements(elements => elements.map(element => element.id === id ? current : element)));
+  };
+
+  const endBatchUpdate = () => {
+    commitTransaction();
+  };
 
   const addTextElement = (x: number, y: number, initialContent?: string, initialWidth?: number) => {
     const content = initialContent ?? 'Add text';
@@ -77,9 +93,6 @@ export function TextProvider({ children }: { children: ReactNode }) {
   };
 
   const updateElement = (id: string, updates: Partial<TextElement>) => {
-    const previous = textElements.find(element => element.id === id);
-    if (!previous) return;
-    record(() => setTextElements(elements => elements.map(element => element.id === id ? previous : element)));
     setTextElements(textElements.map(el => 
       el.id === id ? { ...el, ...updates } : el
     ));
@@ -124,6 +137,8 @@ export function TextProvider({ children }: { children: ReactNode }) {
         addTextElement,
         addFullTextElement,
         updateElement,
+        beginBatchUpdate,
+        endBatchUpdate,
         deleteElement,
         setSelectedId,
         setToolbarExpanded,

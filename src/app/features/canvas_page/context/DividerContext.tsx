@@ -17,6 +17,10 @@ interface DividerContextType {
     selectedDividerId: string | null;
     addDividerElement: (x: number, y: number, initialWidth?: number) => string;
     updateDivider: (id: string, updates: Partial<DividerElement>) => void;
+    /** Begin batching updates - call before starting drag/resize operations */
+    beginBatchUpdate: (id: string) => void;
+    /** End batching - call after drag/resize completes */
+    endBatchUpdate: () => void;
     deleteDivider: (id: string) => void;
     setSelectedDividerId: (id: string | null) => void;
 }
@@ -26,7 +30,19 @@ const DividerContext = createContext<DividerContextType | undefined>(undefined);
 export function DividerProvider({ children }: { children: ReactNode }) {
     const [dividerElements, setDividerElements] = useState<DividerElement[]>([]);
     const [selectedDividerId, setSelectedDividerId] = useState<string | null>(null);
-    const { record } = useUndo();
+    const { record, startTransaction, commitTransaction } = useUndo();
+
+    const beginBatchUpdate = (id: string) => {
+        const current = dividerElements.find(el => el.id === id);
+        if (!current) return;
+        startTransaction();
+        // Record the initial state - this will be stored as the undo action
+        record(() => setDividerElements(elements => elements.map(element => element.id === id ? current : element)));
+    };
+
+    const endBatchUpdate = () => {
+        commitTransaction();
+    };
 
     const addDividerElement = (x: number, y: number, initialWidth?: number) => {
         const newElement: DividerElement = {
@@ -48,9 +64,6 @@ export function DividerProvider({ children }: { children: ReactNode }) {
     };
 
     const updateDivider = (id: string, updates: Partial<DividerElement>) => {
-        const previous = dividerElements.find(element => element.id === id);
-        if (!previous) return;
-        record(() => setDividerElements(elements => elements.map(element => element.id === id ? previous : element)));
         setDividerElements(prev => prev.map(el =>
             el.id === id ? { ...el, ...updates } : el
         ));
@@ -76,6 +89,8 @@ export function DividerProvider({ children }: { children: ReactNode }) {
                 selectedDividerId,
                 addDividerElement,
                 updateDivider,
+                beginBatchUpdate,
+                endBatchUpdate,
                 deleteDivider,
                 setSelectedDividerId,
             }}

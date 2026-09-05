@@ -29,6 +29,10 @@ interface IconContextType {
   addIconElement: (x: number, y: number, svgUrl: string, size?: number) => string;
   addFullIconElement: (el: Omit<IconElement, 'id'>) => string;
   updateIcon: (id: string, updates: Partial<IconElement>) => void;
+  /** Begin batching updates - call before starting drag/resize operations */
+  beginBatchUpdate: (id: string) => void;
+  /** End batching - call after drag/resize completes */
+  endBatchUpdate: () => void;
   deleteIcon: (id: string) => void;
   setSelectedIconId: (id: string | null) => void;
 }
@@ -38,7 +42,21 @@ const IconContext = createContext<IconContextType | undefined>(undefined);
 export function IconProvider({ children }: { children: ReactNode }) {
   const [iconElements, setIconElements] = useState<IconElement[]>([]);
   const [selectedIconId, setSelectedIconId] = useState<string | null>(null);
-  const { record } = useUndo();
+  const { record, startTransaction, commitTransaction } = useUndo();
+
+  const beginBatchUpdate = (id: string) => {
+    const current = iconElements.find(el => el.id === id);
+    if (!current) return;
+    startTransaction();
+    // Record the initial state - this will be stored as the undo action
+    record(() =>
+      setIconElements(els => els.map(e => (e.id === id ? current : e))),
+    );
+  };
+
+  const endBatchUpdate = () => {
+    commitTransaction();
+  };
 
   const addIconElement = (x: number, y: number, svgUrl: string, size = 48): string => {
     const el: IconElement = {
@@ -73,11 +91,6 @@ export function IconProvider({ children }: { children: ReactNode }) {
   };
 
   const updateIcon = (id: string, updates: Partial<IconElement>) => {
-    const prev = iconElements.find(e => e.id === id);
-    if (!prev) return;
-    record(() =>
-      setIconElements(els => els.map(e => (e.id === id ? prev : e))),
-    );
     setIconElements(els => els.map(e => (e.id === id ? { ...e, ...updates } : e)));
   };
 
@@ -102,6 +115,8 @@ export function IconProvider({ children }: { children: ReactNode }) {
         addIconElement,
         addFullIconElement,
         updateIcon,
+        beginBatchUpdate,
+        endBatchUpdate,
         deleteIcon,
         setSelectedIconId,
       }}
