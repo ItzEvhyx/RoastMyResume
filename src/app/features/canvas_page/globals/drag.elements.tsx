@@ -27,6 +27,7 @@ import { DividerToolbar } from '../tool_sidebar/divider/divider.tools';
 import { CATEGORIES } from '../tool_sidebar/texts/font.size';
 import { convertListContent, ListType } from '../tool_sidebar/texts/bulletpoint';
 import { getNextTextAlign, TextAlign } from '../tool_sidebar/texts/alignment';
+import { useRulerSnapping } from './ruler.snapping';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Re-export element types so importers only need this one file
@@ -460,14 +461,20 @@ export function DraggableText({
   const lastTapRef = useRef<number>(0);
   const { zoom } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useText();
+  const { snap: snapToGuides, endDrag: endGuideDrag } = useRulerSnapping();
+  const textHeight = Math.max(element.fontSize + 8, Math.max(1, element.content.split('\n').length) * element.fontSize * 1.2);
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
-    onMove: (x, y) => onUpdate({ x, y }),
+    onMove: (x, y) => {
+      const snapped = snapToGuides({ id: element.id, x, y, width: element.width, height: textHeight });
+      onUpdate(snapped);
+    },
     onStart: startUpdateBatch,
     onEnd: () => {
       endUpdateBatch();
+      endGuideDrag();
       onDragEnd?.();
     },
   });
@@ -834,16 +841,21 @@ export function DraggableDivider({
 }: DraggableDividerProps) {
   const { zoom } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useDivider();
+  const { snap: snapToGuides, endDrag: endGuideDrag } = useRulerSnapping();
   const thickness = element.thickness ?? 2;
   const color = element.color ?? '#000000';
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
-    onMove: (x, y) => onUpdate({ x, y }),
+    onMove: (x, y) => {
+      const snapped = snapToGuides({ id: element.id, x, y, width: element.width, height: thickness });
+      onUpdate(snapped);
+    },
     onStart: startUpdateBatch,
     onEnd: () => {
       endUpdateBatch();
+      endGuideDrag();
       onDragEnd?.();
     },
   });
@@ -1043,6 +1055,7 @@ export function DraggableIcon({
 }: DraggableIconProps) {
   const { zoom } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useIcon();
+  const { snap: snapToGuides, endDrag: endGuideDrag } = useRulerSnapping();
   const elementWidth = element.width ?? element.size;
   const elementHeight = element.height ?? element.size;
   // Mobile's fitted canvas makes a 48px icon appear much smaller than a
@@ -1083,11 +1096,15 @@ export function DraggableIcon({
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
     zoom,
-    onMove: (x, y) => queueUpdate({ x, y }),
+    onMove: (x, y) => {
+      const snapped = snapToGuides({ id: element.id, x, y, width: elementWidth, height: elementHeight });
+      queueUpdate(snapped);
+    },
     onStart: startUpdateBatch,
     onEnd: () => {
       flushPendingUpdate();
       endUpdateBatch();
+      endGuideDrag();
       onDragEnd?.();
     },
   });

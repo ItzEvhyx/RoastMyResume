@@ -9,6 +9,7 @@ import { useClipboard } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
 import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
+import { RulerGuides, useRulerSnapping } from '../globals/ruler.snapping';
 import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
 import type { IconElement } from '../context/IconContext';
@@ -43,6 +44,7 @@ export default function CanvasWeb() {
   const { dividerElements, selectedDividerId, setSelectedDividerId, addDividerElement, updateDivider, deleteDivider } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
   const { register, unregister } = useClipboard();
+  const { setElements: setRulerElements } = useRulerSnapping();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [edgeWarning, setEdgeWarning] = useState<EdgeWarning | null>(null);
@@ -61,6 +63,14 @@ export default function CanvasWeb() {
   useEffect(() => () => {
     if (warningTimer.current) clearTimeout(warningTimer.current);
   }, []);
+
+  useEffect(() => {
+    setRulerElements([
+      ...textElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: getTextHeight(element) })),
+      ...dividerElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: element.thickness ?? 2 })),
+      ...iconElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width ?? element.size, height: element.height ?? element.size })),
+    ]);
+  }, [textElements, dividerElements, iconElements, setRulerElements]);
 
   const updateTextSafely = (element: TextElement, updates: Partial<TextElement>) => {
     const result = clampTextToSafeArea(element, updates);
@@ -440,6 +450,7 @@ export default function CanvasWeb() {
             >
               {/* Pen drawing layer */}
               <PenCanvas />
+              <RulerGuides />
               
               {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
               {/* Render text elements */}

@@ -9,6 +9,7 @@ import { usePen } from '../context/PenContext';
 import { useClipboard, ClipboardEntry } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
 import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
+import { RulerGuides, useRulerSnapping } from '../globals/ruler.snapping';
 import type { TextElement } from '../context/TextContext';
 import type { DividerElement } from '../context/DividerContext';
 import type { IconElement } from '../context/IconContext';
@@ -64,6 +65,7 @@ export default function CanvasMobile() {
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
   const { strokes, selectedStrokeId, setSelectedStrokeId, addStroke, isPenActive } = usePen();
   const { clipboard, register, unregister, copy } = useClipboard();
+  const { setElements: setRulerElements } = useRulerSnapping();
 
   const [pasteTarget, setPasteTarget] = useState<PasteTarget | null>(null);
   const [edgeWarning, setEdgeWarning] = useState<EdgeWarning | null>(null);
@@ -94,6 +96,14 @@ export default function CanvasMobile() {
   useEffect(() => () => {
     if (warningTimer.current) clearTimeout(warningTimer.current);
   }, []);
+
+  useEffect(() => {
+    setRulerElements([
+      ...textElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: getTextHeight(element) })),
+      ...dividerElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: element.thickness ?? 2 })),
+      ...iconElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width ?? element.size, height: element.height ?? element.size })),
+    ]);
+  }, [textElements, dividerElements, iconElements, setRulerElements]);
 
   const updateTextSafely = (element: TextElement, updates: Partial<TextElement>) => {
     const result = clampTextToSafeArea(element, updates);
@@ -557,6 +567,7 @@ export default function CanvasMobile() {
         >
           {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
           <PenCanvas />
+          <RulerGuides />
           {textElements.map(element => (
             <DraggableText
               key={element.id}

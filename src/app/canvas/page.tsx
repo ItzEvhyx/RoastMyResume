@@ -24,6 +24,7 @@ import { ClipboardProvider } from '@/app/features/canvas_page/globals/pasting';
 import { UndoProvider } from '@/app/features/canvas_page/globals/undo';
 import { usePen } from '@/app/features/canvas_page/context/PenContext';
 import { useText } from '@/app/features/canvas_page/context/TextContext';
+import { RulerSnappingProvider } from '@/app/features/canvas_page/globals/ruler.snapping';
 
 /**
  * Animation sequence:
@@ -58,6 +59,7 @@ export default function CanvasPage() {
           <DividerProvider>
             <IconProvider>
               <PenProvider>
+                <RulerSnappingProvider>
                 <ClipboardProvider>
             <main className="relative h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0e1015]">
 
@@ -105,6 +107,7 @@ export default function CanvasPage() {
               </div>
             </main>
             </ClipboardProvider>
+              </RulerSnappingProvider>
               </PenProvider>
             </IconProvider>
           </DividerProvider>

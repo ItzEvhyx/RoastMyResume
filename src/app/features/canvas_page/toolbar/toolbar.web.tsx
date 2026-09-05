@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 import { exportCanvasToPdf } from '@/app/features/canvas_page/utils/exportToPdf';
 import GooeyTooltip from '@/app/features/canvas_page/components/GooeyTooltip';
+import { useRulerSnapping } from '@/app/features/canvas_page/globals/ruler.snapping';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -37,6 +38,7 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
   const [resumeTitle, setResumeTitle] = useState('Untitled Resume');
   const [isEditing, setIsEditing] = useState(false);
   const { isGrabMode, setIsGrabMode } = useCanvas();
+  const { enabled: smartGuidesEnabled, toggle: toggleSmartGuides } = useRulerSnapping();
 
   const handleExportPdf = async () => {
     const fileName = `${resumeTitle.trim() || 'Untitled Resume'}.pdf`;
@@ -98,6 +100,25 @@ export default function ToolbarWeb({ stage }: { stage: number }) {
             )}
             <span className="text-sm text-white/50">— Tech / IT Template</span>
           </div>
+        </div>
+
+        <div style={popStyle(visible, 90)}>
+          <GooeyTooltip label={smartGuidesEnabled ? 'Smart guides on' : 'Smart guides off'} position="bottom">
+            <button
+              onClick={toggleSmartGuides}
+              aria-pressed={smartGuidesEnabled}
+              className="pointer-events-auto flex items-center justify-center rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+              style={{
+                ...glassStyle,
+                background: smartGuidesEnabled ? 'rgba(255,255,255,0.14)' : glassStyle.background,
+                boxShadow: smartGuidesEnabled
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 1px rgba(255,255,255,0.16), 0 4px 16px rgba(0,0,0,0.35)'
+                  : glassStyle.boxShadow,
+              }}
+            >
+              <Image src="/assets/tools_icons/grid_icon.png" alt="Toggle smart guides" width={20} height={20} draggable={false} className={`pointer-events-none select-none ${smartGuidesEnabled ? 'opacity-100' : 'opacity-50'}`} />
+            </button>
+          </GooeyTooltip>
         </div>
       </div>
 
