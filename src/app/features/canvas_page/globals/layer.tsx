@@ -6,7 +6,7 @@ import { Poppins } from 'next/font/google';
 import { useMediaQuery } from '@/lib/use_media_query';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
-import { useIcon } from '../context/IconContext';
+import { useIcon, type IconElement } from '../context/IconContext';
 import { useGroup } from '../context/GroupContext';
 
 const FUTURA_STYLE = `
@@ -40,9 +40,49 @@ interface LayerItem {
   label: string;
   detail: string;
   zIndex: number;
+  icon?: IconElement;
 }
 
-function LayerGlyph({ kind }: { kind: LayerKind }) {
+const DEFAULT_TEXT = 'Add text';
+
+function isUntouchedText(content: string) {
+  return content.trim() === DEFAULT_TEXT;
+}
+
+function abbreviateText(content: string) {
+  const singleLineText = content.replace(/\s+/g, ' ').trim();
+  return singleLineText.length > 7 ? `${singleLineText.slice(0, 7)}....` : singleLineText;
+}
+
+function isRasterImage(icon: IconElement) {
+  return /^data:image\//i.test(icon.svgUrl) || /\.(?:png|jpe?g|webp)(?:[?#]|$)/i.test(icon.svgUrl);
+}
+
+function iconLabel(svgUrl: string) {
+  try {
+    const filename = new URL(svgUrl).pathname.split('/').pop()?.replace(/\.svg$/i, '');
+    if (!filename) return 'Icon';
+
+    const knownNames: Record<string, string> = {
+      linkedin: 'LinkedIn',
+      github: 'GitHub',
+      youtube: 'YouTube',
+      whatsapp: 'WhatsApp',
+      javascript: 'JavaScript',
+      typescript: 'TypeScript',
+      nodejs: 'Node.js',
+    };
+    return filename
+      .split('-')
+      .map(word => knownNames[word.toLowerCase()] ?? `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+      .join(' ');
+  } catch {
+    return 'Icon';
+  }
+}
+
+function LayerGlyph({ layer }: { layer: LayerItem }) {
+  const { kind, icon } = layer;
   if (kind === 'text') return <span aria-hidden style={{ fontSize: 20, fontWeight: 700 }}>T</span>;
   if (kind === 'divider') return <span aria-hidden style={{ display: 'block', width: 20, height: 2, background: 'currentColor', borderRadius: 99 }} />;
   if (kind === 'group') {
@@ -55,6 +95,33 @@ function LayerGlyph({ kind }: { kind: LayerKind }) {
       </svg>
     );
   }
+
+  if (icon?.isShape) {
+    const borderRadius = icon.cornerRadius === undefined
+      ? (icon.shapeKind === 'circle' ? '50%' : '0%')
+      : `${icon.cornerRadius / 2}%`;
+
+    if (icon.isFrame && icon.frameImage) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={icon.frameImage} alt="" aria-hidden draggable={false} style={{ width: 28, height: 28, objectFit: 'cover', borderRadius }} />
+      );
+    }
+
+    return <span aria-hidden style={{ width: 25, height: 25, boxSizing: 'border-box', borderRadius, background: icon.isFrame ? '#f5f5f6' : (icon.color ?? '#000000'), border: `${icon.borderWidth ?? (icon.isFrame ? 1 : 0)}px ${icon.isFrame ? 'dashed' : 'solid'} ${icon.borderColor ?? '#626370'}` }} />;
+  }
+
+  if (icon && isRasterImage(icon)) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={icon.svgUrl} alt="" aria-hidden draggable={false} style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4 }} />
+    );
+  }
+
+  if (icon) {
+    return <span aria-hidden style={{ width: 25, height: 25, backgroundColor: icon.color ?? '#000000', WebkitMaskImage: `url(${icon.svgUrl})`, maskImage: `url(${icon.svgUrl})`, WebkitMaskSize: 'contain', maskSize: 'contain', WebkitMaskPosition: 'center', maskPosition: 'center', WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat' }} />;
+  }
+
   return (
     <svg aria-hidden width="21" height="21" viewBox="0 0 24 24" fill="none">
       <path d="M12 3v18M3 12h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -77,27 +144,42 @@ export default function LayersPanel() {
   // This order mirrors paint order on the canvas. Reverse it so the front-most
   // item appears first, as users expect from a layers browser.
   const layers: LayerItem[] = [
-    ...textElements.map(item => ({
-      id: item.id,
-      kind: 'text' as const,
-      label: item.content.trim().split('\n')[0] || 'Text',
-      detail: 'Text',
-      zIndex: item.zIndex ?? 1,
-    })),
-    ...dividerElements.map(item => ({
-      id: item.id,
-      kind: 'divider' as const,
-      label: 'Divider',
-      detail: 'Line',
-      zIndex: item.zIndex ?? 1,
-    })),
-    ...iconElements.map(item => ({
-      id: item.id,
-      kind: 'icon' as const,
-      label: item.isFrame ? 'Image frame' : item.isShape ? `${item.shapeKind === 'circle' ? 'Circle' : 'Square'} shape` : 'Icon',
-      detail: item.isShape ? 'Shape' : 'Icon',
-      zIndex: item.zIndex ?? 1,
-    })),
+    ...textElements.map((item, index) => {
+      const untouched = isUntouchedText(item.content);
+      const untouchedTextCount = textElements
+        .slice(0, index + 1)
+        .filter(element => isUntouchedText(element.content)).length;
+      return {
+        id: item.id,
+        kind: 'text' as const,
+        label: untouched ? `add text ${untouchedTextCount}` : abbreviateText(item.content) || 'Text',
+        detail: 'Text',
+        zIndex: item.zIndex ?? 1,
+      };
+    }),
+    ...dividerElements.map((item, index) => {
+      return {
+        id: item.id,
+        kind: 'divider' as const,
+        label: `divider ${index + 1}`,
+        detail: 'Line',
+        zIndex: item.zIndex ?? 1,
+      };
+    }),
+    ...iconElements.map((item, index) => {
+      const image = isRasterImage(item) || Boolean(item.isFrame && item.frameImage);
+      const imageCount = iconElements
+        .slice(0, index + 1)
+        .filter(icon => isRasterImage(icon) || Boolean(icon.isFrame && icon.frameImage)).length;
+      return {
+        id: item.id,
+        kind: 'icon' as const,
+        label: image ? `image ${imageCount}` : item.isFrame ? 'Image frame' : item.isShape ? `${item.shapeKind === 'circle' ? 'Circle' : 'Square'} shape` : iconLabel(item.svgUrl),
+        detail: image ? 'Image' : item.isShape ? 'Shape' : 'Icon',
+        zIndex: item.zIndex ?? 1,
+        icon: item,
+      };
+    }),
     ...groupElements.map(item => ({
       id: item.id,
       kind: 'group' as const,
@@ -188,8 +270,8 @@ export default function LayersPanel() {
           <Image
             src="/assets/tools_icons/layer_icon.svg"
             alt="Layers"
-            width={52}
-            height={52}
+            width={36}
+            height={36}
             className="pointer-events-none select-none opacity-80"
             draggable={false}
           />
@@ -200,7 +282,7 @@ export default function LayersPanel() {
         <section className="no-scrollbar flex-1 overflow-y-auto px-4 py-5">
           {layers.length === 0 ? (
             <div className="flex h-full min-h-40 flex-col items-center justify-center text-center">
-              <Image src="/assets/tools_icons/layer_icon.svg" alt="" width={44} height={44} className="opacity-45" />
+              <Image src="/assets/tools_icons/layer_icon.svg" alt="" width={64} height={64} className="opacity-45" />
               <p className="mt-3 text-sm text-white/70" style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}>No layers yet</p>
               <p className="mt-1 px-5 text-xs text-white/40" style={{ fontFamily: 'var(--font-poppins)' }}>Add text, icons, or shapes to manage them here.</p>
             </div>
@@ -227,10 +309,10 @@ export default function LayersPanel() {
                     }}
                   >
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                      style={{ color: '#fff', background: 'rgba(0,0,0,0.18)' }}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center"
+                      style={{ color: '#fff' }}
                     >
-                      <LayerGlyph kind={layer.kind} />
+                      <LayerGlyph layer={layer} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm text-white" style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}>
