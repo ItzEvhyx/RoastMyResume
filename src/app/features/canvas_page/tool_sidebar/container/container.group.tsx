@@ -166,8 +166,8 @@ export function SelectionBoundary() {
  * converting canvas coords → screen coords using the canvas element's rect.
  */
 export function ContainerGroupToolbar() {
-  const { lassoState, selection, selectionCount, clearLasso } = useContainer();
-  const { textElements, deleteElement } = useText();
+  const { lassoState, selection, selectionCount, clearLasso, setIsLassoActive } = useContainer();
+  const { textElements, deleteElement, activeTool, setActiveTool } = useText();
   const { dividerElements, deleteDivider } = useDivider();
   const { iconElements, deleteIcon } = useIcon();
   const { strokes, removeStroke } = usePen();
@@ -255,8 +255,12 @@ export function ContainerGroupToolbar() {
     selection.iconIds.forEach(id => deleteIcon(id));
     selection.strokeIds.forEach(id => removeStroke(id));
 
-    // 3. Exit lasso mode
+    // 3. Exit lasso mode and toggle off container tool
     clearLasso();
+    setIsLassoActive(false);
+    if (activeTool === 'container') {
+      setActiveTool(null);
+    }
   }, [
     boundingBox,
     selection,
@@ -270,6 +274,9 @@ export function ContainerGroupToolbar() {
     deleteIcon,
     removeStroke,
     clearLasso,
+    setIsLassoActive,
+    activeTool,
+    setActiveTool,
   ]);
 
   // ── Visibility guard ─────────────────────────────────────────────────────
@@ -303,7 +310,7 @@ export function ContainerGroupToolbar() {
           border: '1px solid rgba(255,255,255,0.10)',
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
           borderRadius: 999,
-          padding: '0 8px',
+          padding: '0 10px',
         }}
       >
         {/* Selection count badge */}
@@ -313,7 +320,7 @@ export function ContainerGroupToolbar() {
             fontSize: 12,
             fontWeight: 600,
             color: 'rgba(255,255,255,0.45)',
-            padding: '0 8px',
+            padding: '0 6px',
             whiteSpace: 'nowrap',
           }}
         >
@@ -326,7 +333,7 @@ export function ContainerGroupToolbar() {
         <ToolbarButton
           onClick={handleGroup}
           icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
               <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
               <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
@@ -335,9 +342,7 @@ export function ContainerGroupToolbar() {
             </svg>
           }
           label="Group"
-          accent="rgba(99,102,241,0.15)"
-          accentHover="rgba(99,102,241,0.28)"
-          textColor="rgba(180,180,255,1)"
+          color="#ffffff"
         />
 
         <Divider />
@@ -346,14 +351,12 @@ export function ContainerGroupToolbar() {
         <ToolbarButton
           onClick={handleDelete}
           icon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           }
           label="Delete"
-          accent="rgba(220,53,53,0.14)"
-          accentHover="rgba(220,53,53,0.28)"
-          textColor="rgba(255,120,120,1)"
+          color="rgba(255,120,120,1)"
         />
       </div>
     </div>
@@ -367,7 +370,7 @@ function Divider() {
     <div
       style={{
         width: 1,
-        height: 26,
+        height: 24,
         background: 'rgba(255,255,255,0.15)',
         marginInline: 4,
         flexShrink: 0,
@@ -380,38 +383,32 @@ function ToolbarButton({
   onClick,
   icon,
   label,
-  accent,
-  accentHover,
-  textColor,
+  color,
 }: {
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
-  accent: string;
-  accentHover: string;
-  textColor: string;
+  color: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2 rounded-full px-4 transition-all duration-150 active:scale-95"
+      className="flex items-center gap-2 rounded-full px-3 transition-all duration-150 active:scale-95"
       style={{
-        height: 36,
-        background: accent,
+        height: 34,
+        background: 'transparent',
         border: 'none',
-        color: textColor,
+        color,
         fontFamily: 'var(--font-poppins)',
         fontWeight: 700,
         fontSize: 13,
         cursor: 'pointer',
-        // hover handled inline via onMouseEnter/Leave for simplicity
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = accentHover; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = accent; }}
     >
       {icon}
       {label}
     </button>
   );
 }
+
