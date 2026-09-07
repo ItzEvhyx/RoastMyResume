@@ -25,6 +25,7 @@ import { useUndo } from '../globals/undo';
 import type { TextElement } from './TextContext';
 import type { DividerElement } from './DividerContext';
 import type { IconElement } from './IconContext';
+import type { PenStroke } from './PenContext';
 import { clampGroupToSafeArea } from '../canvas/safe.area';
 import { useLayerOrder } from '../globals/layer.order';
 
@@ -35,6 +36,7 @@ export interface GroupMembers {
   texts: TextElement[];
   dividers: DividerElement[];
   icons: IconElement[];
+  strokes: PenStroke[];
 }
 
 /**
@@ -115,7 +117,15 @@ function scaleMembers(group: GroupElement): GroupMembers {
     size: Math.round(ic.size * Math.min(scaleX, scaleY)),
   }));
 
-  return { texts, dividers, icons };
+  const strokes: PenStroke[] = group.members.strokes.map(stroke => ({
+    ...stroke,
+    x: group.originX + (stroke.x - group.originX) * scaleX + dx,
+    y: group.originY + (stroke.y - group.originY) * scaleY + dy,
+    width: stroke.width * scaleX,
+    height: stroke.height * scaleY,
+  }));
+
+  return { texts, dividers, icons, strokes };
 }
 
 // ─── Provider ─────────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { collection, query, where, limit as fsLimit, getDocs } from 'firebase/firestore';
 import { getClientFirestore } from '@/app/core/services/firebase';
+import { iconIdToSvgUrl } from '@/app/core/services/iconify';
 
 export const runtime = 'nodejs';
 
@@ -30,8 +31,8 @@ export async function GET(req: NextRequest) {
         prefix: string;
         cloudinaryUrl: string;
       };
-      // Always include the direct Iconify SVG URL as a reliable fallback
-      const svgUrl = `https://api.iconify.design/${data.prefix}/${data.name}.svg`;
+      // Use the resilient SVG endpoint
+      const svgUrl = iconIdToSvgUrl(data.iconId || `${data.prefix}:${data.name}`);
       return {
         iconId: data.iconId,
         name: data.name,

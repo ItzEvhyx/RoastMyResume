@@ -7,6 +7,7 @@ import { useMediaQuery } from '@/lib/use_media_query';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { useIcon, type IconElement } from '../context/IconContext';
+import { usePen } from '../context/PenContext';
 import { useGroup } from '../context/GroupContext';
 
 const FUTURA_STYLE = `
@@ -32,7 +33,7 @@ const glassStyle: React.CSSProperties = {
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.4)',
 };
 
-type LayerKind = 'text' | 'divider' | 'icon' | 'group';
+type LayerKind = 'text' | 'divider' | 'icon' | 'stroke' | 'group';
 
 interface LayerItem {
   id: string;
@@ -85,6 +86,7 @@ function LayerGlyph({ layer }: { layer: LayerItem }) {
   const { kind, icon } = layer;
   if (kind === 'text') return <span aria-hidden style={{ fontSize: 20, fontWeight: 700 }}>T</span>;
   if (kind === 'divider') return <span aria-hidden style={{ display: 'block', width: 20, height: 2, background: 'currentColor', borderRadius: 99 }} />;
+  if (kind === 'stroke') return <span aria-hidden style={{ fontSize: 23, lineHeight: 1, transform: 'rotate(-28deg)' }}>〰</span>;
   if (kind === 'group') {
     return (
       <svg aria-hidden width="21" height="21" viewBox="0 0 24 24" fill="none">
@@ -130,12 +132,16 @@ function LayerGlyph({ layer }: { layer: LayerItem }) {
   );
 }
 
+import { useLayerOrder } from './layer.order';
+
 /** Layer browser opened from the Layers control in the canvas sidebar. */
 export default function LayersPanel() {
   const { toolbarExpanded, activeTool, textElements, selectedId, setSelectedId, updateElement } = useText();
   const { dividerElements, selectedDividerId, setSelectedDividerId, updateDivider } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon } = useIcon();
+  const { strokes, selectedStrokeId, setSelectedStrokeId, updateStroke } = usePen();
   const { groupElements, selectedGroupId, setSelectedGroupId, updateGroup } = useGroup();
+  const { setHoldingLayerId, triggerLayerAnimation, activeAnimation } = useLayerOrder();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const shouldShow = toolbarExpanded && activeTool === 'layers';
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -180,11 +186,18 @@ export default function LayersPanel() {
         icon: item,
       };
     }),
+    ...strokes.map((item, index) => ({
+      id: item.id,
+      kind: 'stroke' as const,
+      label: `drawing ${index + 1}`,
+      detail: 'Pen',
+      zIndex: item.zIndex ?? 1,
+    })),
     ...groupElements.map(item => ({
       id: item.id,
       kind: 'group' as const,
       label: 'Group',
-      detail: `${item.members.texts.length + item.members.dividers.length + item.members.icons.length} items`,
+      detail: `${item.members.texts.length + item.members.dividers.length + item.members.icons.length + item.members.strokes.length} items`,
       zIndex: item.zIndex ?? 1,
     })),
   ].sort((a, b) => b.zIndex - a.zIndex);
@@ -193,6 +206,7 @@ export default function LayersPanel() {
     (layer.kind === 'text' && selectedId === layer.id) ||
     (layer.kind === 'divider' && selectedDividerId === layer.id) ||
     (layer.kind === 'icon' && selectedIconId === layer.id) ||
+    (layer.kind === 'stroke' && selectedStrokeId === layer.id) ||
     (layer.kind === 'group' && selectedGroupId === layer.id)
   );
 
@@ -200,6 +214,7 @@ export default function LayersPanel() {
     setSelectedId(layer.kind === 'text' ? layer.id : null);
     setSelectedDividerId(layer.kind === 'divider' ? layer.id : null);
     setSelectedIconId(layer.kind === 'icon' ? layer.id : null);
+    setSelectedStrokeId(layer.kind === 'stroke' ? layer.id : null);
     setSelectedGroupId(layer.kind === 'group' ? layer.id : null);
   };
 
@@ -210,6 +225,7 @@ export default function LayersPanel() {
       if (layer.kind === 'text') updateElement(layer.id, { zIndex });
       if (layer.kind === 'divider') updateDivider(layer.id, { zIndex });
       if (layer.kind === 'icon') updateIcon(layer.id, { zIndex });
+      if (layer.kind === 'stroke') updateStroke(layer.id, { zIndex });
       if (layer.kind === 'group') updateGroup(layer.id, { zIndex });
     });
   };
@@ -223,6 +239,12 @@ export default function LayersPanel() {
     const reordered = [...layers];
     const [moving] = reordered.splice(fromIndex, 1);
     reordered.splice(targetIndex, 0, moving);
+
+    // Moving up in the list (towards index 0) = placed ON TOP (inflate animation)
+    // Moving down in the list (towards bottom) = placed BEHIND (deflate animation)
+    const animType = targetIndex < fromIndex ? 'inflate' : 'deflate';
+    triggerLayerAnimation(moving.id, animType);
+
     applyOrder(reordered);
   };
 
@@ -288,24 +310,73 @@ export default function LayersPanel() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {layers.map(layer => {
+              {layers.map((layer, index) => {
                 const selected = isSelected(layer);
+                const isDraggingThis = draggingId === layer.id;
+                const isTargetOver = dragOverId === layer.id && !isDraggingThis;
+                const isAnimatingThis = activeAnimation?.id === layer.id;
+                const animTypeThis = isAnimatingThis ? activeAnimation?.type : null;
+
                 return (
-                  <button
+                  <div
                     key={layer.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     draggable
                     onClick={() => selectLayer(layer)}
-                    onDragStart={() => { setDraggingId(layer.id); setDragOverId(null); }}
-                    onDragOver={event => { event.preventDefault(); setDragOverId(layer.id); }}
-                    onDrop={event => { event.preventDefault(); moveLayer(layer.id); setDraggingId(null); setDragOverId(null); }}
-                    onDragEnd={() => { setDraggingId(null); setDragOverId(null); }}
-                    className="flex min-h-[76px] w-full items-center gap-4 rounded-2xl px-4 text-left transition-all duration-150 hover:bg-white/15 active:scale-[0.98]"
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        selectLayer(layer);
+                      }
+                    }}
+                    onDragStart={() => {
+                      setDraggingId(layer.id);
+                      setHoldingLayerId(layer.id);
+                      setDragOverId(null);
+                    }}
+                    onDragOver={event => {
+                      event.preventDefault();
+                      setDragOverId(layer.id);
+                    }}
+                    onDrop={event => {
+                      event.preventDefault();
+                      moveLayer(layer.id);
+                      setDraggingId(null);
+                      setHoldingLayerId(null);
+                      setDragOverId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingId(null);
+                      setHoldingLayerId(null);
+                      setDragOverId(null);
+                    }}
+                    className="flex min-h-[76px] w-full items-center gap-4 rounded-2xl px-4 text-left select-none transition-all duration-150 hover:bg-white/15 active:scale-[0.98]"
                     style={{
-                      background: selected ? 'rgba(255,255,255,0.17)' : 'rgba(255,255,255,0.09)',
-                      border: dragOverId === layer.id ? '1px solid rgba(255,255,255,0.65)' : selected ? '1px solid rgba(255,255,255,0.30)' : '1px solid rgba(255,255,255,0.08)',
-                      cursor: draggingId === layer.id ? 'grabbing' : 'grab',
-                      opacity: draggingId === layer.id ? 0.55 : 1,
+                      background: isTargetOver
+                        ? 'rgba(59, 130, 246, 0.25)'
+                        : selected
+                          ? 'rgba(255,255,255,0.17)'
+                          : 'rgba(255,255,255,0.09)',
+                      border: isTargetOver
+                        ? '1px solid rgba(96, 165, 250, 0.85)'
+                        : selected
+                          ? '1px solid rgba(255,255,255,0.30)'
+                          : '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: isTargetOver
+                        ? '0 0 14px rgba(59, 130, 246, 0.45)'
+                        : isDraggingThis
+                          ? 'inset 0 2px 8px rgba(0,0,0,0.5)'
+                          : undefined,
+                      cursor: isDraggingThis ? 'grabbing' : 'grab',
+                      opacity: isDraggingThis ? 0.55 : 1,
+                      transform: isDraggingThis ? 'scale(0.92)' : undefined,
+                      transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, border 0.15s ease, opacity 0.15s ease',
+                      animation: isAnimatingThis && animTypeThis === 'inflate'
+                        ? 'panelLayerInflate 0.52s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        : isAnimatingThis && animTypeThis === 'deflate'
+                          ? 'panelLayerDeflate 0.52s cubic-bezier(0.25, 1, 0.5, 1)'
+                          : undefined,
                     }}
                   >
                     <span
@@ -322,8 +393,57 @@ export default function LayersPanel() {
                         {layer.detail}
                       </span>
                     </span>
+
+                    {/* Quick Move Up / Down controls when selected */}
+                    {selected && (
+                      <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          title="Move up (place on top)"
+                          disabled={index === 0}
+                          onClick={() => {
+                            const fromIndex = index;
+                            const targetIndex = index - 1;
+                            if (targetIndex >= 0) {
+                              const reordered = [...layers];
+                              const [moving] = reordered.splice(fromIndex, 1);
+                              reordered.splice(targetIndex, 0, moving);
+                              triggerLayerAnimation(moving.id, 'inflate');
+                              applyOrder(reordered);
+                            }
+                          }}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 disabled:opacity-20 disabled:pointer-events-none transition-all"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M18 15l-6-6-6 6" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          title="Move down (place behind)"
+                          disabled={index === layers.length - 1}
+                          onClick={() => {
+                            const fromIndex = index;
+                            const targetIndex = index + 1;
+                            if (targetIndex < layers.length) {
+                              const reordered = [...layers];
+                              const [moving] = reordered.splice(fromIndex, 1);
+                              reordered.splice(targetIndex, 0, moving);
+                              triggerLayerAnimation(moving.id, 'deflate');
+                              applyOrder(reordered);
+                            }
+                          }}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 active:scale-90 disabled:opacity-20 disabled:pointer-events-none transition-all"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+
                     <span className="text-lg leading-none text-white/35" aria-label="Drag to reorder">⠿</span>
-                  </button>
+                  </div>
                 );
               })}
             </div>

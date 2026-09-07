@@ -28,6 +28,8 @@ import { useGroup, type GroupElement } from '../context/GroupContext';
 import { clampGroupToSafeArea } from '../canvas/safe.area';
 import { IconColorOverlay } from '../tool_sidebar/icons_set/color.overlay';
 import { flipToTransform, type FlipState } from './flip.element';
+import { useLayerElementAnimation } from './layer.order';
+import { PenStrokeGraphic } from './pen.stroke';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -247,10 +249,12 @@ export function DraggableGroup({
     return () => window.removeEventListener('keydown', handler);
   }, [isSelected, onDelete]);
 
+  const { animStyle, animKey } = useLayerElementAnimation(group.id);
   const snapBase = { x: group.x, y: group.y, w: group.width, h: group.height };
 
   return (
     <div
+      key={`${group.id}-${animKey ?? 'idle'}`}
       data-canvas-element
       className={`absolute select-none ${poppins.variable}`}
       style={{
@@ -264,6 +268,7 @@ export function DraggableGroup({
         touchAction: 'none',
         userSelect: 'none',
         boxSizing: 'border-box',
+        ...animStyle,
       }}
       onMouseDown={e => {
         e.stopPropagation();
@@ -427,6 +432,21 @@ function GroupPreview({ group }: { group: GroupElement }) {
           </div>
         );
       })}
+
+      {group.members.strokes.map(stroke => (
+        <div
+          key={stroke.id}
+          style={{
+            position: 'absolute',
+            left: (stroke.x - group.originX) * scaleX,
+            top: (stroke.y - group.originY) * scaleY,
+            width: stroke.width * scaleX,
+            height: stroke.height * scaleY,
+          }}
+        >
+          <PenStrokeGraphic stroke={stroke} />
+        </div>
+      ))}
     </div>
   );
 }

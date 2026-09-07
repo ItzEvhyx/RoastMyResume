@@ -8,13 +8,14 @@ import { useIcon } from '../context/IconContext';
 import { usePen } from '../context/PenContext';
 import { useClipboard, ClipboardEntry } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
+import { DraggablePenStroke } from '../globals/pen.stroke';
 import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
 import { RulerGuides, useRulerSnapping } from '../globals/ruler.snapping';
 import type { TextElement } from '../context/TextContext';
 import type { DividerElement } from '../context/DividerContext';
 import type { IconElement } from '../context/IconContext';
 import type { PenStroke } from '../context/PenContext';
-import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, clampPenStrokeToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 
 /**
  * Mobile version: pinch-to-zoom and drag-to-pan
@@ -63,7 +64,7 @@ export default function CanvasMobile() {
     deleteDivider,
   } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
-  const { strokes, selectedStrokeId, setSelectedStrokeId, addStroke, isPenActive } = usePen();
+  const { strokes, selectedStrokeId, setSelectedStrokeId, addFullStroke, updateStroke, removeStroke, isPenActive } = usePen();
   const { clipboard, register, unregister, copy } = useClipboard();
   const { setElements: setRulerElements } = useRulerSnapping();
 
@@ -102,8 +103,9 @@ export default function CanvasMobile() {
       ...textElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: getTextHeight(element) })),
       ...dividerElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: element.thickness ?? 2 })),
       ...iconElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width ?? element.size, height: element.height ?? element.size })),
+      ...strokes.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: element.height })),
     ]);
-  }, [textElements, dividerElements, iconElements, setRulerElements]);
+  }, [textElements, dividerElements, iconElements, strokes, setRulerElements]);
 
   const updateTextSafely = (element: TextElement, updates: Partial<TextElement>) => {
     const result = clampTextToSafeArea(element, updates);
@@ -136,6 +138,13 @@ export default function CanvasMobile() {
     } else {
       clearEdgeWarning();
     }
+  };
+
+  const updateStrokeSafely = (stroke: PenStroke, updates: Partial<PenStroke>) => {
+    const result = clampPenStrokeToSafeArea(stroke, updates);
+    updateStroke(stroke.id, result.updates);
+    if (result.wasClamped) showEdgeWarning({ x: result.updates.x ?? stroke.x, y: result.updates.y ?? stroke.y, height: result.updates.height ?? stroke.height });
+    else clearEdgeWarning();
   };
 
   // Start with the full canvas width visible instead of the desktop zoom level.
@@ -266,15 +275,11 @@ export default function CanvasMobile() {
       },
       paste: (entry: ClipboardEntry, dx: number, dy: number) => {
         const src = entry.data as unknown as PenStroke;
-        addStroke({
-          ...src,
-          id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          points: src.points.map(point => ({ x: point.x + dx, y: point.y + dy })),
-        });
+        addFullStroke({ ...src, x: src.x + dx, y: src.y + dy });
       },
     });
     return () => unregister('pen-stroke');
-  }, [selectedStrokeId, strokes, register, unregister, addStroke]);
+  }, [selectedStrokeId, strokes, register, unregister, addFullStroke]);
 
   // ---------------------------------------------------------------------------
   // Convert screen touch position → canvas-space coordinates
@@ -342,17 +347,7 @@ export default function CanvasMobile() {
     }
     if (clipboard.type === 'pen-stroke') {
       const stroke = src as unknown as PenStroke;
-      const anchor = stroke.points[0];
-      if (anchor) {
-        addStroke({
-          ...stroke,
-          id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          points: stroke.points.map(point => ({
-            x: point.x + pasteTarget.canvasX - anchor.x,
-            y: point.y + pasteTarget.canvasY - anchor.y,
-          })),
-        });
-      }
+      addFullStroke({ ...stroke, x: pasteTarget.canvasX - stroke.width / 2, y: pasteTarget.canvasY - stroke.height / 2 });
       setPasteTarget(null);
       return;
     }
@@ -397,7 +392,7 @@ export default function CanvasMobile() {
       textCategory:   src.textCategory as 'header' | 'subheader' | 'body' | 'meta' | null | undefined,
     } as Omit<TextElement, 'id'>);
     setPasteTarget(null);
-  }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider, addFullIconElement, addStroke]);
+  }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider, addFullIconElement, addFullStroke]);
 
   // ---------------------------------------------------------------------------
   // Global clipboard paste (system paste event fallback)
@@ -624,6 +619,22 @@ export default function CanvasMobile() {
               onDelete={() => deleteIcon(element.id)}
               onDragEnd={clearEdgeWarning}
               onLongPress={handleElementLongPress}
+            />
+          ))}
+          {strokes.map(stroke => (
+            <DraggablePenStroke
+              key={stroke.id}
+              stroke={stroke}
+              isSelected={selectedStrokeId === stroke.id}
+              onSelect={() => {
+                setSelectedId(null);
+                setSelectedDividerId(null);
+                setSelectedIconId(null);
+                setSelectedStrokeId(stroke.id);
+                setPasteTarget(null);
+              }}
+              onUpdate={updates => updateStrokeSafely(stroke, updates)}
+              onDelete={() => removeStroke(stroke.id)}
             />
           ))}
         </div>

@@ -26,9 +26,9 @@ import { useContainer } from '../../context/ContainerContext';
 import { useText } from '../../context/TextContext';
 import { useDivider } from '../../context/DividerContext';
 import { useIcon } from '../../context/IconContext';
+import { usePen } from '../../context/PenContext';
 import { useCanvas } from '../../context/CanvasContext';
 import { useGroup } from '../../context/GroupContext';
-import { useUndo } from '../../globals/undo';
 import { getTextHeight, CANVAS_WIDTH, CANVAS_HEIGHT } from '../../canvas/safe.area';
 
 const poppins = Poppins({
@@ -64,6 +64,7 @@ export function SelectionBoundary() {
   const { textElements } = useText();
   const { dividerElements } = useDivider();
   const { iconElements } = useIcon();
+  const { strokes } = usePen();
   const { zoom } = useCanvas();
 
   if (lassoState !== 'committed') return null;
@@ -71,11 +72,13 @@ export function SelectionBoundary() {
   const selectedTexts = textElements.filter(el => selection.textIds.includes(el.id));
   const selectedDividers = dividerElements.filter(el => selection.dividerIds.includes(el.id));
   const selectedIcons = iconElements.filter(el => selection.iconIds.includes(el.id));
+  const selectedStrokes = strokes.filter(el => selection.strokeIds.includes(el.id));
 
   const allBoxes: BBox[] = [
     ...selectedTexts.map(el => ({ x: el.x, y: el.y, w: el.width, h: getTextHeight(el) })),
     ...selectedDividers.map(el => ({ x: el.x, y: el.y, w: el.width, h: el.thickness ?? 2 })),
     ...selectedIcons.map(el => ({ x: el.x, y: el.y, w: el.width ?? el.size, h: el.height ?? el.size })),
+    ...selectedStrokes.map(el => ({ x: el.x, y: el.y, w: el.width, h: el.height })),
   ];
 
   const outer = union(allBoxes);
@@ -123,6 +126,19 @@ export function SelectionBoundary() {
           rx={4 / zoom}
         />
       ))}
+      {selectedStrokes.map(el => (
+        <rect
+          key={`sel-stroke-${el.id}`}
+          x={el.x - 3}
+          y={el.y - 3}
+          width={el.width + 6}
+          height={el.height + 6}
+          fill="rgba(99,102,241,0.06)"
+          stroke="rgba(99,102,241,0.7)"
+          strokeWidth={1.5 / zoom}
+          rx={4 / zoom}
+        />
+      ))}
 
       {/* Outer bounding box */}
       {outer && (
@@ -150,32 +166,35 @@ export function SelectionBoundary() {
  * converting canvas coords → screen coords using the canvas element's rect.
  */
 export function ContainerGroupToolbar() {
-  const { lassoState, selection, selectionCount, clearLasso, setIsLassoActive } = useContainer();
-  const { textElements, deleteElement, setActiveTool } = useText();
+  const { lassoState, selection, selectionCount, clearLasso } = useContainer();
+  const { textElements, deleteElement } = useText();
   const { dividerElements, deleteDivider } = useDivider();
   const { iconElements, deleteIcon } = useIcon();
+  const { strokes, removeStroke } = usePen();
   const { zoom, pan } = useCanvas();
   const { addGroup } = useGroup();
-  const { record } = useUndo();
 
   // Compute bounding box of selected elements in canvas coords
   const boundingBox = useMemo(() => {
     const selectedTexts = textElements.filter(el => selection.textIds.includes(el.id));
     const selectedDividers = dividerElements.filter(el => selection.dividerIds.includes(el.id));
     const selectedIcons = iconElements.filter(el => selection.iconIds.includes(el.id));
+    const selectedStrokes = strokes.filter(el => selection.strokeIds.includes(el.id));
 
     const boxes: BBox[] = [
       ...selectedTexts.map(el => ({ x: el.x, y: el.y, w: el.width, h: getTextHeight(el) })),
       ...selectedDividers.map(el => ({ x: el.x, y: el.y, w: el.width, h: el.thickness ?? 2 })),
       ...selectedIcons.map(el => ({ x: el.x, y: el.y, w: el.width ?? el.size, h: el.height ?? el.size })),
+      ...selectedStrokes.map(el => ({ x: el.x, y: el.y, w: el.width, h: el.height })),
     ];
 
     return union(boxes);
-  }, [selection, textElements, dividerElements, iconElements]);
+  }, [selection, textElements, dividerElements, iconElements, strokes]);
 
   // Convert canvas bbox top-center to screen position
   const toolbarPosition = useMemo(() => {
     if (!boundingBox) return null;
+    if (typeof document === 'undefined') return null;
 
     // Find the canvas DOM element to get its screen rect
     const canvasEl = document.getElementById('resume-canvas');
@@ -197,46 +216,20 @@ export function ContainerGroupToolbar() {
 
   // ── Delete handler ───────────────────────────────────────────────────────
   const handleDelete = useCallback(() => {
-    const textSnapshots = textElements.filter(el => selection.textIds.includes(el.id));
-    const dividerSnapshots = dividerElements.filter(el => selection.dividerIds.includes(el.id));
-    const iconSnapshots = iconElements.filter(el => selection.iconIds.includes(el.id));
-
-    // Composite undo: one record captures snapshots of everything before delete
-    record(
-      // undo: restore all elements
-      () => {
-        textSnapshots.forEach(el => {
-          // Re-create each element by re-inserting via context — safest approach
-          // is to directly manipulate; but we only have deleteElement/addFullTextElement.
-          // We call addFullTextElement which re-adds with a new id — acceptable for undo.
-        });
-        // Full restoration is complex without direct setState access.
-        // For now undo re-inserts the snapshots via the public API.
-        // A future iteration can expose a "restore" method on each context.
-      },
-      // redo: delete again
-      () => {
-        selection.textIds.forEach(id => deleteElement(id));
-        selection.dividerIds.forEach(id => deleteDivider(id));
-        selection.iconIds.forEach(id => deleteIcon(id));
-      },
-    );
-
-    // Apply the delete immediately
+    // Each context records a valid undo entry for its own deletion. Avoid a
+    // duplicate no-op entry here, which previously consumed an undo step.
     selection.textIds.forEach(id => deleteElement(id));
     selection.dividerIds.forEach(id => deleteDivider(id));
     selection.iconIds.forEach(id => deleteIcon(id));
+    selection.strokeIds.forEach(id => removeStroke(id));
 
     clearLasso();
   }, [
     selection,
-    textElements,
-    dividerElements,
-    iconElements,
     deleteElement,
     deleteDivider,
     deleteIcon,
-    record,
+    removeStroke,
     clearLasso,
   ]);
 
@@ -247,11 +240,12 @@ export function ContainerGroupToolbar() {
     const selectedTexts = textElements.filter(el => selection.textIds.includes(el.id));
     const selectedDividers = dividerElements.filter(el => selection.dividerIds.includes(el.id));
     const selectedIcons = iconElements.filter(el => selection.iconIds.includes(el.id));
+    const selectedStrokes = strokes.filter(el => selection.strokeIds.includes(el.id));
 
     // 1. Create the group element with snapshots of all members
     addGroup(
       { x: boundingBox.x, y: boundingBox.y, width: boundingBox.w, height: boundingBox.h },
-      { texts: selectedTexts, dividers: selectedDividers, icons: selectedIcons },
+      { texts: selectedTexts, dividers: selectedDividers, icons: selectedIcons, strokes: selectedStrokes },
     );
 
     // 2. Remove the original elements from their contexts so they don't
@@ -259,23 +253,23 @@ export function ContainerGroupToolbar() {
     selection.textIds.forEach(id => deleteElement(id));
     selection.dividerIds.forEach(id => deleteDivider(id));
     selection.iconIds.forEach(id => deleteIcon(id));
+    selection.strokeIds.forEach(id => removeStroke(id));
 
-    // 3. Release the container tool as soon as a group has been created.
-    // Clearing the active tool also removes the sidebar's active state.
-    setIsLassoActive(false);
-    setActiveTool(null);
+    // 3. Exit lasso mode
+    clearLasso();
   }, [
     boundingBox,
     selection,
     textElements,
     dividerElements,
     iconElements,
+    strokes,
     addGroup,
     deleteElement,
     deleteDivider,
     deleteIcon,
-    setIsLassoActive,
-    setActiveTool,
+    removeStroke,
+    clearLasso,
   ]);
 
   // ── Visibility guard ─────────────────────────────────────────────────────
@@ -341,7 +335,9 @@ export function ContainerGroupToolbar() {
             </svg>
           }
           label="Group"
-          textColor="#ffffff"
+          accent="rgba(99,102,241,0.15)"
+          accentHover="rgba(99,102,241,0.28)"
+          textColor="rgba(180,180,255,1)"
         />
 
         <Divider />
@@ -355,6 +351,8 @@ export function ContainerGroupToolbar() {
             </svg>
           }
           label="Delete"
+          accent="rgba(220,53,53,0.14)"
+          accentHover="rgba(220,53,53,0.28)"
           textColor="rgba(255,120,120,1)"
         />
       </div>
@@ -382,11 +380,15 @@ function ToolbarButton({
   onClick,
   icon,
   label,
+  accent,
+  accentHover,
   textColor,
 }: {
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  accent: string;
+  accentHover: string;
   textColor: string;
 }) {
   return (
@@ -396,14 +398,17 @@ function ToolbarButton({
       className="flex items-center gap-2 rounded-full px-4 transition-all duration-150 active:scale-95"
       style={{
         height: 36,
-        background: 'transparent',
+        background: accent,
         border: 'none',
         color: textColor,
         fontFamily: 'var(--font-poppins)',
         fontWeight: 700,
         fontSize: 13,
         cursor: 'pointer',
+        // hover handled inline via onMouseEnter/Leave for simplicity
       }}
+      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = accentHover; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = accent; }}
     >
       {icon}
       {label}

@@ -39,16 +39,20 @@ export interface SelectedElementIds {
   textIds: string[];
   dividerIds: string[];
   iconIds: string[];
+  strokeIds: string[];
 }
 
 const EMPTY_SELECTION: SelectedElementIds = {
   textIds: [],
   dividerIds: [],
   iconIds: [],
+  strokeIds: [],
 };
 
 function totalCount(sel: SelectedElementIds) {
-  return sel.textIds.length + sel.dividerIds.length + sel.iconIds.length;
+  // Fast Refresh can preserve a selection created before pen strokes were
+  // added to this model, so accept that older state until the next lasso.
+  return sel.textIds.length + sel.dividerIds.length + sel.iconIds.length + (sel.strokeIds?.length ?? 0);
 }
 
 // ─── Context interface ────────────────────────────────────────────────────────

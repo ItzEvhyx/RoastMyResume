@@ -29,6 +29,16 @@ export const IMAGE_PANEL_DRAG_KEY = 'tool';
 export const IMAGE_PANEL_DRAG_VALUE = 'image-panel';
 export const IMAGE_DATA_URL_KEY = 'image-data-url';
 
+let activeDraggedImageDataUrl: string | null = null;
+
+export function getActiveDraggedImageDataUrl(): string | null {
+  return activeDraggedImageDataUrl;
+}
+
+export function setActiveDraggedImageDataUrl(url: string | null): void {
+  activeDraggedImageDataUrl = url;
+}
+
 interface UseImageDragToFrameResult {
   isDragging: boolean;
   dragHandlers: {
@@ -47,8 +57,14 @@ export function useImageDragToFrame(dataUrl: string): UseImageDragToFrameResult 
 
   const onDragStart = useCallback(
     (e: React.DragEvent) => {
-      e.dataTransfer.setData(IMAGE_PANEL_DRAG_KEY, IMAGE_PANEL_DRAG_VALUE);
-      e.dataTransfer.setData(IMAGE_DATA_URL_KEY, dataUrl);
+      activeDraggedImageDataUrl = dataUrl;
+      try {
+        e.dataTransfer.setData(IMAGE_PANEL_DRAG_KEY, IMAGE_PANEL_DRAG_VALUE);
+        e.dataTransfer.setData(IMAGE_DATA_URL_KEY, dataUrl);
+        e.dataTransfer.setData('text/plain', dataUrl);
+      } catch {
+        // Fallback handled by activeDraggedImageDataUrl in memory
+      }
       e.dataTransfer.effectAllowed = 'copy';
       setIsDragging(true);
     },
@@ -56,6 +72,7 @@ export function useImageDragToFrame(dataUrl: string): UseImageDragToFrameResult 
   );
 
   const onDragEnd = useCallback(() => {
+    activeDraggedImageDataUrl = null;
     setIsDragging(false);
   }, []);
 
@@ -97,7 +114,10 @@ export function DragActiveOverlay({ visible }: { visible: boolean }) {
  * Used in handleFrameDragOver to decide whether to accept the drag.
  */
 export function isImagePanelDrag(event: React.DragEvent | DragEvent): boolean {
-  return event.dataTransfer?.types.includes(IMAGE_DATA_URL_KEY) ?? false;
+  if (activeDraggedImageDataUrl) return true;
+  const types = event.dataTransfer?.types;
+  if (!types) return false;
+  return types.includes(IMAGE_DATA_URL_KEY) || types.includes(IMAGE_PANEL_DRAG_KEY);
 }
 
 /**
@@ -105,7 +125,13 @@ export function isImagePanelDrag(event: React.DragEvent | DragEvent): boolean {
  * Photos panel. Returns null if the event is not an image-panel drag.
  */
 export function extractImageDataUrl(event: React.DragEvent | DragEvent): string | null {
+  if (activeDraggedImageDataUrl) {
+    const cached = activeDraggedImageDataUrl;
+    return cached;
+  }
   if (!isImagePanelDrag(event)) return null;
-  const url = (event.dataTransfer as DataTransfer).getData(IMAGE_DATA_URL_KEY);
+  const dt = event.dataTransfer;
+  if (!dt) return null;
+  const url = dt.getData(IMAGE_DATA_URL_KEY) || dt.getData('text/plain');
   return url || null;
 }

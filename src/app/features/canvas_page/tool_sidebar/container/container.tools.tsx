@@ -24,6 +24,7 @@ import { useContainer } from '../../context/ContainerContext';
 import { useText } from '../../context/TextContext';
 import { useDivider } from '../../context/DividerContext';
 import { useIcon } from '../../context/IconContext';
+import { usePen } from '../../context/PenContext';
 import { useCanvas } from '../../context/CanvasContext';
 import { getTextHeight, CANVAS_WIDTH, CANVAS_HEIGHT } from '../../canvas/safe.area';
 import type { SelectedElementIds } from '../../context/ContainerContext';
@@ -58,6 +59,7 @@ export function LassoCanvas() {
   const { textElements, setSelectedId } = useText();
   const { dividerElements, setSelectedDividerId } = useDivider();
   const { iconElements, setSelectedIconId } = useIcon();
+  const { strokes, setSelectedStrokeId } = usePen();
   const { zoom } = useCanvas();
 
   const svgRef = useRef<SVGSVGElement>(null);
@@ -92,7 +94,11 @@ export function LassoCanvas() {
       .filter(el => overlaps({ x: el.x, y: el.y, w: el.width ?? el.size, h: el.height ?? el.size }, lasso))
       .map(el => el.id);
 
-    return { textIds, dividerIds, iconIds };
+    const strokeIds = strokes
+      .filter(el => overlaps({ x: el.x, y: el.y, w: el.width, h: el.height }, lasso))
+      .map(el => el.id);
+
+    return { textIds, dividerIds, iconIds, strokeIds };
   };
 
   // ── Event listeners on [data-canvas-area] ────────────────────────────────
@@ -110,6 +116,7 @@ export function LassoCanvas() {
       setSelectedId(null);
       setSelectedDividerId(null);
       setSelectedIconId(null);
+      setSelectedStrokeId(null);
       const { x, y } = toCanvasCoords(e.clientX, e.clientY);
       isDrawingRef.current = true;
       startLasso(x, y);
@@ -135,7 +142,7 @@ export function LassoCanvas() {
       // Simplest approach: the SVG rect element is the ground truth — read its attributes.
       const rectEl = svgRef.current?.querySelector('[data-lasso-rect]');
       if (!rectEl) {
-        commitLasso({ textIds: [], dividerIds: [], iconIds: [] });
+        commitLasso({ textIds: [], dividerIds: [], iconIds: [], strokeIds: [] });
         return;
       }
       const rx = parseFloat(rectEl.getAttribute('x') ?? '0');
@@ -145,7 +152,7 @@ export function LassoCanvas() {
 
       // Minimum drag size to count as intentional
       if (rw < 4 && rh < 4) {
-        commitLasso({ textIds: [], dividerIds: [], iconIds: [] });
+        commitLasso({ textIds: [], dividerIds: [], iconIds: [], strokeIds: [] });
         return;
       }
 
@@ -181,9 +188,11 @@ export function LassoCanvas() {
     textElements,
     dividerElements,
     iconElements,
+    strokes,
     setSelectedId,
     setSelectedDividerId,
     setSelectedIconId,
+    setSelectedStrokeId,
     zoom,
   ]);
 
@@ -275,6 +284,24 @@ export function LassoCanvas() {
                     y={el.y - 2}
                     width={(el.width ?? el.size) + 4}
                     height={(el.height ?? el.size) + 4}
+                    fill="none"
+                    stroke="rgba(99,102,241,0.5)"
+                    strokeWidth={1 / zoom}
+                    rx={3 / zoom}
+                  />
+                ))}
+              {strokes
+                .filter(el => overlaps(
+                  { x: el.x, y: el.y, w: el.width, h: el.height },
+                  { x: lassoRect.x, y: lassoRect.y, w: lassoRect.width, h: lassoRect.height },
+                ))
+                .map(el => (
+                  <rect
+                    key={`hit-stroke-${el.id}`}
+                    x={el.x - 2}
+                    y={el.y - 2}
+                    width={el.width + 4}
+                    height={el.height + 4}
                     fill="none"
                     stroke="rgba(99,102,241,0.5)"
                     strokeWidth={1 / zoom}

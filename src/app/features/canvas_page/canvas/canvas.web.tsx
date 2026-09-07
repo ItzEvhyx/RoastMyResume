@@ -5,9 +5,11 @@ import { useCanvas } from '../context/CanvasContext';
 import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { useIcon } from '../context/IconContext';
+import { usePen } from '../context/PenContext';
 import { useClipboard } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
-import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import { DraggablePenStroke } from '../globals/pen.stroke';
+import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, clampPenStrokeToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
 import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
 import { LassoCanvas } from '../tool_sidebar/container/container.tools';
 import { SelectionBoundary } from '../tool_sidebar/container/container.group';
@@ -17,6 +19,7 @@ import { RulerGuides, useRulerSnapping } from '../globals/ruler.snapping';
 import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
 import type { IconElement } from '../context/IconContext';
+import type { PenStroke } from '../context/PenContext';
 
 /**
  * A4 Resume dimensions:
@@ -47,6 +50,7 @@ export default function CanvasWeb() {
   const { textElements, selectedId, setSelectedId, updateElement, deleteElement, addTextElement, addFullTextElement } = useText();
   const { dividerElements, selectedDividerId, setSelectedDividerId, addDividerElement, updateDivider, deleteDivider } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
+  const { strokes, selectedStrokeId, setSelectedStrokeId, updateStroke, removeStroke, addFullStroke } = usePen();
   const {
     groupElements, selectedGroupId, setSelectedGroupId,
     deleteGroup, ungroup,
@@ -77,8 +81,9 @@ export default function CanvasWeb() {
       ...textElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: getTextHeight(element) })),
       ...dividerElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: element.thickness ?? 2 })),
       ...iconElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width ?? element.size, height: element.height ?? element.size })),
+      ...strokes.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: element.height })),
     ]);
-  }, [textElements, dividerElements, iconElements, setRulerElements]);
+  }, [textElements, dividerElements, iconElements, strokes, setRulerElements]);
 
   const updateTextSafely = (element: TextElement, updates: Partial<TextElement>) => {
     const result = clampTextToSafeArea(element, updates);
@@ -108,6 +113,17 @@ export default function CanvasWeb() {
     if (result.wasClamped) {
       const next = { ...element, ...result.updates };
       showEdgeWarning({ x: next.x, y: next.y, height: next.size });
+    } else {
+      clearEdgeWarning();
+    }
+  };
+
+  const updateStrokeSafely = (stroke: PenStroke, updates: Partial<PenStroke>) => {
+    const result = clampPenStrokeToSafeArea(stroke, updates);
+    updateStroke(stroke.id, result.updates);
+    if (result.wasClamped) {
+      const next = { ...stroke, ...result.updates };
+      showEdgeWarning({ x: next.x, y: next.y, height: next.height });
     } else {
       clearEdgeWarning();
     }
@@ -196,6 +212,21 @@ export default function CanvasWeb() {
     });
     return () => unregister('icon');
   }, [selectedIconId, iconElements, register, unregister, addFullIconElement]);
+
+  useEffect(() => {
+    register('stroke', {
+      getCurrent: () => {
+        if (!selectedStrokeId) return null;
+        const stroke = strokes.find(item => item.id === selectedStrokeId);
+        return stroke ? { type: 'stroke', data: { ...stroke } } : null;
+      },
+      paste: (entry, dx, dy) => {
+        const source = entry.data as PenStroke;
+        addFullStroke({ ...source, x: source.x + dx, y: source.y + dy });
+      },
+    });
+    return () => unregister('stroke');
+  }, [selectedStrokeId, strokes, register, unregister, addFullStroke]);
 
   // Handle drop on canvas
   const handleDrop = (e: React.DragEvent) => {
@@ -399,6 +430,7 @@ export default function CanvasWeb() {
     setSelectedDividerId(null);
     setSelectedIconId(null);
     setSelectedGroupId(null);
+    setSelectedStrokeId(null);
   };
 
   return (
@@ -500,6 +532,7 @@ export default function CanvasWeb() {
                   onSelect={() => {
                     setSelectedDividerId(null);
                     setSelectedIconId(null);
+                    setSelectedStrokeId(null);
                     setSelectedId(element.id);
                   }}
                   onUpdate={(updates) => updateTextSafely(element, updates)}
@@ -518,6 +551,7 @@ export default function CanvasWeb() {
                     setSelectedId(null);
                     setSelectedDividerId(element.id);
                     setSelectedIconId(null);
+                    setSelectedStrokeId(null);
                   }}
                   onUpdate={(updates) => updateDividerSafely(element, updates)}
                   onDelete={() => deleteDivider(element.id)}
@@ -535,10 +569,28 @@ export default function CanvasWeb() {
                     setSelectedId(null);
                     setSelectedDividerId(null);
                     setSelectedIconId(element.id);
+                    setSelectedStrokeId(null);
                   }}
                   onUpdate={(updates) => updateIconSafely(element, updates)}
                   onDelete={() => deleteIcon(element.id)}
                   onDragEnd={clearEdgeWarning}
+                />
+              ))}
+              {/* Render pen strokes as regular selectable canvas elements. */}
+              {strokes.map(stroke => (
+                <DraggablePenStroke
+                  key={stroke.id}
+                  stroke={stroke}
+                  isSelected={selectedStrokeId === stroke.id}
+                  onSelect={() => {
+                    setSelectedId(null);
+                    setSelectedDividerId(null);
+                    setSelectedIconId(null);
+                    setSelectedGroupId(null);
+                    setSelectedStrokeId(stroke.id);
+                  }}
+                  onUpdate={updates => updateStrokeSafely(stroke, updates)}
+                  onDelete={() => removeStroke(stroke.id)}
                 />
               ))}
               {/* Render group elements */}
@@ -551,6 +603,7 @@ export default function CanvasWeb() {
                     setSelectedId(null);
                     setSelectedDividerId(null);
                     setSelectedIconId(null);
+                    setSelectedStrokeId(null);
                     setSelectedGroupId(group.id);
                   }}
                   onUngroup={() => {
@@ -576,6 +629,11 @@ export default function CanvasWeb() {
                       isFrame: ic.isFrame, frameImage: ic.frameImage,
                       borderWidth: ic.borderWidth, borderColor: ic.borderColor,
                       flip: ic.flip,
+                    }));
+                    members.strokes.forEach(stroke => addFullStroke({
+                      x: stroke.x, y: stroke.y, width: stroke.width, height: stroke.height,
+                      baseWidth: stroke.baseWidth, baseHeight: stroke.baseHeight,
+                      points: stroke.points, color: stroke.color, thickness: stroke.thickness,
                     }));
                   }}
                   onDelete={() => deleteGroup(group.id)}

@@ -123,7 +123,8 @@ function ImageThumbnail({
   return (
     <div
       {...dragHandlers}
-      className="relative overflow-hidden rounded-2xl"
+      onClick={onPlace}
+      className="relative overflow-hidden rounded-2xl select-none"
       style={{
         aspectRatio: '1 / 1',
         border: isChecked
@@ -143,16 +144,24 @@ function ImageThumbnail({
         src={image.dataUrl}
         alt={image.name}
         draggable={false}
-        onClick={onPlace}
         className="transition-opacity duration-150 hover:opacity-80 active:opacity-60"
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+          pointerEvents: 'none',
+        }}
       />
 
       {/* Checkbox — top-right corner */}
       <button
         type="button"
         aria-label={isChecked ? 'Deselect image' : 'Select image'}
-        onClick={onToggleCheck}
+        onClick={e => {
+          e.stopPropagation();
+          onToggleCheck(e);
+        }}
         className="absolute top-1.5 right-1.5 flex items-center justify-center transition-transform duration-100 active:scale-90"
         style={{
           width: 20,
@@ -164,6 +173,7 @@ function ImageThumbnail({
           padding: 0,
           cursor: 'pointer',
           flexShrink: 0,
+          zIndex: 5,
         }}
       >
         {isChecked && (
@@ -185,7 +195,7 @@ function ImageThumbnail({
 /** The desktop image upload panel opened from the Image Upload item in the left toolbar. */
 export default function ImageTools() {
   const { toolbarExpanded, activeTool } = useText();
-  const { addFullIconElement } = useIcon();
+  const { addFullIconElement, iconElements, selectedIconId, updateIcon } = useIcon();
   const isMobile = useMediaQuery('(max-width: 767px)');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -238,6 +248,13 @@ export default function ImageTools() {
   };
 
   const placeImage = (image: UploadedImage) => {
+    // If a frame is currently selected on the canvas, attach image directly to it
+    const selectedIcon = iconElements.find(el => el.id === selectedIconId);
+    if (selectedIcon && selectedIcon.isFrame) {
+      updateIcon(selectedIcon.id, { frameImage: image.dataUrl });
+      return;
+    }
+
     addFullIconElement({
       x: Math.round((CANVAS_WIDTH - DEFAULT_SIZE) / 2),
       y: Math.round((CANVAS_HEIGHT - DEFAULT_SIZE) / 2),

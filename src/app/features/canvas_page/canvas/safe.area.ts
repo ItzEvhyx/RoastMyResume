@@ -1,6 +1,7 @@
 import { createElement, Fragment } from 'react';
 import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
+import type { PenStroke } from '../context/PenContext';
 
 export const CANVAS_WIDTH = 794;
 export const CANVAS_HEIGHT = 1123;
@@ -83,10 +84,27 @@ import type { IconElement } from '../context/IconContext';
 
 export function clampIconToSafeArea(element: IconElement, updates: Partial<IconElement>): ClampResult<IconElement> {
   const next = { ...element, ...updates };
-  const x = clamp(next.x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - next.size);
-  const y = clamp(next.y, SAFE_MARGIN, CANVAS_HEIGHT - SAFE_MARGIN - next.size);
+  const w = next.width ?? next.size;
+  const h = next.height ?? next.size;
+  const x = clamp(next.x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - w);
+  const y = clamp(next.y, SAFE_MARGIN, CANVAS_HEIGHT - SAFE_MARGIN - h);
   return {
     updates: { ...updates, x, y },
     wasClamped: x !== next.x || y !== next.y,
+  };
+}
+
+export function clampPenStrokeToSafeArea(element: PenStroke, updates: Partial<PenStroke>): ClampResult<PenStroke> {
+  const next = { ...element, ...updates };
+  const maxWidth = CANVAS_WIDTH - SAFE_MARGIN * 2;
+  const maxHeight = CANVAS_HEIGHT - SAFE_MARGIN * 2;
+  const scale = Math.min(1, maxWidth / next.width, maxHeight / next.height);
+  const width = next.width * scale;
+  const height = next.height * scale;
+  const x = clamp(next.x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - width);
+  const y = clamp(next.y, SAFE_MARGIN, CANVAS_HEIGHT - SAFE_MARGIN - height);
+  return {
+    updates: { ...updates, x, y, width, height },
+    wasClamped: x !== next.x || y !== next.y || width !== next.width || height !== next.height,
   };
 }

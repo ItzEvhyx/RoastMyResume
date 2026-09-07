@@ -33,7 +33,7 @@ const poppins = Poppins({
 // All icons use mdi (Material Design Icons) — every icon is solid/filled by
 // default and all names below have been verified to exist in the set.
 // ─────────────────────────────────────────────────────────────────────────────
-const mdi = (name: string) => `https://api.iconify.design/mdi/${name}.svg`;
+const mdi = (name: string) => `/api/icons/svg?id=mdi:${encodeURIComponent(name)}`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -213,18 +213,33 @@ const glassStyle: React.CSSProperties = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Recently used
 // ─────────────────────────────────────────────────────────────────────────────
+// Recently used — in-memory only (does not persist across browser reload)
+// ─────────────────────────────────────────────────────────────────────────────
 const RECENT_KEY = 'rmr_recent_icons';
 const MAX_RECENT = 20;
 
+let sessionRecentIcons: IconItem[] = [];
+
 function getRecentIcons(): IconItem[] {
-  if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]'); }
-  catch { return []; }
+  return sessionRecentIcons;
 }
 
 function pushRecentIcon(icon: IconItem) {
-  const next = [icon, ...getRecentIcons().filter(x => x.iconId !== icon.iconId)].slice(0, MAX_RECENT);
-  localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  const parts = (icon.iconId || '').split(':');
+  const prefix = parts.length === 2 ? parts[0] : 'mdi';
+  const name = parts.length === 2 ? parts[1] : (icon.name || parts[0]);
+  const normalizedId = `${prefix}:${name}`;
+  const normalized: IconItem = {
+    ...icon,
+    iconId: normalizedId,
+    name,
+    svgUrl: `/api/icons/svg?id=${encodeURIComponent(normalizedId)}`,
+  };
+
+  sessionRecentIcons = [
+    normalized,
+    ...sessionRecentIcons.filter(x => x.iconId !== normalized.iconId),
+  ].slice(0, MAX_RECENT);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -233,8 +248,24 @@ function pushRecentIcon(icon: IconItem) {
 const TILE_SIZE = 80;
 const ICON_SIZE = 36;
 
+function getIconSrc(icon: IconItem): string {
+  if (icon.iconId) {
+    const parts = icon.iconId.split(':');
+    const prefix = parts.length === 2 ? parts[0] : 'mdi';
+    const name = parts.length === 2 ? parts[1] : parts[0];
+    return `/api/icons/svg?id=${encodeURIComponent(`${prefix}:${name}`)}`;
+  }
+  if (icon.svgUrl && !icon.svgUrl.includes('api.iconify.design')) {
+    return icon.svgUrl;
+  }
+  if (icon.name) {
+    return `/api/icons/svg?id=mdi:${encodeURIComponent(icon.name)}`;
+  }
+  return icon.svgUrl ?? icon.cloudinaryUrl ?? '';
+}
+
 function IconTile({ icon, onSelect }: { icon: IconItem; onSelect: (i: IconItem) => void }) {
-  const src = icon.svgUrl ?? icon.cloudinaryUrl;
+  const src = getIconSrc(icon);
   return (
     <button
       title={icon.name}
@@ -395,6 +426,15 @@ export default function IconPicker() {
     ? ICON_CATEGORIES.find(c => c.id === openCategory) ?? null
     : null;
 
+  // ── Purge legacy localStorage on mount & sync in-memory recent icons ─────
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(RECENT_KEY);
+      } catch {}
+    }
+  }, []);
+
   // ── Load recently used when panel opens ───────────────────────────────────
   useEffect(() => {
     if (shouldShow) setRecentIcons(getRecentIcons());
@@ -423,15 +463,27 @@ export default function IconPicker() {
   }, [searchQuery]);
 
   const handleSelect = useCallback((icon: IconItem) => {
-    pushRecentIcon(icon);
+    const safeSrc = getIconSrc(icon);
+    const parts = (icon.iconId || '').split(':');
+    const prefix = parts.length === 2 ? parts[0] : 'mdi';
+    const name = parts.length === 2 ? parts[1] : (icon.name || parts[0]);
+    const normalized: IconItem = {
+      ...icon,
+      iconId: `${prefix}:${name}`,
+      name,
+      svgUrl: safeSrc,
+    };
+
+    pushRecentIcon(normalized);
     setRecentIcons(getRecentIcons());
+
     const CANVAS_WIDTH = 794;
     const CANVAS_HEIGHT = 1123;
     const DEFAULT_SIZE = 48;
     addIconElement(
       Math.round(CANVAS_WIDTH / 2 - DEFAULT_SIZE / 2),
       Math.round(CANVAS_HEIGHT / 2 - DEFAULT_SIZE / 2),
-      icon.svgUrl ?? icon.cloudinaryUrl,
+      safeSrc,
       DEFAULT_SIZE,
     );
   }, [addIconElement]);

@@ -1,20 +1,21 @@
 /**
- * Iconify service — server-side only.
+ * Iconify service — server-side and client-compatible helpers.
  *
- * Two responsibilities:
- *  1. ICON_LIST  — the 50 most common resume icons, pre-defined so the seed
- *                  route can warm the Cloudinary + Firestore cache on first deploy.
- *  2. fetchIconSvg()   — fetch a single icon's SVG from the Iconify REST API.
- *  3. searchIcons()    — full-text icon search against api.iconify.design,
- *                        used by the /api/icons/search route to give users
- *                        access to the entire Iconify catalogue.
- *
- * Iconify REST API docs: https://iconify.design/docs/api/
- * SVG endpoint:  https://api.iconify.design/{prefix}/{name}.svg
- * Search endpoint: https://api.iconify.design/search?query=…
+ * Responsibilities:
+ *  1. TOP_50_RESUME_ICONS — pre-defined common resume icons for caching & seed.
+ *  2. fetchIconSvg()      — ultra-resilient multi-tier SVG fetcher:
+ *                            - In-memory cache
+ *                            - Direct Iconify REST API
+ *                            - Iconify JSON batch endpoint
+ *                            - jsdelivr CDN fallbacks
+ *  3. searchIcons()       — full-text search with fallback to local icon catalogue.
+ *  4. iconIdToSvgUrl()    — resolves icon IDs to our robust local SVG endpoint (/api/icons/svg).
  */
 
 const ICONIFY_BASE = 'https://api.iconify.design';
+
+// In-memory cache for loaded SVGs to prevent duplicate network hits
+const svgMemoryCache = new Map<string, string>();
 
 // ---------------------------------------------------------------------------
 // Top-50 resume icons
@@ -93,7 +94,7 @@ export interface IconifySearchResult {
   name: string;
   /** Icon set prefix, e.g. "mdi" */
   prefix: string;
-  /** Direct SVG URL from Iconify CDN — usable without caching */
+  /** Local SVG proxy URL or direct SVG URL */
   svgUrl: string;
 }
 
@@ -108,40 +109,125 @@ export interface IconifySearchResponse {
 // ---------------------------------------------------------------------------
 
 /**
- * Convert an iconId ("mdi:account-outline") to the Iconify SVG endpoint URL.
+ * Convert an iconId ("mdi:account-outline") to the local SVG proxy endpoint URL.
+ * This avoids client-side Cloudflare 429 rate limiting and CORS canvas-tainting issues.
  */
 export function iconIdToSvgUrl(iconId: string): string {
-  const [prefix, name] = iconId.split(':');
-  return `${ICONIFY_BASE}/${prefix}/${name}.svg`;
+  const parts = iconId.split(':');
+  if (parts.length === 2) {
+    return `/api/icons/svg?id=${encodeURIComponent(iconId)}`;
+  }
+  return `/api/icons/svg?id=${encodeURIComponent(`mdi:${iconId}`)}`;
 }
 
 /**
  * Fetch the raw SVG markup for a single icon.
- * Returns null if the icon is not found (404) instead of throwing.
+ * Features a 4-tier fallback:
+ *   1. Memory cache
+ *   2. Direct Iconify SVG
+ *   3. Iconify JSON endpoint (immune to SVG endpoint rate limits)
+ *   4. jsdelivr CDNs
  */
 export async function fetchIconSvg(iconId: string): Promise<string | null> {
-  const url = iconIdToSvgUrl(iconId);
-
-  const res = await fetch(url, {
-    // Revalidate every 7 days — icons don't change
-    next: { revalidate: 60 * 60 * 24 * 7 },
-  });
-
-  if (!res.ok) {
-    if (res.status === 404) return null;
-    throw new Error(`Iconify fetch failed for "${iconId}": ${res.status} ${res.statusText}`);
+  const normalizedId = iconId.trim();
+  if (svgMemoryCache.has(normalizedId)) {
+    return svgMemoryCache.get(normalizedId)!;
   }
 
-  const text = await res.text();
+  const parts = normalizedId.split(':');
+  const prefix = parts.length === 2 ? parts[0] : 'mdi';
+  const name = parts.length === 2 ? parts[1] : parts[0];
 
-  // Iconify returns the literal string "404" (not a 404 status) for unknown icons
-  if (text.trim() === '404') return null;
+  if (!prefix || !name) return null;
 
-  return text;
+  // Tier 1: Direct Iconify SVG
+  try {
+    const res = await fetch(`${ICONIFY_BASE}/${prefix}/${name}.svg`, {
+      next: { revalidate: 60 * 60 * 24 * 7 },
+      headers: { Accept: 'image/svg+xml' },
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (text.trim() && text.trim() !== '404' && text.includes('<svg')) {
+        svgMemoryCache.set(normalizedId, text);
+        return text;
+      }
+    }
+  } catch (err) {
+    // Continue to next tier
+  }
+
+  // Tier 2: Iconify JSON endpoint (often immune to SVG endpoint rate limits)
+  try {
+    const res = await fetch(`${ICONIFY_BASE}/${prefix}.json?icons=${encodeURIComponent(name)}`, {
+      next: { revalidate: 60 * 60 * 24 * 7 },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as {
+        width?: number;
+        height?: number;
+        icons?: Record<string, { body: string; width?: number; height?: number }>;
+      };
+      const iconData = data.icons?.[name];
+      if (iconData?.body) {
+        const width = iconData.width ?? data.width ?? 24;
+        const height = iconData.height ?? data.height ?? 24;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 ${width} ${height}">${iconData.body}</svg>`;
+        svgMemoryCache.set(normalizedId, svg);
+        return svg;
+      }
+    }
+  } catch (err) {
+    // Continue to next tier
+  }
+
+  // Tier 3: jsdelivr MaterialDesign repo for mdi
+  if (prefix === 'mdi') {
+    try {
+      const mdiRes = await fetch(`https://cdn.jsdelivr.net/gh/Templarian/MaterialDesign@master/svg/${encodeURIComponent(name)}.svg`, {
+        next: { revalidate: 60 * 60 * 24 * 7 },
+      });
+      if (mdiRes.ok) {
+        const text = await mdiRes.text();
+        if (text.includes('<svg')) {
+          svgMemoryCache.set(normalizedId, text);
+          return text;
+        }
+      }
+    } catch (err) {
+      // Continue to next tier
+    }
+  }
+
+  // Tier 4: @iconify-json npm package on jsdelivr
+  try {
+    const jsonRes = await fetch(`https://cdn.jsdelivr.net/npm/@iconify-json/${prefix}@1/icons.json`, {
+      next: { revalidate: 60 * 60 * 24 * 7 },
+    });
+    if (jsonRes.ok) {
+      const data = (await jsonRes.json()) as {
+        width?: number;
+        height?: number;
+        icons?: Record<string, { body: string; width?: number; height?: number }>;
+      };
+      const iconData = data.icons?.[name];
+      if (iconData?.body) {
+        const width = iconData.width ?? data.width ?? 24;
+        const height = iconData.height ?? data.height ?? 24;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 ${width} ${height}">${iconData.body}</svg>`;
+        svgMemoryCache.set(normalizedId, svg);
+        return svg;
+      }
+    }
+  } catch (err) {
+    // End of tiers
+  }
+
+  return null;
 }
 
 /**
- * Search the full Iconify catalogue.
+ * Search the full Iconify catalogue with graceful local fallback.
  *
  * @param query    Free-text search term
  * @param limit    Max results to return (default 50, max 999)
@@ -152,42 +238,61 @@ export async function searchIcons(
   limit = 50,
   prefixes?: string
 ): Promise<IconifySearchResponse> {
-  const params = new URLSearchParams({
-    query,
-    limit: String(Math.min(limit, 999)),
-  });
-  if (prefixes) params.set('prefixes', prefixes);
+  const trimmed = query.trim().toLowerCase();
 
-  const url = `${ICONIFY_BASE}/search?${params.toString()}`;
+  try {
+    const params = new URLSearchParams({
+      query,
+      limit: String(Math.min(limit, 999)),
+    });
+    if (prefixes) params.set('prefixes', prefixes);
 
-  const res = await fetch(url, {
-    // Search results can be cached briefly — 5 min
-    next: { revalidate: 300 },
-  });
+    const url = `${ICONIFY_BASE}/search?${params.toString()}`;
+    const res = await fetch(url, {
+      next: { revalidate: 300 },
+    });
 
-  if (!res.ok) {
-    throw new Error(`Iconify search failed: ${res.status} ${res.statusText}`);
+    if (res.ok) {
+      const data = (await res.json()) as {
+        icons?: string[];
+        total?: number;
+      };
+
+      const icons: IconifySearchResult[] = (data.icons ?? []).map((iconId) => {
+        const parts = iconId.split(':');
+        const prefix = parts[0];
+        const name = parts[1] ?? parts[0];
+        return {
+          iconId,
+          name,
+          prefix,
+          svgUrl: iconIdToSvgUrl(iconId),
+        };
+      });
+
+      return {
+        icons,
+        total: data.total ?? icons.length,
+      };
+    }
+  } catch (err) {
+    console.warn('[iconify] remote search failed, using local fallback:', err);
   }
 
-  const data = (await res.json()) as {
-    icons: string[];       // ["mdi:account", ...]
-    total: number;
-    limit: number;
-    start: number;
-  };
-
-  const icons: IconifySearchResult[] = (data.icons ?? []).map((iconId) => {
-    const [prefix, name] = iconId.split(':');
-    return {
-      iconId,
-      name,
-      prefix,
-      svgUrl: iconIdToSvgUrl(iconId),
-    };
-  });
-
+  // Fallback: search local TOP_50_RESUME_ICONS
+  const matched = TOP_50_RESUME_ICONS.filter((id) => id.toLowerCase().includes(trimmed)).slice(0, limit);
   return {
-    icons,
-    total: data.total ?? icons.length,
+    icons: matched.map((iconId) => {
+      const parts = iconId.split(':');
+      const prefix = parts[0];
+      const name = parts[1] ?? parts[0];
+      return {
+        iconId,
+        name,
+        prefix,
+        svgUrl: iconIdToSvgUrl(iconId),
+      };
+    }),
+    total: matched.length,
   };
 }

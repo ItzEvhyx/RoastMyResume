@@ -28,6 +28,7 @@ import { CATEGORIES } from '../tool_sidebar/texts/font.size';
 import { convertListContent, ListType } from '../tool_sidebar/texts/bulletpoint';
 import { getNextTextAlign, TextAlign } from '../tool_sidebar/texts/alignment';
 import { useRulerSnapping } from './ruler.snapping';
+import { useLayerElementAnimation } from './layer.order';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Re-export element types so importers only need this one file
@@ -707,21 +708,24 @@ export function DraggableText({
     wordBreak: 'break-word',
   };
 
+  const { animStyle, animKey } = useLayerElementAnimation(element.id);
   const snapBase = { x: element.x, y: element.y, width: element.width, fontSize: element.fontSize, textCategory: element.textCategory };
 
   return (
     <div
+      key={`${element.id}-${animKey ?? 'idle'}`}
       data-canvas-element
       className={`absolute ${poppins.variable}`}
       style={{
         left: element.x,
         top: element.y,
         width: element.width,
-        zIndex: element.zIndex ?? 1,
+        zIndex: isSelected ? (element.zIndex ?? 1) + 1000 : (element.zIndex ?? 1),
         cursor: isDragging ? 'grabbing' : isEditing ? 'text' : 'move',
         fontFamily: element.fontFamily || 'var(--font-poppins)',
         pointerEvents: 'auto',
         touchAction: 'none',
+        ...animStyle,
       }}
       onMouseDown={handleMouseDown}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
@@ -922,10 +926,12 @@ export function DraggableDivider({
     startLongPress(t.clientX, t.clientY, () => {});
   };
 
+  const { animStyle, animKey } = useLayerElementAnimation(element.id);
   const snapBase = { x: element.x, y: element.y, width: element.width, fontSize: 0 };
 
   return (
     <div
+      key={`${element.id}-${animKey ?? 'idle'}`}
       data-canvas-element
       className="absolute"
       style={{
@@ -933,10 +939,11 @@ export function DraggableDivider({
         top: element.y - HIT_PADDING,
         width: element.width,
         height: HIT_PADDING * 2 + thickness,
-        zIndex: element.zIndex ?? 1,
+        zIndex: isSelected ? (element.zIndex ?? 1) + 1000 : (element.zIndex ?? 1),
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',
+        ...animStyle,
       }}
       onMouseDown={handleMouseDown}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
@@ -1044,7 +1051,15 @@ interface DraggableIconProps {
   onLongPress?: () => void;
 }
 
-function ShapeFill({ element }: { element: IconElement }) {
+function ShapeFill({
+  element,
+  isDragOver = false,
+  onUploadClick,
+}: {
+  element: IconElement;
+  isDragOver?: boolean;
+  onUploadClick?: () => void;
+}) {
   const borderRadius = element.cornerRadius === undefined
     ? (element.shapeKind === 'circle' ? '50%' : '0%')
     : `${element.cornerRadius / 2}%`;
@@ -1057,20 +1072,47 @@ function ShapeFill({ element }: { element: IconElement }) {
           width: '100%',
           height: '100%',
           overflow: 'hidden',
-          background: '#f5f5f6',
+          background: isDragOver ? 'rgba(235, 243, 255, 0.95)' : '#f5f5f6',
           border: element.frameImage
             ? `${element.borderWidth ?? 0}px solid ${element.borderColor ?? '#ffffff'}`
-            : '2px dashed #626370',
+            : isDragOver
+              ? '2px dashed #2563eb'
+              : '2px dashed #626370',
+          boxShadow: isDragOver ? '0 0 0 3px rgba(37, 99, 235, 0.3)' : undefined,
           boxSizing: 'border-box',
           borderRadius,
           pointerEvents: 'none',
+          transition: 'all 0.15s ease',
         }}
       >
         {element.frameImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={element.frameImage} alt="" draggable={false} style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }} />
+          <img
+            src={element.frameImage}
+            alt=""
+            draggable={false}
+            style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
+          />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#9899a5', fontFamily: 'var(--font-poppins, Arial), sans-serif', fontSize: 16, overflow: 'hidden', textAlign: 'center' }}>
+          <div
+            onClick={onUploadClick ? (e) => { e.stopPropagation(); onUploadClick(); } : undefined}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              color: isDragOver ? '#2563eb' : '#9899a5',
+              fontFamily: 'var(--font-poppins, Arial), sans-serif',
+              fontSize: 16,
+              overflow: 'hidden',
+              textAlign: 'center',
+              cursor: 'pointer',
+              pointerEvents: 'auto',
+            }}
+          >
             <div
               style={{
                 width: 34,
@@ -1085,9 +1127,13 @@ function ShapeFill({ element }: { element: IconElement }) {
                 maskPosition: 'center',
                 WebkitMaskRepeat: 'no-repeat',
                 maskRepeat: 'no-repeat',
+                transform: isDragOver ? 'scale(1.15)' : 'scale(1)',
+                transition: 'transform 0.15s ease',
               }}
             />
-            <span style={{ fontWeight: 400, flexShrink: 0 }}>Drop photo here</span>
+            <span style={{ fontWeight: 400, flexShrink: 0, userSelect: 'none' }}>
+              {isDragOver ? 'Release to drop' : 'Drop photo here'}
+            </span>
           </div>
         )}
       </div>
@@ -1276,6 +1322,31 @@ export function DraggableIcon({
     startLongPress(t.clientX, t.clientY, () => {});
   };
 
+  const [isFrameDragOver, setIsFrameDragOver] = useState(false);
+  const frameFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFrameFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onUpdate({ frameImage: reader.result });
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleFrameDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!element.isShape || !element.isFrame) return;
+    const acceptsFiles = event.dataTransfer.types.includes('Files');
+    const acceptsPanel = isImagePanelDrag(event);
+    if (!acceptsFiles && !acceptsPanel) return;
+    event.preventDefault();
+    setIsFrameDragOver(true);
+  };
+
   const handleFrameDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     if (!element.isShape || !element.isFrame) return;
     const acceptsFiles = event.dataTransfer.types.includes('Files');
@@ -1284,10 +1355,19 @@ export function DraggableIcon({
     event.preventDefault();
     event.stopPropagation();
     event.dataTransfer.dropEffect = 'copy';
+    if (!isFrameDragOver) setIsFrameDragOver(true);
+  };
+
+  const handleFrameDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!element.isShape || !element.isFrame) return;
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      setIsFrameDragOver(false);
+    }
   };
 
   const handleFrameDrop = (event: React.DragEvent<HTMLDivElement>) => {
     if (!element.isShape || !element.isFrame) return;
+    setIsFrameDragOver(false);
 
     // ── Drop from Photos panel ────────────────────────────────────────────
     const panelDataUrl = extractImageDataUrl(event);
@@ -1310,6 +1390,8 @@ export function DraggableIcon({
     reader.readAsDataURL(image);
   };
 
+  const { animStyle, animKey } = useLayerElementAnimation(element.id);
+
   // Snapshot records the independent shape bounds at resize start.
   const snapBase: Omit<ResizeSnapshot, 'mouseX' | 'mouseY'> = {
     x: element.x,
@@ -1321,6 +1403,7 @@ export function DraggableIcon({
 
   return (
     <div
+      key={`${element.id}-${animKey ?? 'idle'}`}
       data-canvas-element
       className={`absolute ${poppins.variable}`}
       style={{
@@ -1330,23 +1413,40 @@ export function DraggableIcon({
         height: elementHeight,
         // The pen drawing SVG occupies the canvas, so icon and shape hit areas
         // must have their own layer instead of relying on DOM paint order.
-        zIndex: element.zIndex ?? 1,
+        zIndex: isSelected ? (element.zIndex ?? 1) + 1000 : (element.zIndex ?? 1),
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',
         userSelect: 'none',
+        ...animStyle,
       }}
       onMouseDown={handleMouseDown}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       onTouchStart={handleTouchStart}
+      onDragEnter={handleFrameDragEnter}
       onDragOver={handleFrameDragOver}
+      onDragLeave={handleFrameDragLeave}
       onDrop={handleFrameDrop}
     >
+      {element.isFrame && (
+        <input
+          ref={frameFileInputRef}
+          type="file"
+          accept="image/png,image/jpeg"
+          className="hidden"
+          style={{ display: 'none' }}
+          onChange={handleFrameFileInputChange}
+        />
+      )}
       {/* Shapes fill their full independent bounding box; icons retain SVG masking.
           Raster images (PNG/JPEG data URLs) bypass the CSS mask overlay and render
           directly as an <img> — the mask approach turns them into a solid black square. */}
       {element.isShape ? (
-        <ShapeFill element={element} />
+        <ShapeFill
+          element={element}
+          isDragOver={isFrameDragOver}
+          onUploadClick={() => frameFileInputRef.current?.click()}
+        />
       ) : (element.svgUrl.startsWith('data:image/png') || element.svgUrl.startsWith('data:image/jpeg') || element.svgUrl.startsWith('data:image/jpg')) ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

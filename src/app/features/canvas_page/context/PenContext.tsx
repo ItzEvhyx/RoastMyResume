@@ -2,12 +2,21 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useUndo } from '../globals/undo';
+import { useLayerOrder } from '../globals/layer.order';
 
 export interface PenStroke {
   id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** The unscaled SVG coordinate space for this drawing. */
+  baseWidth: number;
+  baseHeight: number;
   points: { x: number; y: number }[];
   color: string;
   thickness: number;
+  zIndex?: number;
 }
 
 type Point = { x: number; y: number };
@@ -107,7 +116,11 @@ interface PenContextType {
   strokes: PenStroke[];
   selectedStrokeId: string | null;
   setSelectedStrokeId: (id: string | null) => void;
-  addStroke: (stroke: PenStroke) => void;
+  addStroke: (points: Point[], color: string, thickness: number) => string;
+  addFullStroke: (stroke: Omit<PenStroke, 'id'>) => string;
+  updateStroke: (id: string, updates: Partial<PenStroke>) => void;
+  startUpdateBatch: () => void;
+  endUpdateBatch: () => void;
   removeStroke: (id: string) => void;
   clearStrokes: () => void;
 }
@@ -122,10 +135,23 @@ export function PenProvider({ children }: { children: ReactNode }) {
   const [isEraserActive, setIsEraserActive] = useState(false);
   const [strokes, setStrokes] = useState<PenStroke[]>([]);
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
-  const { record } = useUndo();
+  const { record, startBatch, endBatch } = useUndo();
+  const { getNextLayer } = useLayerOrder();
 
-  const addStroke = (stroke: PenStroke) => {
+  const addStroke = (points: Point[], color: string, thickness: number) => {
+    const padding = thickness / 2;
+    const x = Math.min(...points.map(point => point.x)) - padding;
+    const y = Math.min(...points.map(point => point.y)) - padding;
+    const width = Math.max(1, Math.max(...points.map(point => point.x)) - x + padding);
+    const height = Math.max(1, Math.max(...points.map(point => point.y)) - y + padding);
+    const stroke: PenStroke = {
+      id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      x, y, width, height, baseWidth: width, baseHeight: height,
+      points: points.map(point => ({ x: point.x - x, y: point.y - y })),
+      color, thickness, zIndex: getNextLayer(),
+    };
     setStrokes(prev => [...prev, stroke]);
+    setSelectedStrokeId(stroke.id);
     
     // Record undo/redo actions
     // Undo: remove the stroke, Redo: add it back
@@ -133,6 +159,29 @@ export function PenProvider({ children }: { children: ReactNode }) {
       () => setStrokes(prev => prev.filter(s => s.id !== stroke.id)),
       () => setStrokes(prev => [...prev, stroke])
     );
+    return stroke.id;
+  };
+
+  const addFullStroke = (stroke: Omit<PenStroke, 'id'>) => {
+    const full: PenStroke = { ...stroke, id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, zIndex: getNextLayer() };
+    setStrokes(prev => [...prev, full]);
+    setSelectedStrokeId(full.id);
+    record(
+      () => setStrokes(prev => prev.filter(item => item.id !== full.id)),
+      () => setStrokes(prev => [...prev, full]),
+    );
+    return full.id;
+  };
+
+  const updateStroke = (id: string, updates: Partial<PenStroke>) => {
+    const previous = strokes.find(stroke => stroke.id === id);
+    if (!previous) return;
+    const next = { ...previous, ...updates };
+    record(
+      () => setStrokes(items => items.map(item => item.id === id ? previous : item)),
+      () => setStrokes(items => items.map(item => item.id === id ? next : item)),
+    );
+    setStrokes(items => items.map(item => item.id === id ? next : item));
   };
 
   const removeStroke = (id: string) => {
@@ -141,6 +190,7 @@ export function PenProvider({ children }: { children: ReactNode }) {
     
     const index = strokes.findIndex(s => s.id === id);
     setStrokes(prev => prev.filter(s => s.id !== id));
+    setSelectedStrokeId(current => current === id ? null : current);
     
     // Record undo/redo actions
     // Undo: restore the stroke, Redo: remove it again
@@ -153,6 +203,7 @@ export function PenProvider({ children }: { children: ReactNode }) {
   const clearStrokes = () => {
     const previousStrokes = [...strokes];
     setStrokes([]);
+    setSelectedStrokeId(null);
     
     // Record undo/redo actions
     // Undo: restore all strokes, Redo: clear them again
@@ -165,8 +216,11 @@ export function PenProvider({ children }: { children: ReactNode }) {
   const eraseStrokesAt = (point: Point, eraserDiameter: number, zoom: number) => {
     setStrokes((previousStrokes) => previousStrokes.flatMap((stroke) => {
       // Include half the visible pen width so the eraser removes every touched pixel.
-      const radius = (eraserDiameter + stroke.thickness) / (2 * zoom);
-      const fragments = eraseCircleFromStroke(stroke, point, radius);
+      const scaleX = stroke.baseWidth / stroke.width;
+      const scaleY = stroke.baseHeight / stroke.height;
+      const localPoint = { x: (point.x - stroke.x) * scaleX, y: (point.y - stroke.y) * scaleY };
+      const radius = (eraserDiameter + stroke.thickness) / (2 * zoom) * Math.max(scaleX, scaleY);
+      const fragments = eraseCircleFromStroke(stroke, localPoint, radius);
 
       if (fragments.length === 1 && fragments[0] === stroke.points) return [stroke];
 
@@ -176,6 +230,7 @@ export function PenProvider({ children }: { children: ReactNode }) {
         points,
       }));
     }));
+    setSelectedStrokeId(null);
   };
 
   return (
@@ -196,6 +251,10 @@ export function PenProvider({ children }: { children: ReactNode }) {
         selectedStrokeId,
         setSelectedStrokeId,
         addStroke,
+        addFullStroke,
+        updateStroke,
+        startUpdateBatch: startBatch,
+        endUpdateBatch: endBatch,
         removeStroke,
         clearStrokes,
       }}
