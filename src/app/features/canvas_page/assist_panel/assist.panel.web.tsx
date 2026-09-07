@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Poppins } from 'next/font/google';
 import { animate } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import DeniseSignInMsgWeb from './denise_signin/signin.msg.web';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -13,6 +14,8 @@ const poppins = Poppins({
 
 interface AssistPanelWebProps {
   stage: number;
+  isSignedIn?: boolean;
+  onSignUp?: () => void;
 }
 
 const navItems = [
@@ -22,14 +25,30 @@ const navItems = [
   { label: 'Layouts', id: 'layouts' },
 ];
 
-export default function AssistPanelWeb({ stage }: AssistPanelWebProps) {
+export default function AssistPanelWeb({
+  stage,
+  isSignedIn: externalSignedIn,
+  onSignUp,
+}: AssistPanelWebProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [width, setWidth] = useState(440);
   const [isResizing, setIsResizing] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [hoverX, setHoverX] = useState<number | null>(null);
+  const [internalSignedIn, setInternalSignedIn] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
+
+  // Use externally controlled sign-in state if provided, otherwise fallback to internal state
+  const isSignedIn = externalSignedIn !== undefined ? externalSignedIn : internalSignedIn;
+
+  const handleSignUp = () => {
+    if (onSignUp) {
+      onSignUp();
+    } else {
+      setInternalSignedIn(true);
+    }
+  };
 
   const visible = stage >= 2;
 
@@ -270,7 +289,7 @@ export default function AssistPanelWeb({ stage }: AssistPanelWebProps) {
 
         {/* Content Panel */}
         <div
-          className="overflow-hidden rounded-3xl p-6"
+          className="overflow-hidden rounded-3xl"
           style={{
             ...glassStyle,
             height: 'calc(100vh - 160px)',
@@ -281,15 +300,38 @@ export default function AssistPanelWeb({ stage }: AssistPanelWebProps) {
           }}
         >
           <div
-            className="flex h-full items-center justify-center whitespace-nowrap"
+            className="h-full w-full"
             style={{
               opacity: isOpen ? 1 : 0,
               transition: 'opacity 0.2s ease-out',
             }}
           >
-            <span className="text-sm font-medium text-white/60">
-              {navItems[activeTab].label} Content
-            </span>
+            {activeTab === 0 ? (
+              !isSignedIn ? (
+                <DeniseSignInMsgWeb onSignUp={handleSignUp} />
+              ) : (
+                /* Actual Ask Denise content when signed in */
+                <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+                  <span className="text-base font-semibold text-white/90 mb-1">Ask Denise</span>
+                  <span className="text-sm text-white/50 max-w-xs mb-4">
+                    You're signed in! Ask Denise for personalized resume feedback and reviews.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setInternalSignedIn(false)}
+                    className="text-xs text-white/40 hover:text-white/70 transition-colors underline cursor-pointer"
+                  >
+                    (Reset to Sign In view)
+                  </button>
+                </div>
+              )
+            ) : (
+              <div className="flex h-full items-center justify-center p-6 whitespace-nowrap">
+                <span className="text-sm font-medium text-white/60">
+                  {navItems[activeTab].label} Content
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
