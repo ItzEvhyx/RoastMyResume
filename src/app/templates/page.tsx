@@ -14,10 +14,12 @@ import FAQWeb from '@/app/features/templates_page/faq/faq.web';
 import FAQMobile from '@/app/features/templates_page/faq/faq.mobile';
 import FooterWeb from '@/app/features/templates_page/footer/footer.web';
 import FooterMobile from '@/app/features/templates_page/footer/footer.mobile';
+import AuthModal from '@/app/features/auth_modals/auth_modal';
 
 export default function TemplatesPage() {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [ready, setReady] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Entry animation — paint the hidden state first, then animate in.
   useEffect(() => {
@@ -51,7 +53,11 @@ export default function TemplatesPage() {
         }}
       >
         {/* Banner — flush to top */}
-        {isMobile === undefined ? null : isMobile ? <BannerMobile /> : <BannerWeb />}
+        {isMobile === undefined ? null : isMobile ? (
+          <BannerMobile onSignInClick={() => setIsAuthModalOpen(true)} />
+        ) : (
+          <BannerWeb onSignInClick={() => setIsAuthModalOpen(true)} />
+        )}
 
         {/* Threads — full viewport width */}
         <div className="relative z-10 w-screen" style={{ height: isMobile ? 160 : 240 }}>
@@ -75,6 +81,12 @@ export default function TemplatesPage() {
         {/* Footer */}
         {isMobile === undefined ? null : isMobile ? <FooterMobile /> : <FooterWeb />}
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </main>
   );
 }

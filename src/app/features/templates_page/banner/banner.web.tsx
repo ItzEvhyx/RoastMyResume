@@ -17,7 +17,11 @@ const futuraDisplay = localFont({
   display: 'swap',
 });
 
-export default function BannerWeb() {
+interface BannerWebProps {
+  onSignInClick?: () => void;
+}
+
+export default function BannerWeb({ onSignInClick }: BannerWebProps = {}) {
   return (
     <>
     <div
@@ -32,6 +36,7 @@ export default function BannerWeb() {
           tint="#0b0d12"
           tintOpacity={1}
           textColor="#f5f5f5"
+          onClick={onSignInClick}
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600, minWidth: 160 }}
         >
           Sign in

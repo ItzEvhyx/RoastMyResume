@@ -16,7 +16,11 @@ const futuraDisplay = localFont({
   display: 'swap',
 });
 
-export default function BannerMobile() {
+interface BannerMobileProps {
+  onSignInClick?: () => void;
+}
+
+export default function BannerMobile({ onSignInClick: _ }: BannerMobileProps = {}) {
   return (
     <>
     <div
