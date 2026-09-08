@@ -152,31 +152,31 @@ export function SignInForm({
     >
       {/* Sign-in Header */}
       <h2
-        className="text-white text-5xl sm:text-6xl lg:text-[68px] mb-7 sm:mb-8 tracking-wide text-center"
+        className="text-white text-3xl sm:text-6xl lg:text-[68px] mb-3 sm:mb-8 tracking-wide text-center"
         style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
       >
         Sign-in
       </h2>
 
-      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4 sm:gap-5">
+      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3 sm:gap-5">
         {/* Email Pill Field with transition border label */}
         <div className="relative w-full">
           <div
-            className={`relative w-full h-[58px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
+            className={`relative w-full h-[50px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
               emailFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
             }`}
           >
             {/* Floating label that docks onto top-left border */}
             <label
               htmlFor="auth-email-input"
-              className={`absolute pointer-events-none flex items-center gap-2 transition-all duration-200 ease-out select-none ${
+              className={`absolute pointer-events-none flex items-center gap-1.5 sm:gap-2 transition-all duration-200 ease-out select-none ${
                 isEmailFloating
-                  ? '-top-[13px] left-7 px-2 bg-[#17171a] text-sm sm:text-base font-bold text-white z-10'
-                  : 'top-1/2 -translate-y-1/2 left-7 px-0 bg-transparent text-base sm:text-lg font-bold text-white/50 z-0'
+                  ? '-top-[11px] sm:-top-[13px] left-5 sm:left-7 px-2 bg-[#17171a] text-xs sm:text-base font-bold text-white z-10'
+                  : 'top-1/2 -translate-y-1/2 left-5 sm:left-7 px-0 bg-transparent text-sm sm:text-lg font-bold text-white/50 z-0'
               }`}
               style={{ fontFamily: 'var(--font-poppins)' }}
             >
-              <SolidMailIcon className="w-5 h-5 text-white shrink-0" />
+              <SolidMailIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white shrink-0" />
               <span>Email</span>
             </label>
 
@@ -188,7 +188,7 @@ export function SignInForm({
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               autoComplete="email"
-              className="w-full h-full bg-transparent text-white px-7 font-poppins text-base sm:text-lg font-medium outline-none rounded-full"
+              className="w-full h-full bg-transparent text-white px-5 sm:px-7 font-poppins text-sm sm:text-lg font-medium outline-none rounded-full"
               style={{ fontFamily: 'var(--font-poppins)' }}
             />
           </div>
@@ -197,21 +197,21 @@ export function SignInForm({
         {/* Password Pill Field with transition border label + show/hide toggle */}
         <div className="relative w-full">
           <div
-            className={`relative w-full h-[58px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
+            className={`relative w-full h-[50px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
               passwordFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
             }`}
           >
             {/* Floating label that docks onto top-left border */}
             <label
               htmlFor="auth-password-input"
-              className={`absolute pointer-events-none flex items-center gap-2 transition-all duration-200 ease-out select-none ${
+              className={`absolute pointer-events-none flex items-center gap-1.5 sm:gap-2 transition-all duration-200 ease-out select-none ${
                 isPasswordFloating
-                  ? '-top-[13px] left-7 px-2 bg-[#17171a] text-sm sm:text-base font-bold text-white z-10'
-                  : 'top-1/2 -translate-y-1/2 left-7 px-0 bg-transparent text-base sm:text-lg font-bold text-white/50 z-0'
+                  ? '-top-[11px] sm:-top-[13px] left-5 sm:left-7 px-2 bg-[#17171a] text-xs sm:text-base font-bold text-white z-10'
+                  : 'top-1/2 -translate-y-1/2 left-5 sm:left-7 px-0 bg-transparent text-sm sm:text-lg font-bold text-white/50 z-0'
               }`}
               style={{ fontFamily: 'var(--font-poppins)' }}
             >
-              <SolidLockIcon className="w-4.5 h-4.5 text-white shrink-0" />
+              <SolidLockIcon className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 text-white shrink-0" />
               <span>Password</span>
             </label>
 
@@ -223,7 +223,7 @@ export function SignInForm({
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               autoComplete="current-password"
-              className="w-full h-full bg-transparent text-white pl-7 pr-16 font-poppins text-base sm:text-lg font-medium outline-none rounded-full"
+              className="w-full h-full bg-transparent text-white pl-5 pr-12 sm:pl-7 sm:pr-16 font-poppins text-sm sm:text-lg font-medium outline-none rounded-full"
               style={{ fontFamily: 'var(--font-poppins)' }}
             />
 
@@ -232,9 +232,9 @@ export function SignInForm({
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              className="absolute right-5 top-1/2 -translate-y-1/2 p-1.5 text-white hover:text-white/80 transition-colors focus:outline-none"
+              className="absolute right-4 sm:right-5 top-1/2 -translate-y-1/2 p-1 text-white hover:text-white/80 transition-colors focus:outline-none"
             >
-              {showPassword ? <EyeIcon className="w-7 h-7" /> : <EyeOffIcon className="w-7 h-7" />}
+              {showPassword ? <EyeIcon className="w-5 h-5 sm:w-7 sm:h-7" /> : <EyeOffIcon className="w-5 h-5 sm:w-7 sm:h-7" />}
             </button>
           </div>
         </div>
@@ -254,17 +254,17 @@ export function SignInForm({
         {/* Sign-in Submit Button */}
         <button
           type="submit"
-          className="w-full mt-1 sm:mt-1.5 h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-xl sm:text-2xl hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
+          className="w-full mt-0.5 sm:mt-1.5 h-[48px] sm:h-[62px] bg-white text-black rounded-full font-bold text-lg sm:text-2xl hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
         >
           Sign-in
         </button>
 
         {/* Line Divider with "Or" */}
-        <div className="w-full flex items-center my-2 sm:my-3">
+        <div className="w-full flex items-center my-1 sm:my-3">
           <div className="flex-1 h-[2px] bg-white" />
           <span
-            className="px-5 text-white text-2xl sm:text-3xl tracking-wider font-extrabold"
+            className="px-3 sm:px-5 text-white text-lg sm:text-3xl tracking-wider font-extrabold"
             style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
           >
             Or
@@ -275,15 +275,15 @@ export function SignInForm({
         {/* Continue with Google Button */}
         <button
           type="button"
-          className="w-full h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-base sm:text-lg flex items-center justify-center gap-3.5 hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
+          className="w-full h-[48px] sm:h-[62px] bg-white text-black rounded-full font-bold text-sm sm:text-lg flex items-center justify-center gap-2.5 sm:gap-3.5 hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
         >
-          <GoogleIcon className="w-6 h-6 shrink-0" />
+          <GoogleIcon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
           <span>Continue with Google</span>
         </button>
 
         {/* Switch to Sign-up */}
-        <div className="w-full text-center mt-2 sm:mt-3">
+        <div className="w-full text-center mt-1.5 sm:mt-3">
           <span
             className="text-xs sm:text-sm text-neutral-400 font-normal"
             style={{ fontFamily: 'var(--font-poppins)' }}
@@ -319,10 +319,10 @@ export default function SignIn({
       className={`w-full text-white ${poppins.variable} ${futuraDisplay.variable}`}
       style={{ fontFamily: 'var(--font-poppins)' }}
     >
-      <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 lg:gap-16">
-        {/* Left column: Denise illustration + Futura copy */}
-        <div className="flex flex-col items-center justify-center shrink-0 w-full md:w-[46%] max-w-[370px]">
-          <div className="relative w-[260px] h-[300px] sm:w-[300px] sm:h-[350px] lg:w-[320px] lg:h-[370px]">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-8 md:gap-12 lg:gap-16">
+        {/* Left column: Denise illustration + Futura copy (row on mobile, column on desktop) */}
+        <div className="flex flex-row md:flex-col items-center justify-center gap-3 sm:gap-6 md:gap-0 shrink-0 w-full md:w-[46%] max-w-[420px] md:max-w-[370px]">
+          <div className="relative w-[160px] h-[185px] sm:w-[185px] sm:h-[210px] md:w-[300px] md:h-[350px] lg:w-[320px] lg:h-[370px] shrink-0">
             <Image
               src="/assets/images/denise_auth.png"
               alt="Denise HR thumbs up"
@@ -331,9 +331,9 @@ export default function SignIn({
               className="object-contain"
             />
           </div>
-          <div className="mt-4 sm:mt-5 text-center">
+          <div className="mt-0 md:mt-5 text-left md:text-center flex-1 md:flex-initial">
             <p
-              className="text-white text-2xl sm:text-3xl lg:text-[32px] leading-[1.08] tracking-wide text-center"
+              className="text-white text-[21px] sm:text-2xl md:text-3xl lg:text-[32px] leading-[1.12] sm:leading-[1.1] md:leading-[1.08] tracking-wide text-left md:text-center"
               style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
             >
               Takes 20 seconds.

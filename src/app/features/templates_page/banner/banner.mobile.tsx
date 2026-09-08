@@ -70,7 +70,7 @@ export default function BannerMobile({ onSignInClick }: BannerMobileProps = {}) 
                   initial={{ opacity: 0, y: 4, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                  className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border-2 border-white p-2.5 shadow-2xl z-30"
+                  className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border-2 border-white p-2.5 shadow-2xl z-50"
                   style={{ backgroundColor: '#17171a', fontFamily: 'var(--font-poppins)' }}
                 >
                   <div className="px-2 py-1">

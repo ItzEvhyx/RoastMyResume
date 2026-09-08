@@ -142,7 +142,7 @@ export default function AuthModal({
         {open && !isOtpOpen && (
           <div
             key="auth-modal-root"
-            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${poppins.variable} ${futuraDisplay.variable}`}
+            className={`fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto ${poppins.variable} ${futuraDisplay.variable}`}
             role="dialog"
             aria-modal="true"
             aria-label="Authentication"
@@ -171,10 +171,9 @@ export default function AuthModal({
                 damping: 26,
                 mass: 0.85,
               }}
-              className="relative z-10 flex w-full max-w-4xl lg:max-w-[940px] flex-col items-center justify-center overflow-hidden rounded-[32px] border-2 border-white p-6 sm:p-10 lg:p-12 shadow-2xl"
+              className="relative z-10 flex w-full max-w-4xl lg:max-w-[940px] flex-col items-center justify-center overflow-y-auto overflow-x-hidden rounded-[28px] sm:rounded-[32px] border-2 border-white p-4 sm:p-10 lg:p-12 shadow-2xl my-auto max-h-[calc(100dvh-24px)] sm:max-h-[90vh] md:min-h-[620px]"
               style={{
                 backgroundColor: '#17171a',
-                minHeight: 'min(620px, 90vh)',
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -183,7 +182,7 @@ export default function AuthModal({
               type="button"
               onClick={handleClose}
               aria-label="Close"
-              className="absolute right-6 top-6 flex h-9 w-9 items-center justify-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white focus:outline-none z-20"
+              className="absolute right-3 top-3 sm:right-6 sm:top-6 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white focus:outline-none z-20"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -208,10 +207,14 @@ export default function AuthModal({
               </div>
             ) : (
               <div className="w-full text-white">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 lg:gap-16">
-                  {/* Left column: Denise illustration + Futura copy (remains constant) */}
-                  <div className="flex flex-col items-center justify-center shrink-0 w-full md:w-[46%] max-w-[370px]">
-                    <div className="relative w-[260px] h-[300px] sm:w-[300px] sm:h-[350px] lg:w-[320px] lg:h-[370px]">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-8 md:gap-12 lg:gap-16">
+                  {/* Left column: Denise illustration + Futura copy (row on mobile, column on desktop) */}
+                  <div
+                    className={`flex flex-row md:flex-col items-center justify-center gap-3 sm:gap-6 md:gap-0 shrink-0 w-full md:w-[46%] max-w-[420px] md:max-w-[370px] ${
+                      view === 'terms' || view === 'privacy' ? 'hidden md:flex' : 'flex'
+                    }`}
+                  >
+                    <div className="relative w-[160px] h-[185px] sm:w-[185px] sm:h-[210px] md:w-[300px] md:h-[350px] lg:w-[320px] lg:h-[370px] shrink-0">
                       <Image
                         src="/assets/images/denise_auth.png"
                         alt="Denise HR thumbs up"
@@ -220,9 +223,9 @@ export default function AuthModal({
                         className="object-contain"
                       />
                     </div>
-                    <div className="mt-4 sm:mt-5 text-center">
+                    <div className="mt-0 md:mt-5 text-left md:text-center flex-1 md:flex-initial">
                       <p
-                        className="text-white text-2xl sm:text-3xl lg:text-[32px] leading-[1.08] tracking-wide text-center"
+                        className="text-white text-[21px] sm:text-2xl md:text-3xl lg:text-[32px] leading-[1.12] sm:leading-[1.1] md:leading-[1.08] tracking-wide text-left md:text-center"
                         style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
                       >
                         Takes 20 seconds.
@@ -235,7 +238,7 @@ export default function AuthModal({
                   </div>
 
                   {/* Right column: Auth forms & Legal pages with sliding transition */}
-                  <div className="flex-1 w-full max-w-[420px] sm:max-w-[470px] flex flex-col items-center overflow-hidden pt-2 pb-1">
+                  <div className="flex-1 w-full max-w-[420px] sm:max-w-[470px] flex flex-col items-center overflow-hidden pt-1 sm:pt-2 pb-1">
                     <AnimatePresence mode="wait" custom={direction} initial={false}>
                       <motion.div
                         key={view}

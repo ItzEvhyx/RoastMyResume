@@ -33,28 +33,28 @@ export default function DeniseSignInMsgMobile({ onSignUp, className }: DeniseSig
       )}
     >
       {/* Denise Illustration */}
-      <div className="relative w-full max-w-[210px] aspect-[1008/1063] mb-3 shrink-0 pointer-events-none">
+      <div className="relative w-full max-w-[160px] sm:max-w-[210px] aspect-[1008/1063] mb-2 sm:mb-3 shrink-0 pointer-events-none">
         <Image
           src="/assets/images/denise_signup.png"
           alt="Denise from HR"
           fill
-          sizes="210px"
+          sizes="(max-width: 640px) 160px, 210px"
           className="object-contain"
           priority
         />
       </div>
 
       {/* Header Message: "Hey, I'm Denise" + waving hand */}
-      <div className="flex items-center justify-center gap-2 mb-2 shrink-0">
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 shrink-0">
         <h2
           className={cn(
             futuraDisplay.className,
-            'text-2xl sm:text-3xl uppercase tracking-wider text-white font-normal leading-none'
+            'text-xl sm:text-3xl uppercase tracking-wider text-white font-normal leading-none'
           )}
         >
-          Hey, I'm Denise
+          Hey, I&apos;m Denise
         </h2>
-        <div className="relative w-7 h-7 sm:w-8 sm:h-8 shrink-0 -mt-1">
+        <div className="relative w-6 h-6 sm:w-8 sm:h-8 shrink-0 -mt-1">
           <Image
             src="/assets/images/hand_wave.png"
             alt="Hand wave"
@@ -70,7 +70,7 @@ export default function DeniseSignInMsgMobile({ onSignUp, className }: DeniseSig
       <p
         className={cn(
           poppins.className,
-          'text-neutral-400 font-bold text-sm sm:text-[15px] leading-snug max-w-[320px] text-center mb-3.5'
+          'text-neutral-400 font-bold text-xs sm:text-[15px] leading-snug max-w-[280px] sm:max-w-[320px] text-center mb-2.5 sm:mb-3.5'
         )}
       >
         I need you to sign in first &nbsp;just so I can keep track of your reviews and not get overwhelmed helping everyone at once.
@@ -82,7 +82,7 @@ export default function DeniseSignInMsgMobile({ onSignUp, className }: DeniseSig
         onClick={onSignUp}
         className={cn(
           poppins.className,
-          'px-9 sm:px-10 py-3.5 rounded-full bg-white text-black font-bold text-base',
+          'px-7 sm:px-10 py-2.5 sm:py-3.5 rounded-full bg-white text-black font-bold text-sm sm:text-base',
           'shadow-xl shadow-black/30 active:scale-95 transition-all duration-200 cursor-pointer shrink-0'
         )}
       >

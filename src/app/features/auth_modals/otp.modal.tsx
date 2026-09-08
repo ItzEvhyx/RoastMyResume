@@ -34,7 +34,7 @@ type OtpStep = 'sending' | 'verify' | 'verified';
 // Simple, crisp sending email animation using SVG & Framer Motion
 function SendingEmailAnimation() {
   return (
-    <div className="relative w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] flex items-center justify-center my-5 sm:my-7">
+    <div className="relative w-[140px] h-[140px] sm:w-[220px] sm:h-[220px] flex items-center justify-center my-3 sm:my-7">
       {/* Outer sending radio wave ripples */}
       <motion.div
         animate={{
@@ -436,7 +436,7 @@ export default function OtpModal({
 
   return (
     <div
-      className={`fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 ${poppins.variable} ${futuraDisplay.variable}`}
+      className={`fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-6 overflow-y-auto ${poppins.variable} ${futuraDisplay.variable}`}
       role="dialog"
       aria-modal="true"
       aria-label="Email Verification"
@@ -462,10 +462,9 @@ export default function OtpModal({
           damping: 26,
           mass: 0.85,
         }}
-        className="relative z-10 flex w-full max-w-4xl lg:max-w-[940px] flex-col items-center justify-center overflow-hidden rounded-[32px] border-2 border-white p-6 sm:p-10 lg:p-12 shadow-2xl"
+        className="relative z-10 flex w-full max-w-4xl lg:max-w-[940px] flex-col items-center justify-center overflow-y-auto overflow-x-hidden rounded-[28px] sm:rounded-[32px] border-2 border-white p-4 sm:p-10 lg:p-12 shadow-2xl my-auto max-h-[calc(100dvh-24px)] sm:max-h-[90vh] md:min-h-[580px]"
         style={{
           backgroundColor: '#17171a',
-          minHeight: 'min(580px, 88vh)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -474,7 +473,7 @@ export default function OtpModal({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-6 top-6 flex h-9 w-9 items-center justify-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white focus:outline-none z-20"
+          className="absolute right-3 top-3 sm:right-6 sm:top-6 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-white/50 transition-colors hover:bg-white/10 hover:text-white focus:outline-none z-20"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -501,11 +500,11 @@ export default function OtpModal({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="w-full flex flex-col items-center justify-center text-center py-6 sm:py-8"
+              className="w-full flex flex-col items-center justify-center text-center py-4 sm:py-8"
             >
               {/* Header: Sending OTP in Futura Display font */}
               <h2
-                className="text-white text-5xl sm:text-6xl lg:text-[72px] font-extrabold tracking-wide text-center"
+                className="text-white text-3xl sm:text-6xl lg:text-[72px] font-extrabold tracking-wide text-center"
                 style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
               >
                 Sending OTP
@@ -516,7 +515,7 @@ export default function OtpModal({
 
               {/* Bottom Notice: Kindly check your email user@email.com for the OTP */}
               <p
-                className="text-white text-base sm:text-lg lg:text-xl font-bold tracking-wide max-w-lg px-4"
+                className="text-white text-sm sm:text-lg lg:text-xl font-bold tracking-wide max-w-lg px-2 sm:px-4"
                 style={{ fontFamily: 'var(--font-poppins)' }}
               >
                 Kindly check your email {email} for the OTP
@@ -537,13 +536,13 @@ export default function OtpModal({
               <div
                 className={`flex flex-col ${
                   denisePosition === 'right' ? 'md:flex-row' : 'md:flex-row-reverse'
-                } items-center justify-between gap-8 md:gap-12 lg:gap-16`}
+                } items-center justify-between gap-4 sm:gap-8 md:gap-12 lg:gap-16`}
               >
                 {/* Form Column */}
                 <div className="flex-1 w-full max-w-[440px] sm:max-w-[480px] flex flex-col items-center">
                   {/* Header: Verify OTP in Futura Display font */}
                   <h2
-                    className="text-white text-5xl sm:text-6xl lg:text-[68px] font-extrabold tracking-wide text-center mb-3"
+                    className="text-white text-3xl sm:text-6xl lg:text-[68px] font-extrabold tracking-wide text-center mb-2 sm:mb-3"
                     style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
                   >
                     Verify OTP
@@ -551,7 +550,7 @@ export default function OtpModal({
 
                   {/* Subtext: Kindly check your email \n user@email.com for the OTP */}
                   <p
-                    className="text-white text-base sm:text-lg font-bold tracking-wide text-center mb-6 px-2 leading-snug"
+                    className="text-white text-xs sm:text-lg font-bold tracking-wide text-center mb-3 sm:mb-6 px-2 leading-snug"
                     style={{ fontFamily: 'var(--font-poppins)' }}
                   >
                     Kindly check your email
@@ -560,7 +559,7 @@ export default function OtpModal({
                   </p>
 
                   {/* 6 OTP Input Boxes */}
-                  <div className="flex items-center justify-center gap-2.5 sm:gap-3.5 mb-4 w-full" onPaste={handlePaste}>
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-3.5 mb-3 sm:mb-4 w-full" onPaste={handlePaste}>
                     {digits.map((digit, idx) => (
                       <input
                         key={idx}
@@ -573,7 +572,7 @@ export default function OtpModal({
                         value={digit}
                         onChange={(e) => handleDigitChange(idx, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(idx, e)}
-                        className={`w-12 h-16 sm:w-14 sm:h-[72px] rounded-2xl border-2 text-center text-2xl sm:text-3xl font-bold text-white bg-[#17171a] outline-none transition-all duration-200 ${
+                        className={`w-10 h-13 sm:w-14 sm:h-[72px] rounded-xl sm:rounded-2xl border-2 text-center text-xl sm:text-3xl font-bold text-white bg-[#17171a] outline-none transition-all duration-200 ${
                           digit
                             ? 'border-white bg-white/10 shadow-[0_0_12px_rgba(255,255,255,0.2)]'
                             : 'border-white/70 hover:border-white focus:border-white focus:ring-2 focus:ring-white/30'
@@ -585,14 +584,14 @@ export default function OtpModal({
 
                   {/* Error / Status Message */}
                   {errorMessage && (
-                    <p className="text-red-400 text-xs sm:text-sm font-medium mb-3 text-center">
+                    <p className="text-red-400 text-xs sm:text-sm font-medium mb-2.5 text-center">
                       {errorMessage}
                     </p>
                   )}
 
                   {/* Note: the OTP expires in 10 Minutes */}
                   <p
-                    className="text-white text-xs sm:text-sm font-semibold text-center mb-5"
+                    className="text-white text-[11px] sm:text-sm font-semibold text-center mb-3 sm:mb-5"
                     style={{ fontFamily: 'var(--font-poppins)' }}
                   >
                     Note: the OTP expires in 10 Minutes
@@ -602,7 +601,7 @@ export default function OtpModal({
                   <button
                     type="button"
                     onClick={() => verifyCode()}
-                    className="w-full sm:w-[340px] h-[54px] sm:h-[58px] rounded-full bg-white text-black font-bold text-base sm:text-lg hover:bg-neutral-100 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mb-3"
+                    className="w-full sm:w-[340px] h-[46px] sm:h-[58px] rounded-full bg-white text-black font-bold text-sm sm:text-lg hover:bg-neutral-100 active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mb-2 sm:mb-3"
                     style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
                   >
                     {isLoading ? (
@@ -617,7 +616,7 @@ export default function OtpModal({
                     type="button"
                     onClick={handleResend}
                     disabled={resendCooldown > 0 || isLoading}
-                    className="w-full sm:w-[340px] h-[46px] sm:h-[50px] rounded-full border-2 border-white/50 hover:border-white text-white font-semibold text-sm sm:text-base hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full sm:w-[340px] h-[42px] sm:h-[50px] rounded-full border-2 border-white/50 hover:border-white text-white font-semibold text-xs sm:text-base hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ fontFamily: 'var(--font-poppins)' }}
                   >
                     {resendCooldown > 0 ? (
@@ -631,7 +630,7 @@ export default function OtpModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="mt-3.5 text-xs sm:text-sm text-white/60 hover:text-white underline transition-colors"
+                    className="mt-2 sm:mt-3.5 text-xs sm:text-sm text-white/60 hover:text-white underline transition-colors"
                     style={{ fontFamily: 'var(--font-poppins)' }}
                   >
                     Wrong email? Edit email
@@ -640,7 +639,7 @@ export default function OtpModal({
 
                 {/* Denise Column with Calculator (Right side by default per user request) */}
                 <div className="flex flex-col items-center justify-center shrink-0 w-full md:w-[46%] max-w-[390px]">
-                  <div className="relative w-[280px] h-[300px] sm:w-[320px] sm:h-[350px] lg:w-[360px] lg:h-[390px]">
+                  <div className="relative w-[100px] h-[110px] sm:w-[320px] sm:h-[350px] lg:w-[360px] lg:h-[390px]">
                     <Image
                       src="/assets/images/denise_otp.png"
                       alt="Denise HR calculating OTP"
@@ -660,23 +659,23 @@ export default function OtpModal({
               key="verified-stage"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="w-full flex flex-col items-center justify-center text-center py-10"
+              className="w-full flex flex-col items-center justify-center text-center py-6 sm:py-10"
             >
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white flex items-center justify-center text-black mb-6 shadow-2xl">
-                <svg className="w-10 h-10 sm:w-12 sm:h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-white flex items-center justify-center text-black mb-4 sm:mb-6 shadow-2xl">
+                <svg className="w-8 h-8 sm:w-12 sm:h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
 
               <h2
-                className="text-white text-4xl sm:text-5xl font-extrabold tracking-wide mb-3"
+                className="text-white text-2xl sm:text-5xl font-extrabold tracking-wide mb-2 sm:mb-3"
                 style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
               >
                 Account Verified!
               </h2>
 
               <p
-                className="text-white/80 text-base sm:text-lg font-normal"
+                className="text-white/80 text-xs sm:text-lg font-normal"
                 style={{ fontFamily: 'var(--font-poppins)' }}
               >
                 Welcome to RoastMyResume. Setting up your workspace...

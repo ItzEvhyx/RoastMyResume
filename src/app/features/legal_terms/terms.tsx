@@ -55,15 +55,15 @@ export default function Terms({
 
   return (
     <div
-      className={`relative flex flex-col h-[520px] sm:h-[550px] w-full max-w-[440px] sm:max-w-[470px] text-white ${poppins.variable}`}
+      className={`relative flex flex-col h-[65vh] sm:h-[550px] max-h-[550px] w-full max-w-[440px] sm:max-w-[470px] text-white ${poppins.variable}`}
       style={{ fontFamily: 'var(--font-poppins)' }}
     >
       {/* Header */}
-      <div className="pb-3 mb-2 border-b border-white/20">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+      <div className="pb-2 sm:pb-3 mb-1.5 sm:mb-2 border-b border-white/20">
+        <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-white">
           Terms of Service
         </h2>
-        <p className="text-xs sm:text-sm text-neutral-400 mt-1 font-normal">
+        <p className="text-[11px] sm:text-sm text-neutral-400 mt-0.5 sm:mt-1 font-normal">
           Last updated: <span className="text-neutral-200">September 8, 2026</span>
         </p>
       </div>
@@ -72,7 +72,7 @@ export default function Terms({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto pr-3 space-y-5 text-xs sm:text-[13px] leading-relaxed text-neutral-300 custom-scrollbar"
+        className="flex-1 overflow-y-auto pr-2 sm:pr-3 space-y-4 sm:space-y-5 text-xs sm:text-[13px] leading-relaxed text-neutral-300 custom-scrollbar"
         style={{ scrollbarWidth: 'thin', scrollbarColor: '#555 transparent' }}
       >
         <p className="italic text-neutral-400">
@@ -264,8 +264,8 @@ export default function Terms({
         </div>
 
         {/* Bottom Acknowledgement Checkbox Area */}
-        <div className="pt-4 pb-2 border-t border-white/20">
-          <label className="flex items-start gap-3 cursor-pointer select-none group">
+        <div className="pt-2.5 pb-1.5 sm:pt-4 sm:pb-2 border-t border-white/20">
+          <label className="flex items-start gap-2.5 sm:gap-3 cursor-pointer select-none group">
             <input
               type="checkbox"
               checked={isChecked}
@@ -284,7 +284,7 @@ export default function Terms({
         <button
           type="button"
           onClick={scrollToBottom}
-          className="absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md text-white text-xs font-semibold shadow-lg border border-white/20 transition-all active:scale-95 animate-pulse"
+          className="absolute bottom-16 sm:bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md text-white text-[11px] sm:text-xs font-semibold shadow-lg border border-white/20 transition-all active:scale-95 animate-pulse"
         >
           <span>Scroll to bottom</span>
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -294,11 +294,11 @@ export default function Terms({
       )}
 
       {/* Bottom Back Button */}
-      <div className="pt-3 border-t border-white/15 flex justify-end">
+      <div className="pt-2 sm:pt-3 border-t border-white/15 flex justify-end">
         <button
           type="button"
           onClick={onBack}
-          className="w-full sm:w-auto px-8 h-[48px] sm:h-[52px] bg-white text-black font-bold rounded-full text-sm sm:text-base hover:bg-neutral-200 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"
+          className="w-full sm:w-auto px-6 sm:px-8 h-[44px] sm:h-[52px] bg-white text-black font-bold rounded-full text-xs sm:text-base hover:bg-neutral-200 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
