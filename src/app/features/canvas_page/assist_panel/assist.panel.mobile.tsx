@@ -5,6 +5,7 @@ import { Poppins } from 'next/font/google';
 import { animate } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import DeniseSignInMsgMobile from './denise_signin/signin.msg.mobile';
+import { useAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -36,9 +37,10 @@ export default function AssistPanelMobile({
   const [hoverX, setHoverX] = useState<number | null>(null);
   const [internalSignedIn, setInternalSignedIn] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+  const user = useAuthUser();
 
-  // Use externally controlled sign-in state if provided, otherwise fallback to internal state
-  const isSignedIn = externalSignedIn !== undefined ? externalSignedIn : internalSignedIn;
+  // Use externally controlled sign-in state if provided, otherwise fallback to session user or internal state
+  const isSignedIn = externalSignedIn !== undefined ? externalSignedIn : (!!user || internalSignedIn);
 
   const handleSignUp = () => {
     if (onSignUp) {

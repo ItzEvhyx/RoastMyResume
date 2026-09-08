@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
+import { getClientFirestore } from '@/app/core/services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -149,6 +151,8 @@ export function SignUpForm({
   const setPassword = externalSetPassword || setInternalPassword;
 
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [isCheckingAccount, setIsCheckingAccount] = useState(false);
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -156,9 +160,29 @@ export function SignUpForm({
   const isEmailFloating = emailFocused || email.length > 0;
   const isPasswordFloating = passwordFocused || password.length > 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+
+    setEmailError(null);
+    setIsCheckingAccount(true);
+
+    try {
+      const db = getClientFirestore();
+      const userRef = doc(db, 'users', email.trim().toLowerCase());
+      const docSnap = await getDoc(userRef);
+
+      if (docSnap.exists()) {
+        setEmailError('Account already exists');
+        setIsCheckingAccount(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Check user account existence warning:', err);
+    } finally {
+      setIsCheckingAccount(false);
+    }
+
     if (onSignUpSubmit) {
       onSignUpSubmit(email);
     } else if (onSuccess) {
@@ -206,7 +230,11 @@ export function SignUpForm({
         <div className="relative w-full">
           <div
             className={`relative w-full h-[58px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
-              emailFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
+              emailError
+                ? 'border-red-500 ring-2 ring-red-500/20'
+                : emailFocused
+                ? 'border-white ring-2 ring-white/20'
+                : 'border-white'
             }`}
           >
             {/* Floating label that docks onto top-left border */}
@@ -227,7 +255,10 @@ export function SignUpForm({
               id="signup-email-input"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError(null);
+              }}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               autoComplete="email"
@@ -235,6 +266,16 @@ export function SignUpForm({
               style={{ fontFamily: 'var(--font-poppins)' }}
             />
           </div>
+
+          {/* Inline error at the bottom of the input field */}
+          {emailError && (
+            <p
+              className="text-red-400 text-xs sm:text-sm font-semibold mt-1.5 px-6 text-left"
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            >
+              {emailError}
+            </p>
+          )}
         </div>
 
         {/* Password Pill Field */}
@@ -285,10 +326,15 @@ export function SignUpForm({
         {/* Sign - up Submit Button */}
         <button
           type="submit"
-          className="w-full mt-1 sm:mt-1.5 h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-xl sm:text-2xl hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
+          disabled={isCheckingAccount}
+          className="w-full mt-1 sm:mt-1.5 h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-xl sm:text-2xl hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg flex items-center justify-center gap-2 disabled:opacity-75"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
         >
-          Sign - up
+          {isCheckingAccount ? (
+            <span className="inline-block animate-spin h-6 w-6 border-2 border-black border-t-transparent rounded-full" />
+          ) : (
+            <span>Sign - up</span>
+          )}
         </button>
 
         {/* Switch to Sign-in */}

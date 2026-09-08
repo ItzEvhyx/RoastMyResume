@@ -5,6 +5,7 @@ import { Poppins } from 'next/font/google';
 import { animate } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import DeniseSignInMsgWeb from './denise_signin/signin.msg.web';
+import { useAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -39,6 +40,8 @@ export default function AssistPanelWeb({
   const panelRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
 
+  const user = useAuthUser();
+
   // Auto-expand horizontally once stage 4 is reached (matching the toolbar vertical expansion)
   useEffect(() => {
     if (stage >= 4) {
@@ -46,8 +49,8 @@ export default function AssistPanelWeb({
     }
   }, [stage]);
 
-  // Use externally controlled sign-in state if provided, otherwise fallback to internal state
-  const isSignedIn = externalSignedIn !== undefined ? externalSignedIn : internalSignedIn;
+  // Use externally controlled sign-in state if provided, otherwise fallback to session user or internal state
+  const isSignedIn = externalSignedIn !== undefined ? externalSignedIn : (!!user || internalSignedIn);
 
   const handleSignUp = () => {
     if (onSignUp) {

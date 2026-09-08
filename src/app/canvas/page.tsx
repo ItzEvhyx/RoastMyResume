@@ -31,6 +31,7 @@ import { UndoProvider } from '@/app/features/canvas_page/globals/undo';
 import { usePen } from '@/app/features/canvas_page/context/PenContext';
 import { useText } from '@/app/features/canvas_page/context/TextContext';
 import { RulerSnappingProvider } from '@/app/features/canvas_page/globals/ruler.snapping';
+import AuthModal from '@/app/features/auth_modals/auth.modal';
 
 /**
  * Animation sequence:
@@ -44,6 +45,19 @@ export default function CanvasPage() {
   const [stage, setStage] = useState(0);
   const [mobileAssistOpen, setMobileAssistOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+
+  const handleOpenSignIn = () => {
+    setAuthModalMode('signin');
+    setIsAuthModalOpen(true);
+  };
+
+  const handleOpenSignUp = () => {
+    setAuthModalMode('signup');
+    setIsAuthModalOpen(true);
+  };
 
   useEffect(() => {
     const timers = [
@@ -72,11 +86,6 @@ export default function CanvasPage() {
                 <ClipboardProvider>
             <main className="relative h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0e1015]">
 
-              {/* Toolbar — pops in at stage 2 */}
-              {isMobile === undefined ? null : isMobile
-                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} />
-                : <ToolbarWeb stage={stage} />}
-
               {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
               {isMobile === undefined ? null : isMobile
                 ? <ToolSidebarMobile stage={stage} />
@@ -104,8 +113,8 @@ export default function CanvasPage() {
 
               {/* Assistant Panel — appears at stage 2 */}
               {isMobile === undefined ? null : isMobile
-                ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} />
-                : <AssistPanelWeb stage={stage} />}
+                ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} onSignUp={handleOpenSignUp} />
+                : <AssistPanelWeb stage={stage} onSignUp={handleOpenSignUp} />}
 
               {/* Canvas — fades + drifts up at stage 1 */}
               <div
@@ -121,6 +130,18 @@ export default function CanvasPage() {
                   {isMobile === undefined ? null : isMobile ? <CanvasMobile /> : <CanvasWeb />}
                 </StitchCanvasBackground>
               </div>
+
+              {/* Toolbar — pops in at stage 2 */}
+              {isMobile === undefined ? null : isMobile
+                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} onSignInClick={handleOpenSignIn} />
+                : <ToolbarWeb stage={stage} onSignInClick={handleOpenSignIn} />}
+
+              {/* Auth Modal */}
+              <AuthModal
+                isOpen={isAuthModalOpen}
+                initialMode={authModalMode}
+                onClose={() => setIsAuthModalOpen(false)}
+              />
             </main>
             </ClipboardProvider>
               </RulerSnappingProvider>

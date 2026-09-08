@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
-import { setAuthUser } from '@/app/core/services/auth.state';
+import { setAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
   subsets: ['latin'],

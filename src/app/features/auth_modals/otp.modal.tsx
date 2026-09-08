@@ -7,7 +7,7 @@ import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getClientFirestore } from '@/app/core/services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { setAuthUser } from '@/app/core/services/auth.state';
+import { setAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
   subsets: ['latin'],

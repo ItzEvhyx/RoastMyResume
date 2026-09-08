@@ -5,11 +5,11 @@ import Image from 'next/image';
 import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuthUser, signOutUser } from '@/app/core/services/auth.state';
+import { useAuthUser, signOutUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['300', '400', '600'],
+  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-poppins',
 });
 
