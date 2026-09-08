@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import GridGlowBackground from '@/rb_components/grid_glow_background';
 import Threads from '@/components/Threads';
 import { useMediaQuery } from '@/lib/use_media_query';
@@ -39,6 +39,19 @@ export default function TemplatesPage() {
     };
   }, []);
 
+  // Replay the page entry animation after successful sign-in/sign-up
+  const handleAuthSuccess = useCallback(() => {
+    // Fade the page out, hold on black briefly, then re-entrance — matches
+    // the landing → templates transition feel.
+    setReady(false);
+    setTimeout(() => {
+      // After the fade-out (400ms transition) + a brief hold, re-trigger entrance
+      requestAnimationFrame(() => {
+        setReady(true);
+      });
+    }, 700); // 400ms fade-out + 300ms hold on black
+  }, []);
+
 
   return (
     <main className="no-scrollbar relative min-h-screen w-full bg-black">
@@ -54,9 +67,9 @@ export default function TemplatesPage() {
       >
         {/* Banner — flush to top */}
         {isMobile === undefined ? null : isMobile ? (
-          <BannerMobile onSignInClick={() => setIsAuthModalOpen(true)} />
+          <BannerMobile onSignInClick={() => setIsAuthModalOpen(true)} onSignOutClick={handleAuthSuccess} />
         ) : (
-          <BannerWeb onSignInClick={() => setIsAuthModalOpen(true)} />
+          <BannerWeb onSignInClick={() => setIsAuthModalOpen(true)} onSignOutClick={handleAuthSuccess} />
         )}
 
         {/* Threads — full viewport width */}
@@ -86,6 +99,7 @@ export default function TemplatesPage() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
     </main>
   );

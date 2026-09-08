@@ -21,9 +21,10 @@ const futuraDisplay = localFont({
 
 interface BannerMobileProps {
   onSignInClick?: () => void;
+  onSignOutClick?: () => void;
 }
 
-export default function BannerMobile({ onSignInClick }: BannerMobileProps = {}) {
+export default function BannerMobile({ onSignInClick, onSignOutClick }: BannerMobileProps = {}) {
   const user = useAuthUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -83,6 +84,7 @@ export default function BannerMobile({ onSignInClick }: BannerMobileProps = {}) 
                     onClick={() => {
                       signOutUser();
                       setIsDropdownOpen(false);
+                      if (onSignOutClick) onSignOutClick();
                     }}
                     className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs font-bold text-white hover:bg-white/10 text-left cursor-pointer"
                     style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}

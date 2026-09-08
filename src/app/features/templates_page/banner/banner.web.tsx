@@ -22,9 +22,10 @@ const futuraDisplay = localFont({
 
 interface BannerWebProps {
   onSignInClick?: () => void;
+  onSignOutClick?: () => void;
 }
 
-export default function BannerWeb({ onSignInClick }: BannerWebProps = {}) {
+export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebProps = {}) {
   const user = useAuthUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -149,6 +150,7 @@ export default function BannerWeb({ onSignInClick }: BannerWebProps = {}) {
                     onClick={() => {
                       signOutUser();
                       setIsDropdownOpen(false);
+                      if (onSignOutClick) onSignOutClick();
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-white/10 active:scale-[0.98] transition-all text-left cursor-pointer"
                     style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}

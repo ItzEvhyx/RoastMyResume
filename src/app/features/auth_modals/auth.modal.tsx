@@ -59,6 +59,7 @@ export type AuthModalView = 'signin' | 'signup' | 'terms' | 'privacy';
 export interface AuthModalProps {
   isOpen?: boolean;
   onClose?: () => void;
+  onAuthSuccess?: () => void;
   initialMode?: 'signin' | 'signup';
   children?: React.ReactNode;
 }
@@ -81,6 +82,7 @@ const slideVariants = {
 export default function AuthModal({
   isOpen: externalIsOpen,
   onClose,
+  onAuthSuccess,
   initialMode = 'signin',
   children,
 }: AuthModalProps) {
@@ -101,10 +103,22 @@ export default function AuthModal({
   const [isOtpOpen, setIsOtpOpen] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
 
+  // Tracks whether the modal is closing due to a successful auth action
+  // so we can play a different (pop-out) exit animation.
+  const [isSuccessClose, setIsSuccessClose] = useState(false);
+
   const handleClose = () => {
     if (onClose) {
       onClose();
     }
+    closeAuthModal();
+  };
+
+  const handleAuthSuccess = () => {
+    setIsSuccessClose(true);
+    // Close the modal — the exit animation plays automatically via AnimatePresence.
+    // We delay calling onAuthSuccess until the exit animation finishes.
+    if (onClose) onClose();
     closeAuthModal();
   };
 
@@ -113,6 +127,7 @@ export default function AuthModal({
     if (open) {
       setView(initialMode);
       setDirection(1);
+      setIsSuccessClose(false);
     }
   }, [open, initialMode]);
 
@@ -164,12 +179,23 @@ export default function AuthModal({
               key="auth-modal-card"
               initial={{ opacity: 0, scale: 0.78, y: 28 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.85, y: 16 }}
+              exit={
+                isSuccessClose
+                  ? { opacity: 0, scale: 1.08, y: -20 }
+                  : { opacity: 0, scale: 0.85, y: 16 }
+              }
               transition={{
                 type: 'spring',
                 stiffness: 400,
                 damping: 26,
                 mass: 0.85,
+              }}
+              onAnimationComplete={(definition: { opacity?: number }) => {
+                // Fire the page refresh after the exit animation finishes
+                if (definition.opacity === 0 && isSuccessClose) {
+                  setIsSuccessClose(false);
+                  if (onAuthSuccess) onAuthSuccess();
+                }
               }}
               className="relative z-10 flex w-full max-w-4xl lg:max-w-[940px] flex-col items-center justify-center overflow-y-auto overflow-x-hidden rounded-[28px] sm:rounded-[32px] border-2 border-white p-4 sm:p-10 lg:p-12 shadow-2xl my-auto max-h-[calc(100dvh-24px)] sm:max-h-[90vh] md:min-h-[620px]"
               style={{
@@ -252,7 +278,7 @@ export default function AuthModal({
                       >
                         {view === 'signin' && (
                           <SignInForm
-                            onSuccess={handleClose}
+                            onSuccess={handleAuthSuccess}
                             onSwitchToSignUp={() => {
                               setDirection(1);
                               setView('signup');
@@ -323,10 +349,11 @@ export default function AuthModal({
         key="auth-otp-modal"
         isOpen={isOtpOpen}
         email={otpEmail}
+        password={signUpPassword}
         onClose={() => setIsOtpOpen(false)}
         onVerified={() => {
           setIsOtpOpen(false);
-          handleClose();
+          handleAuthSuccess();
         }}
       />
     </>

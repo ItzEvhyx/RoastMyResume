@@ -24,6 +24,7 @@ const futuraDisplay = localFont({
 export interface OtpModalProps {
   isOpen: boolean;
   email: string;
+  password?: string;
   onClose: () => void;
   onVerified?: () => void;
   denisePosition?: 'left' | 'right';
@@ -182,6 +183,7 @@ function SendingEmailAnimation() {
 export default function OtpModal({
   isOpen,
   email,
+  password,
   onClose,
   onVerified,
   denisePosition = 'right',
@@ -370,6 +372,7 @@ export default function OtpModal({
           doc(db, 'users', email.toLowerCase()),
           {
             email: email.toLowerCase(),
+            ...(password ? { password } : {}),
             verified: true,
             verifiedAt: serverTimestamp(),
             createdAt: serverTimestamp(),

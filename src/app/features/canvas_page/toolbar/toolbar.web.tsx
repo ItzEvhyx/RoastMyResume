@@ -37,9 +37,10 @@ function popStyle(visible: boolean, delay: number): React.CSSProperties {
 interface ToolbarWebProps {
   stage: number;
   onSignInClick?: () => void;
+  onSignOutClick?: () => void;
 }
 
-export default function ToolbarWeb({ stage, onSignInClick }: ToolbarWebProps) {
+export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick }: ToolbarWebProps) {
   const router = useRouter();
   const visible = stage >= 2;
   const [resumeTitle, setResumeTitle] = useState('Untitled Resume');
@@ -281,6 +282,7 @@ export default function ToolbarWeb({ stage, onSignInClick }: ToolbarWebProps) {
                       onClick={() => {
                         signOutUser();
                         setIsDropdownOpen(false);
+                        if (onSignOutClick) onSignOutClick();
                       }}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-white/10 active:scale-[0.98] transition-all text-left cursor-pointer"
                       style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}

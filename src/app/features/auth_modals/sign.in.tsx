@@ -131,6 +131,8 @@ export function SignInForm({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -138,11 +140,43 @@ export function SignInForm({
   const isEmailFloating = emailFocused || email.length > 0;
   const isPasswordFloating = passwordFocused || password.length > 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    setAuthUser({ email: email.trim().toLowerCase() });
-    if (onSuccess) onSuccess();
+    if (!email || !password) {
+      setAuthError('Please enter both email and password');
+      return;
+    }
+
+    setAuthError(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAuthError(data.error || 'Sign-in failed. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Credentials verified — set session
+      setAuthUser({ email: email.trim().toLowerCase() });
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.error('Sign-in error:', err);
+      setAuthError('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -184,7 +218,7 @@ export function SignInForm({
               id="auth-email-input"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setAuthError(null); }}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               autoComplete="email"
@@ -219,7 +253,7 @@ export function SignInForm({
               id="auth-password-input"
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); setAuthError(null); }}
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               autoComplete="current-password"
@@ -239,6 +273,18 @@ export function SignInForm({
           </div>
         </div>
 
+        {/* Inline Auth Error */}
+        {authError && (
+          <div
+            className="w-full px-2 -mt-1 sm:-mt-0.5"
+            style={{ fontFamily: 'var(--font-poppins)' }}
+          >
+            <p className="text-red-400 text-xs sm:text-sm font-medium">
+              {authError}
+            </p>
+          </div>
+        )}
+
         {/* Forgot Password Link */}
         <div className="w-full flex justify-end -mt-1 sm:-mt-0.5">
           <button
@@ -254,10 +300,24 @@ export function SignInForm({
         {/* Sign-in Submit Button */}
         <button
           type="submit"
-          className="w-full mt-0.5 sm:mt-1.5 h-[48px] sm:h-[62px] bg-white text-black rounded-full font-bold text-lg sm:text-2xl hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
+          disabled={isSubmitting}
+          className={`w-full mt-0.5 sm:mt-1.5 h-[48px] sm:h-[62px] rounded-full font-bold text-lg sm:text-2xl transition-all duration-200 shadow-lg ${
+            isSubmitting
+              ? 'bg-white/70 text-black/50 cursor-not-allowed'
+              : 'bg-white text-black hover:bg-neutral-100 active:scale-[0.99]'
+          }`}
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
         >
-          Sign-in
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-5 w-5 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+              </svg>
+              Signing in...
+            </span>
+          ) : (
+            'Sign-in'
+          )}
         </button>
 
         {/* Line Divider with "Or" */}

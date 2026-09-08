@@ -27,9 +27,10 @@ interface ToolbarMobileProps {
   stage: number;
   onAssistToggle?: (isOpen: boolean) => void;
   onSignInClick?: () => void;
+  onSignOutClick?: () => void;
 }
 
-export default function ToolbarMobile({ stage, onAssistToggle, onSignInClick }: ToolbarMobileProps) {
+export default function ToolbarMobile({ stage, onAssistToggle, onSignInClick, onSignOutClick }: ToolbarMobileProps) {
   const router = useRouter();
   const [assistOpen, setAssistOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -163,6 +164,7 @@ export default function ToolbarMobile({ stage, onAssistToggle, onSignInClick }: 
                       onClick={() => {
                         signOutUser();
                         setIsDropdownOpen(false);
+                        if (onSignOutClick) onSignOutClick();
                       }}
                       className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs font-bold text-white hover:bg-white/10 text-left cursor-pointer"
                       style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}

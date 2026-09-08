@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useMediaQuery } from '@/lib/use_media_query';
 import StitchCanvasBackground from '@/rb_components/stitch_canvas_background';
 import { CanvasProvider } from '@/app/features/canvas_page/context/CanvasContext';
@@ -72,6 +72,20 @@ export default function CanvasPage() {
     };
   }, []);
 
+  // Replay the full 4-stage entrance animation after successful sign-in/sign-up
+  const handleAuthSuccess = useCallback(() => {
+    // Fade everything out to stage 0 first
+    setStage(0);
+    // Hold on black briefly, then re-run the full entrance sequence —
+    // matches the landing → templates transition feel.
+    setTimeout(() => {
+      requestAnimationFrame(() => setStage(1));  // page fade in
+      setTimeout(() => setStage(2), 600);         // toolbar pop in
+      setTimeout(() => setStage(3), 900);         // sidebar appears
+      setTimeout(() => setStage(4), 1500);        // sidebar expands
+    }, 700); // 550ms fade-out + brief hold
+  }, []);
+
   return (
     <CanvasProvider>
       <UndoProvider>
@@ -133,14 +147,15 @@ export default function CanvasPage() {
 
               {/* Toolbar — pops in at stage 2 */}
               {isMobile === undefined ? null : isMobile
-                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} onSignInClick={handleOpenSignIn} />
-                : <ToolbarWeb stage={stage} onSignInClick={handleOpenSignIn} />}
+                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} />
+                : <ToolbarWeb stage={stage} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} />}
 
               {/* Auth Modal */}
               <AuthModal
                 isOpen={isAuthModalOpen}
                 initialMode={authModalMode}
                 onClose={() => setIsAuthModalOpen(false)}
+                onAuthSuccess={handleAuthSuccess}
               />
             </main>
             </ClipboardProvider>
