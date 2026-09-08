@@ -79,29 +79,18 @@ export default function JobMatchAnimation() {
     );
 
     // Beat - shorter
-    tl.to({}, { duration: 0.6 });
+    tl.to({}, { duration: 0.3 });
 
-    // 3. Faster zoom scroll
-    const jobDetails = q('[data-section="details"]')[0];
-    const responsibilities = q('[data-section="responsibilities"]')[0];
+    // 3. Continuous scroll - 2x faster (one smooth scroll from top to bottom)
     const qualifications = q('[data-section="qualifications"]')[0];
-
-    const detailsY = (jobDetails as HTMLElement).offsetTop;
-    tl.to(camera, { y: -detailsY + 20, duration: 1, ease: 'power1.inOut' });
-    tl.to({}, { duration: 0.5 });
-
-    const respY = (responsibilities as HTMLElement).offsetTop;
-    tl.to(camera, { y: -respY + 20, duration: 1, ease: 'power1.inOut' });
-    tl.to({}, { duration: 0.5 });
-
     const qualY = (qualifications as HTMLElement).offsetTop;
-    tl.to(camera, { y: -qualY + 20, duration: 1, ease: 'power1.inOut' });
-    tl.to({}, { duration: 0.5 });
+    tl.to(camera, { y: -qualY + 20, duration: 1.5, ease: 'power1.inOut' });
+    tl.to({}, { duration: 0.25 });
 
     // 4. Fade to white
     tl.to(paper, { autoAlpha: 0, duration: 0.8, ease: 'power2.inOut' });
 
-    // 5. Denise thinking - full container, 5 seconds, "Checking your qualifications..."
+    // 5. Denise thinking - original 5 second duration
     tl.set(videoContainer, { autoAlpha: 1 });
     tl.call(() => {
       if (videoRef.current) {
@@ -121,33 +110,34 @@ export default function JobMatchAnimation() {
     // Pop out video
     tl.to(videoContainer, { autoAlpha: 0, scale: 0.85, duration: 0.4, ease: 'power2.in' });
 
-    // 6. Qualifications scroll
+    // 6. Qualifications scroll - 2x speed
     tl.set(qualContainer, { autoAlpha: 1 });
     tl.fromTo(
       qualItems,
       { y: '100vh', autoAlpha: 0 },
-      { y: '-100vh', autoAlpha: 1, duration: 4, stagger: 0.25, ease: 'none' }
+      { y: '-100vh', autoAlpha: 1, duration: 2, stagger: 0.125, ease: 'none' }
     );
 
-    // 7. Big green checkmark - rewarding moment
+    // 7. Big green checkmark - inflate-deflate animation (.5x speed)
     tl.set(qualContainer, { autoAlpha: 0 });
     tl.set(checkmarkContainer, { autoAlpha: 1 });
     tl.fromTo(
       checkmarkContainer,
-      { scale: 0, rotation: -90 },
-      { scale: 1, rotation: 0, duration: 0.8, ease: 'back.out(2)' }
+      { scale: 0 },
+      { scale: 1.2, duration: 0.5, ease: 'power2.out' }
     );
-    tl.to({}, { duration: 1 });
+    tl.to(checkmarkContainer, { scale: 1, duration: 0.3, ease: 'power2.inOut' });
+    tl.to({}, { duration: 0.5 });
 
-    // 8. Transition to rating with circular progress
-    tl.to(checkmarkContainer, { autoAlpha: 0, scale: 0.8, duration: 0.4 });
+    // 8. Transition to rating with circular progress (.5x speed)
+    tl.to(checkmarkContainer, { autoAlpha: 0, scale: 0.8, duration: 0.2 });
     tl.set(ratingContainer, { autoAlpha: 1 });
     
-    // Animate circular progress from 0 to 85%
+    // Animate circular progress from 0 to 85% - slower
     tl.fromTo(
       progressCircle,
-      { strokeDashoffset: 283 }, // Full circle (2 * PI * 45)
-      { strokeDashoffset: 42.45, duration: 2, ease: 'power2.out' } // 85% of circle
+      { strokeDashoffset: 753.98 }, // Full circle (2 * PI * 120)
+      { strokeDashoffset: 113.1, duration: 3, ease: 'power2.out' } // 85% of circle
     );
     
     // Count up the percentage text
@@ -155,7 +145,7 @@ export default function JobMatchAnimation() {
       progressText,
       {
         textContent: '85',
-        duration: 2,
+        duration: 3,
         ease: 'power2.out',
         snap: { textContent: 1 },
         onUpdate: function() {
@@ -167,20 +157,20 @@ export default function JobMatchAnimation() {
       '<' // Start at same time as circle
     );
     
-    tl.to({}, { duration: 1.5 });
+    tl.to({}, { duration: 0.75 });
 
-    // 9. Fade rating to white
-    tl.to(ratingContainer, { autoAlpha: 0, duration: 0.6, ease: 'power2.inOut' });
+    // 9. Fade rating to white (2x faster)
+    tl.to(ratingContainer, { autoAlpha: 0, duration: 0.45, ease: 'power2.inOut' });
     tl.set(whiteTransition, { autoAlpha: 1 });
-    tl.to({}, { duration: 0.3 });
+    tl.to({}, { duration: 0.225 });
 
-    // 10. Notification pops up on white background
+    // 10. Notification pops up on white background (2x faster)
     tl.fromTo(
       notificationContainer,
       { autoAlpha: 0, y: 20, scale: 0.9 },
-      { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, ease: 'back.out(1.7)' }
+      { autoAlpha: 1, y: 0, scale: 1, duration: 0.45, ease: 'back.out(1.7)' }
     );
-    tl.to({}, { duration: 2.5 });
+    tl.to({}, { duration: 1.875 });
 
     tl.play();
 
@@ -348,6 +338,17 @@ export default function JobMatchAnimation() {
                 </div>
               </div>
             </div>
+
+            {/* Report Job Button */}
+            <div data-line className="mt-6 pt-4 border-t border-black/10">
+              <button className="flex items-center gap-2 text-sm text-black/60 hover:text-black/80 transition-colors">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                  <line x1="4" y1="22" x2="4" y2="15"/>
+                </svg>
+                <span>Report job</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -380,22 +381,29 @@ export default function JobMatchAnimation() {
 
       {/* Qualifications Scroll */}
       <div data-qual-container className="absolute inset-0 bg-white flex flex-col items-center justify-start pt-20 gap-4 overflow-hidden">
-        {['Javascript experience', 'PHP Experience', 'MySQL Experience', 'React Experience', 'Node.js Experience', 'Git/Version Control'].map((qual, idx) => (
-          <div key={idx} data-qual className="flex items-center gap-3 text-black bg-black/5 px-6 py-4 rounded-2xl" style={{ minWidth: '280px' }}>
+        {[
+          'Must have at least 3-5 years of experience with React',
+          'Proficient in JavaScript ES6+ and modern web development',
+          'Strong experience with PHP and MySQL databases',
+          'Familiarity with Node.js and server-side development',
+          'Experience with Git version control and team collaboration',
+          'Excellent problem-solving and communication skills'
+        ].map((qual, idx) => (
+          <div key={idx} data-qual className="flex items-center gap-3 text-black bg-black/5 px-6 py-4 rounded-2xl" style={{ minWidth: '320px', maxWidth: '400px' }}>
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <span className="text-lg font-bold" style={{ fontFamily: 'var(--font-poppins)' }}>{qual}</span>
+            <span className="text-sm font-semibold text-left" style={{ fontFamily: 'var(--font-poppins)' }}>{qual}</span>
           </div>
         ))}
       </div>
 
-      {/* Big Green Checkmark - Rewarding Moment */}
-      <div data-checkmark className="absolute inset-0 bg-green-500 flex items-center justify-center">
-        <div className="w-64 h-64 rounded-full bg-white flex items-center justify-center shadow-2xl">
-          <svg width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {/* Big Green Checkmark - Just the checkmark, no background */}
+      <div data-checkmark className="absolute inset-0 bg-white flex items-center justify-center">
+        <div className="w-64 h-64 rounded-full bg-green-500 flex items-center justify-center shadow-2xl">
+          <svg width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
@@ -449,8 +457,8 @@ export default function JobMatchAnimation() {
           <Image src="/assets/icons/mail_icon.png" alt="Mail" width={120} height={120} className="drop-shadow-2xl" />
         </div>
         
-        <div className="bg-green-500 rounded-3xl px-8 py-6 shadow-2xl max-w-md text-center">
-          <p className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-poppins)' }}>
+        <div className="bg-green-500 rounded-3xl px-8 py-6 shadow-2xl max-w-sm text-center">
+          <p className="text-xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-poppins)' }}>
             Congratulations, you got a job offer! 🎉
           </p>
         </div>
