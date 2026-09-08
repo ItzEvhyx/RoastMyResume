@@ -1,8 +1,24 @@
 'use client';
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import Image from 'next/image';
+import localFont from 'next/font/local';
+import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
-import SignIn from './sign.in';
+import { SignInForm } from './sign.in';
+import { SignUpForm } from './sign.up';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
+});
+
+const futuraDisplay = localFont({
+  src: '../../../../public/assets/fonts/futura_display/Futura Display.ttf',
+  variable: '--font-futura-display',
+  display: 'swap',
+});
 
 // Global external store for controlling auth modal across components
 let isGlobalOpen = false;
@@ -38,13 +54,37 @@ export function useAuthModalOpen(): boolean {
 export interface AuthModalProps {
   isOpen?: boolean;
   onClose?: () => void;
+  initialMode?: 'signin' | 'signup';
   children?: React.ReactNode;
 }
 
-export default function AuthModal({ isOpen: externalIsOpen, onClose, children }: AuthModalProps) {
+const slideVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 80 : -80,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -80 : 80,
+    opacity: 0,
+  }),
+};
+
+export default function AuthModal({
+  isOpen: externalIsOpen,
+  onClose,
+  initialMode = 'signin',
+  children,
+}: AuthModalProps) {
   const storeOpen = useAuthModalOpen();
   const isControlled = externalIsOpen !== undefined;
   const open = isControlled ? externalIsOpen : storeOpen;
+
+  const [view, setView] = useState<'signin' | 'signup'>(initialMode);
+  const [direction, setDirection] = useState<number>(1); // 1 = slide in from right, -1 = slide in from left
 
   const handleClose = () => {
     if (onClose) {
@@ -52,6 +92,14 @@ export default function AuthModal({ isOpen: externalIsOpen, onClose, children }:
     }
     closeAuthModal();
   };
+
+  // Reset view to signin when modal opens
+  useEffect(() => {
+    if (open) {
+      setView(initialMode);
+      setDirection(1);
+    }
+  }, [open, initialMode]);
 
   // Handle escape key and scroll lock
   useEffect(() => {
@@ -77,10 +125,11 @@ export default function AuthModal({ isOpen: externalIsOpen, onClose, children }:
     <AnimatePresence>
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${poppins.variable} ${futuraDisplay.variable}`}
           role="dialog"
           aria-modal="true"
           aria-label="Authentication"
+          style={{ fontFamily: 'var(--font-poppins)' }}
         >
           {/* Dimmed backdrop with smooth fade in / fade out */}
           <motion.div
@@ -133,10 +182,75 @@ export default function AuthModal({ isOpen: externalIsOpen, onClose, children }:
               </svg>
             </button>
 
-            {/* Content container (hosts sign in / sign up contents layer) */}
-            <div className="w-full flex-1 flex flex-col items-center justify-center">
-              {children || <SignIn onSuccess={handleClose} />}
-            </div>
+            {/* Custom Children or Dual Auth Forms */}
+            {children ? (
+              <div className="w-full flex-1 flex flex-col items-center justify-center">
+                {children}
+              </div>
+            ) : (
+              <div className="w-full text-white">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 lg:gap-16">
+                  {/* Left column: Denise illustration + Futura copy (remains constant) */}
+                  <div className="flex flex-col items-center justify-center shrink-0 w-full md:w-[46%] max-w-[370px]">
+                    <div className="relative w-[260px] h-[300px] sm:w-[300px] sm:h-[350px] lg:w-[320px] lg:h-[370px]">
+                      <Image
+                        src="/assets/images/denise_auth.png"
+                        alt="Denise HR thumbs up"
+                        fill
+                        priority
+                        className="object-contain"
+                      />
+                    </div>
+                    <div className="mt-4 sm:mt-5 text-center">
+                      <p
+                        className="text-white text-2xl sm:text-3xl lg:text-[32px] leading-[1.08] tracking-wide text-center"
+                        style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
+                      >
+                        Takes 20 seconds.
+                        <br />
+                        No credit card, no
+                        <br />
+                        fluff.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right column: Auth inputs with sliding transition */}
+                  <div className="flex-1 w-full max-w-[420px] sm:max-w-[460px] flex flex-col items-center overflow-hidden pt-2 pb-1">
+                    <AnimatePresence mode="wait" custom={direction} initial={false}>
+                      <motion.div
+                        key={view}
+                        custom={direction}
+                        variants={slideVariants}
+                        initial="enter"
+                        animate="center"
+                        exit="exit"
+                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                        className="w-full flex flex-col items-center"
+                      >
+                        {view === 'signin' ? (
+                          <SignInForm
+                            onSuccess={handleClose}
+                            onSwitchToSignUp={() => {
+                              setDirection(1);
+                              setView('signup');
+                            }}
+                          />
+                        ) : (
+                          <SignUpForm
+                            onSuccess={handleClose}
+                            onSwitchToSignIn={() => {
+                              setDirection(-1);
+                              setView('signin');
+                            }}
+                          />
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

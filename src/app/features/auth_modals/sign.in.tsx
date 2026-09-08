@@ -21,9 +21,7 @@ const futuraDisplay = localFont({
 function SolidMailIcon({ className = 'w-5 h-5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      {/* Solid filled envelope */}
       <rect x="2" y="4" width="20" height="16" rx="3" fill="#ffffff" />
-      {/* Inner flap fold lines in modal dark color */}
       <path
         d="M2.5 5.5L12 13.5L21.5 5.5"
         stroke="#17171a"
@@ -39,16 +37,13 @@ function SolidMailIcon({ className = 'w-5 h-5' }: { className?: string }) {
 function SolidLockIcon({ className = 'w-4.5 h-4.5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      {/* Arched shackle */}
       <path
         d="M7 10V7a5 5 0 0 1 10 0v3"
         stroke="#ffffff"
         strokeWidth="3"
         strokeLinecap="round"
       />
-      {/* Solid lock body */}
       <rect x="4" y="9.5" width="16" height="13" rx="3" fill="#ffffff" />
-      {/* Keyhole */}
       <circle cx="12" cy="14.5" r="1.6" fill="#17171a" />
       <path d="M12 15.5V18.5" stroke="#17171a" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
@@ -121,17 +116,17 @@ function GoogleIcon({ className = 'w-6 h-6' }: { className?: string }) {
   );
 }
 
-interface SignInProps {
+export interface SignInFormProps {
   onSuccess?: () => void;
   onSwitchToSignUp?: () => void;
   onForgotPassword?: () => void;
 }
 
-export default function SignIn({
+export function SignInForm({
   onSuccess,
   onSwitchToSignUp,
   onForgotPassword,
-}: SignInProps = {}) {
+}: SignInFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -147,6 +142,175 @@ export default function SignIn({
     if (onSuccess) onSuccess();
   };
 
+  return (
+    <div
+      className={`w-full max-w-[420px] sm:max-w-[460px] flex flex-col items-center ${poppins.variable} ${futuraDisplay.variable}`}
+      style={{ fontFamily: 'var(--font-poppins)' }}
+    >
+      {/* Sign-in Header */}
+      <h2
+        className="text-white text-5xl sm:text-6xl lg:text-[68px] mb-7 sm:mb-8 tracking-wide text-center"
+        style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
+      >
+        Sign-in
+      </h2>
+
+      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4 sm:gap-5">
+        {/* Email Pill Field with transition border label */}
+        <div className="relative w-full">
+          <div
+            className={`relative w-full h-[58px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
+              emailFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
+            }`}
+          >
+            {/* Floating label that docks onto top-left border */}
+            <label
+              htmlFor="auth-email-input"
+              className={`absolute pointer-events-none flex items-center gap-2 transition-all duration-200 ease-out select-none ${
+                isEmailFloating
+                  ? '-top-[13px] left-7 px-2 bg-[#17171a] text-sm sm:text-base font-bold text-white z-10'
+                  : 'top-1/2 -translate-y-1/2 left-7 px-0 bg-transparent text-base sm:text-lg font-bold text-white/50 z-0'
+              }`}
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            >
+              <SolidMailIcon className="w-5 h-5 text-white shrink-0" />
+              <span>Email</span>
+            </label>
+
+            <input
+              id="auth-email-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onFocus={() => setEmailFocused(true)}
+              onBlur={() => setEmailFocused(false)}
+              autoComplete="email"
+              className="w-full h-full bg-transparent text-white px-7 font-poppins text-base sm:text-lg font-medium outline-none rounded-full"
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            />
+          </div>
+        </div>
+
+        {/* Password Pill Field with transition border label + show/hide toggle */}
+        <div className="relative w-full">
+          <div
+            className={`relative w-full h-[58px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
+              passwordFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
+            }`}
+          >
+            {/* Floating label that docks onto top-left border */}
+            <label
+              htmlFor="auth-password-input"
+              className={`absolute pointer-events-none flex items-center gap-2 transition-all duration-200 ease-out select-none ${
+                isPasswordFloating
+                  ? '-top-[13px] left-7 px-2 bg-[#17171a] text-sm sm:text-base font-bold text-white z-10'
+                  : 'top-1/2 -translate-y-1/2 left-7 px-0 bg-transparent text-base sm:text-lg font-bold text-white/50 z-0'
+              }`}
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            >
+              <SolidLockIcon className="w-4.5 h-4.5 text-white shrink-0" />
+              <span>Password</span>
+            </label>
+
+            <input
+              id="auth-password-input"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
+              autoComplete="current-password"
+              className="w-full h-full bg-transparent text-white pl-7 pr-16 font-poppins text-base sm:text-lg font-medium outline-none rounded-full"
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            />
+
+            {/* Show/Hide Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-5 top-1/2 -translate-y-1/2 p-1.5 text-white hover:text-white/80 transition-colors focus:outline-none"
+            >
+              {showPassword ? <EyeIcon className="w-7 h-7" /> : <EyeOffIcon className="w-7 h-7" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Forgot Password Link */}
+        <div className="w-full flex justify-end -mt-1 sm:-mt-0.5">
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-xs sm:text-sm text-white/80 hover:text-white transition-colors font-medium"
+            style={{ fontFamily: 'var(--font-poppins)' }}
+          >
+            Forgot Password?
+          </button>
+        </div>
+
+        {/* Sign-in Submit Button */}
+        <button
+          type="submit"
+          className="w-full mt-1 sm:mt-1.5 h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-xl sm:text-2xl hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
+          style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
+        >
+          Sign-in
+        </button>
+
+        {/* Line Divider with "Or" */}
+        <div className="w-full flex items-center my-2 sm:my-3">
+          <div className="flex-1 h-[2px] bg-white" />
+          <span
+            className="px-5 text-white text-2xl sm:text-3xl tracking-wider font-extrabold"
+            style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
+          >
+            Or
+          </span>
+          <div className="flex-1 h-[2px] bg-white" />
+        </div>
+
+        {/* Continue with Google Button */}
+        <button
+          type="button"
+          className="w-full h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-base sm:text-lg flex items-center justify-center gap-3.5 hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
+          style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
+        >
+          <GoogleIcon className="w-6 h-6 shrink-0" />
+          <span>Continue with Google</span>
+        </button>
+
+        {/* Switch to Sign-up */}
+        <div className="w-full text-center mt-2 sm:mt-3">
+          <span
+            className="text-xs sm:text-sm text-neutral-400 font-normal"
+            style={{ fontFamily: 'var(--font-poppins)' }}
+          >
+            Don’t have an account?{' '}
+            <button
+              type="button"
+              onClick={onSwitchToSignUp}
+              className="text-white underline font-bold hover:text-white/80 transition-colors"
+            >
+              Create one
+            </button>
+          </span>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export interface SignInProps {
+  onSuccess?: () => void;
+  onSwitchToSignUp?: () => void;
+  onForgotPassword?: () => void;
+}
+
+export default function SignIn({
+  onSuccess,
+  onSwitchToSignUp,
+  onForgotPassword,
+}: SignInProps = {}) {
   return (
     <div
       className={`w-full text-white ${poppins.variable} ${futuraDisplay.variable}`}
@@ -180,155 +344,11 @@ export default function SignIn({
 
         {/* Right column: Auth inputs & actions */}
         <div className="flex-1 w-full max-w-[420px] sm:max-w-[460px] flex flex-col items-center">
-          {/* Sign-in Header */}
-          <h2
-            className="text-white text-5xl sm:text-6xl lg:text-[68px] mb-7 sm:mb-8 tracking-wide text-center"
-            style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
-          >
-            Sign-in
-          </h2>
-
-          <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4 sm:gap-5">
-            {/* Email Pill Field with transition border label */}
-            <div className="relative w-full">
-              <div
-                className={`relative w-full h-[58px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
-                  emailFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
-                }`}
-              >
-                {/* Floating label that docks onto top-left border */}
-                <label
-                  htmlFor="auth-email-input"
-                  className={`absolute pointer-events-none flex items-center gap-2 transition-all duration-200 ease-out select-none ${
-                    isEmailFloating
-                      ? '-top-[13px] left-7 px-2 bg-[#17171a] text-sm sm:text-base font-bold text-white z-10'
-                      : 'top-1/2 -translate-y-1/2 left-7 px-0 bg-transparent text-base sm:text-lg font-bold text-white/50 z-0'
-                  }`}
-                  style={{ fontFamily: 'var(--font-poppins)' }}
-                >
-                  <SolidMailIcon className="w-5 h-5 text-white shrink-0" />
-                  <span>Email</span>
-                </label>
-
-                <input
-                  id="auth-email-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
-                  autoComplete="email"
-                  className="w-full h-full bg-transparent text-white px-7 font-poppins text-base sm:text-lg font-medium outline-none rounded-full"
-                  style={{ fontFamily: 'var(--font-poppins)' }}
-                />
-              </div>
-            </div>
-
-            {/* Password Pill Field with transition border label + show/hide toggle */}
-            <div className="relative w-full">
-              <div
-                className={`relative w-full h-[58px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
-                  passwordFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
-                }`}
-              >
-                {/* Floating label that docks onto top-left border */}
-                <label
-                  htmlFor="auth-password-input"
-                  className={`absolute pointer-events-none flex items-center gap-2 transition-all duration-200 ease-out select-none ${
-                    isPasswordFloating
-                      ? '-top-[13px] left-7 px-2 bg-[#17171a] text-sm sm:text-base font-bold text-white z-10'
-                      : 'top-1/2 -translate-y-1/2 left-7 px-0 bg-transparent text-base sm:text-lg font-bold text-white/50 z-0'
-                  }`}
-                  style={{ fontFamily: 'var(--font-poppins)' }}
-                >
-                  <SolidLockIcon className="w-4.5 h-4.5 text-white shrink-0" />
-                  <span>Password</span>
-                </label>
-
-                <input
-                  id="auth-password-input"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  autoComplete="current-password"
-                  className="w-full h-full bg-transparent text-white pl-7 pr-16 font-poppins text-base sm:text-lg font-medium outline-none rounded-full"
-                  style={{ fontFamily: 'var(--font-poppins)' }}
-                />
-
-                {/* Show/Hide Toggle Button with flipped logic: EyeIcon when visible, EyeOffIcon when hidden */}
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 p-1.5 text-white hover:text-white/80 transition-colors focus:outline-none"
-                >
-                  {showPassword ? <EyeIcon className="w-7 h-7" /> : <EyeOffIcon className="w-7 h-7" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Forgot Password Link */}
-            <div className="w-full flex justify-end -mt-1 sm:-mt-0.5">
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                className="text-xs sm:text-sm text-white/80 hover:text-white transition-colors font-medium"
-                style={{ fontFamily: 'var(--font-poppins)' }}
-              >
-                Forgot Password?
-              </button>
-            </div>
-
-            {/* Sign-in Submit Button */}
-            <button
-              type="submit"
-              className="w-full mt-1 sm:mt-1.5 h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-xl sm:text-2xl hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
-              style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
-            >
-              Sign-in
-            </button>
-
-            {/* Line Divider with "Or" */}
-            <div className="w-full flex items-center my-2 sm:my-3">
-              <div className="flex-1 h-[2px] bg-white" />
-              <span
-                className="px-5 text-white text-2xl sm:text-3xl tracking-wider font-extrabold"
-                style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
-              >
-                Or
-              </span>
-              <div className="flex-1 h-[2px] bg-white" />
-            </div>
-
-            {/* Continue with Google Button */}
-            <button
-              type="button"
-              className="w-full h-[58px] sm:h-[62px] bg-white text-black rounded-full font-bold text-base sm:text-lg flex items-center justify-center gap-3.5 hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
-              style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
-            >
-              <GoogleIcon className="w-6 h-6 shrink-0" />
-              <span>Continue with Google</span>
-            </button>
-
-            {/* Switch to Sign-up */}
-            <div className="w-full text-center mt-2 sm:mt-3">
-              <span
-                className="text-xs sm:text-sm text-neutral-400 font-normal"
-                style={{ fontFamily: 'var(--font-poppins)' }}
-              >
-                Don’t have an account?{' '}
-                <button
-                  type="button"
-                  onClick={onSwitchToSignUp}
-                  className="text-white underline font-bold hover:text-white/80 transition-colors"
-                >
-                  Create one
-                </button>
-              </span>
-            </div>
-          </form>
+          <SignInForm
+            onSuccess={onSuccess}
+            onSwitchToSignUp={onSwitchToSignUp}
+            onForgotPassword={onForgotPassword}
+          />
         </div>
       </div>
     </div>
