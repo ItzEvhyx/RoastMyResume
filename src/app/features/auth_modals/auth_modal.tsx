@@ -7,6 +7,8 @@ import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignInForm } from './sign.in';
 import { SignUpForm } from './sign.up';
+import Terms from '../legal_terms/terms';
+import PrivacyPolicy from '../legal_terms/privacy.policy';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -51,6 +53,8 @@ export function useAuthModalOpen(): boolean {
   );
 }
 
+export type AuthModalView = 'signin' | 'signup' | 'terms' | 'privacy';
+
 export interface AuthModalProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -83,8 +87,14 @@ export default function AuthModal({
   const isControlled = externalIsOpen !== undefined;
   const open = isControlled ? externalIsOpen : storeOpen;
 
-  const [view, setView] = useState<'signin' | 'signup'>(initialMode);
+  const [view, setView] = useState<AuthModalView>(initialMode);
   const [direction, setDirection] = useState<number>(1); // 1 = slide in from right, -1 = slide in from left
+
+  // Retain sign-up form info across legal terms navigation
+  const [signUpEmail, setSignUpEmail] = useState('');
+  const [signUpPassword, setSignUpPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const handleClose = () => {
     if (onClose) {
@@ -93,7 +103,7 @@ export default function AuthModal({
     closeAuthModal();
   };
 
-  // Reset view to signin when modal opens
+  // Reset view to initialMode when modal opens
   useEffect(() => {
     if (open) {
       setView(initialMode);
@@ -215,8 +225,8 @@ export default function AuthModal({
                     </div>
                   </div>
 
-                  {/* Right column: Auth inputs with sliding transition */}
-                  <div className="flex-1 w-full max-w-[420px] sm:max-w-[460px] flex flex-col items-center overflow-hidden pt-2 pb-1">
+                  {/* Right column: Auth forms & Legal pages with sliding transition */}
+                  <div className="flex-1 w-full max-w-[420px] sm:max-w-[470px] flex flex-col items-center overflow-hidden pt-2 pb-1">
                     <AnimatePresence mode="wait" custom={direction} initial={false}>
                       <motion.div
                         key={view}
@@ -228,7 +238,7 @@ export default function AuthModal({
                         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                         className="w-full flex flex-col items-center"
                       >
-                        {view === 'signin' ? (
+                        {view === 'signin' && (
                           <SignInForm
                             onSuccess={handleClose}
                             onSwitchToSignUp={() => {
@@ -236,12 +246,48 @@ export default function AuthModal({
                               setView('signup');
                             }}
                           />
-                        ) : (
+                        )}
+
+                        {view === 'signup' && (
                           <SignUpForm
+                            email={signUpEmail}
+                            setEmail={setSignUpEmail}
+                            password={signUpPassword}
+                            setPassword={setSignUpPassword}
                             onSuccess={handleClose}
                             onSwitchToSignIn={() => {
                               setDirection(-1);
                               setView('signin');
+                            }}
+                            onTermsClick={() => {
+                              setDirection(1);
+                              setView('terms');
+                            }}
+                            onPrivacyClick={() => {
+                              setDirection(1);
+                              setView('privacy');
+                            }}
+                          />
+                        )}
+
+                        {view === 'terms' && (
+                          <Terms
+                            accepted={termsAccepted}
+                            onAcceptChange={setTermsAccepted}
+                            onBack={() => {
+                              setDirection(-1);
+                              setView('signup');
+                            }}
+                          />
+                        )}
+
+                        {view === 'privacy' && (
+                          <PrivacyPolicy
+                            accepted={privacyAccepted}
+                            onAcceptChange={setPrivacyAccepted}
+                            onBack={() => {
+                              setDirection(-1);
+                              setView('signup');
                             }}
                           />
                         )}

@@ -119,14 +119,33 @@ function GoogleIcon({ className = 'w-6 h-6' }: { className?: string }) {
 export interface SignUpFormProps {
   onSuccess?: () => void;
   onSwitchToSignIn?: () => void;
+  onTermsClick?: () => void;
+  onPrivacyClick?: () => void;
+  email?: string;
+  setEmail?: (val: string) => void;
+  password?: string;
+  setPassword?: (val: string) => void;
 }
 
 export function SignUpForm({
   onSuccess,
   onSwitchToSignIn,
+  onTermsClick,
+  onPrivacyClick,
+  email: externalEmail,
+  setEmail: externalSetEmail,
+  password: externalPassword,
+  setPassword: externalSetPassword,
 }: SignUpFormProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [internalEmail, setInternalEmail] = useState('');
+  const [internalPassword, setInternalPassword] = useState('');
+
+  const email = externalEmail !== undefined ? externalEmail : internalEmail;
+  const setEmail = externalSetEmail || setInternalEmail;
+
+  const password = externalPassword !== undefined ? externalPassword : internalPassword;
+  const setPassword = externalSetPassword || setInternalPassword;
+
   const [showPassword, setShowPassword] = useState(false);
 
   const [emailFocused, setEmailFocused] = useState(false);
@@ -292,7 +311,7 @@ export function SignUpForm({
             <br />
             <button
               type="button"
-              onClick={() => {}}
+              onClick={onTermsClick}
               className="text-white underline font-semibold hover:text-white/80 transition-colors"
             >
               Terms
@@ -300,7 +319,7 @@ export function SignUpForm({
             and{' '}
             <button
               type="button"
-              onClick={() => {}}
+              onClick={onPrivacyClick}
               className="text-white underline font-semibold hover:text-white/80 transition-colors"
             >
               Privacy Policy
@@ -316,11 +335,15 @@ export function SignUpForm({
 export interface SignUpProps {
   onSuccess?: () => void;
   onSwitchToSignIn?: () => void;
+  onTermsClick?: () => void;
+  onPrivacyClick?: () => void;
 }
 
 export default function SignUp({
   onSuccess,
   onSwitchToSignIn,
+  onTermsClick,
+  onPrivacyClick,
 }: SignUpProps = {}) {
   return (
     <div
@@ -358,6 +381,8 @@ export default function SignUp({
           <SignUpForm
             onSuccess={onSuccess}
             onSwitchToSignIn={onSwitchToSignIn}
+            onTermsClick={onTermsClick}
+            onPrivacyClick={onPrivacyClick}
           />
         </div>
       </div>
