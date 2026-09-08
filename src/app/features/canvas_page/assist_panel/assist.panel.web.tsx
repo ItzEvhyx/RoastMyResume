@@ -5,6 +5,9 @@ import { Poppins } from 'next/font/google';
 import { animate } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import DeniseSignInMsgWeb from './denise_signin/signin.msg.web';
+import AskDenise from './denise_tab/ask_denise';
+import JobMatch from './job_match/job.match';
+import SlideAnimation from './slide_anim/slide.animationt';
 import { useAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
@@ -35,12 +38,16 @@ export default function AssistPanelWeb({
   const [width, setWidth] = useState(440);
   const [isResizing, setIsResizing] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [prevTab, setPrevTab] = useState(0);
   const [hoverX, setHoverX] = useState<number | null>(null);
   const [internalSignedIn, setInternalSignedIn] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
 
   const user = useAuthUser();
+
+  // Determine slide direction based on tab change
+  const slideDirection = activeTab > prevTab ? 'left' : 'right';
 
   // Auto-expand horizontally once stage 4 is reached (matching the toolbar vertical expansion)
   useEffect(() => {
@@ -148,10 +155,10 @@ export default function AssistPanelWeb({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!panelRef.current) return;
-      
+
       const panelRect = panelRef.current.getBoundingClientRect();
       const newWidth = panelRect.right - e.clientX;
-      
+
       const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
       setWidth(clampedWidth);
     };
@@ -220,7 +227,10 @@ export default function AssistPanelWeb({
             <li key={idx} className="relative h-full flex items-center justify-center flex-1">
               <button
                 data-index={idx}
-                onClick={() => setActiveTab(idx)}
+                onClick={() => {
+                  setPrevTab(activeTab);
+                  setActiveTab(idx);
+                }}
                 className={cn(
                   'px-4 py-2 text-sm font-bold transition-colors duration-200 rounded-full whitespace-nowrap w-full',
                   activeTab === idx
@@ -332,32 +342,32 @@ export default function AssistPanelWeb({
               transition: 'opacity 0.25s ease-out',
             }}
           >
-            {activeTab === 0 ? (
-              !isSignedIn ? (
+            <SlideAnimation direction={slideDirection} tabKey={activeTab}>
+              {!isSignedIn ? (
+                /* Show sign-in message for all tabs when not signed in */
                 <DeniseSignInMsgWeb onSignUp={handleSignUp} />
               ) : (
-                /* Actual Ask Denise content when signed in */
-                <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                  <span className="text-base font-semibold text-white/90 mb-1">Ask Denise</span>
-                  <span className="text-sm text-white/50 max-w-xs mb-4">
-                    You're signed in! Ask Denise for personalized resume feedback and reviews.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setInternalSignedIn(false)}
-                    className="text-xs text-white/40 hover:text-white/70 transition-colors underline cursor-pointer"
-                  >
-                    (Reset to Sign In view)
-                  </button>
-                </div>
-              )
-            ) : (
-              <div className="flex h-full items-center justify-center p-6 whitespace-nowrap">
-                <span className="text-sm font-medium text-white/60">
-                  {navItems[activeTab].label} Content
-                </span>
-              </div>
-            )}
+                /* Show actual content when signed in */
+                <>
+                  {activeTab === 0 && <AskDenise />}
+                  {activeTab === 1 && <JobMatch />}
+                  {activeTab === 2 && (
+                    <div className="flex h-full items-center justify-center p-6 whitespace-nowrap">
+                      <span className="text-sm font-medium text-white/60">
+                        ATS Check Content
+                      </span>
+                    </div>
+                  )}
+                  {activeTab === 3 && (
+                    <div className="flex h-full items-center justify-center p-6 whitespace-nowrap">
+                      <span className="text-sm font-medium text-white/60">
+                        Layouts Content
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </SlideAnimation>
           </div>
         </div>
       </div>
