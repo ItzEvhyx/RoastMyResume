@@ -30,7 +30,7 @@ export default function AssistPanelWeb({
   isSignedIn: externalSignedIn,
   onSignUp,
 }: AssistPanelWebProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [width, setWidth] = useState(440);
   const [isResizing, setIsResizing] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -38,6 +38,13 @@ export default function AssistPanelWeb({
   const [internalSignedIn, setInternalSignedIn] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
+
+  // Auto-expand horizontally once stage 4 is reached (matching the toolbar vertical expansion)
+  useEffect(() => {
+    if (stage >= 4) {
+      setIsOpen(true);
+    }
+  }, [stage]);
 
   // Use externally controlled sign-in state if provided, otherwise fallback to internal state
   const isSignedIn = externalSignedIn !== undefined ? externalSignedIn : internalSignedIn;
@@ -50,7 +57,7 @@ export default function AssistPanelWeb({
     }
   };
 
-  const visible = stage >= 2;
+  const visible = stage >= 3;
 
   const minWidth = 320;
   const maxWidth = 800;
@@ -111,7 +118,7 @@ export default function AssistPanelWeb({
 
   // Active tab ambience movement
   useEffect(() => {
-    if (!navRef.current) return;
+    if (!navRef.current || !isOpen) return;
     const nav = navRef.current;
     const activeItem = nav.querySelector(`[data-index="${activeTab}"]`);
 
@@ -130,7 +137,7 @@ export default function AssistPanelWeb({
         },
       });
     }
-  }, [activeTab]);
+  }, [activeTab, isOpen]);
 
   // Panel resizing
   useEffect(() => {
@@ -170,7 +177,7 @@ export default function AssistPanelWeb({
   return (
     <div
       ref={panelRef}
-      className={`fixed right-6 top-20 flex flex-col gap-4 ${poppins.variable}`}
+      className={`fixed right-6 top-20 flex flex-col items-end gap-4 ${poppins.variable}`}
       style={{
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateX(0)' : 'translateX(40px)',
@@ -185,9 +192,14 @@ export default function AssistPanelWeb({
         className={`relative overflow-hidden rounded-full ${poppins.variable}`}
         style={{
           ...glassStyle,
+          border: isOpen ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid transparent',
           height: '60px',
           width: isOpen ? `${width}px` : `${collapsedWidth}px`,
-          transition: isResizing ? 'none' : 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: isResizing
+            ? 'none'
+            : 'width 700ms cubic-bezier(0.16, 1, 0.3, 1), opacity 350ms ease-out, border-color 350ms ease-out',
           fontFamily: 'var(--font-poppins)',
         }}
       >
@@ -195,8 +207,10 @@ export default function AssistPanelWeb({
         <ul
           className="relative flex items-center justify-between h-full px-3 z-10"
           style={{
+            width: `${width}px`,
+            minWidth: `${width}px`,
             opacity: isOpen ? 1 : 0,
-            transition: 'opacity 0.2s ease-out',
+            transition: 'opacity 0.25s ease-out',
           }}
         >
           {navItems.map((item, idx) => (
@@ -252,14 +266,18 @@ export default function AssistPanelWeb({
 
         {/* Chevron Toggle Button */}
         <button
+          type="button"
+          aria-label={isOpen ? 'Collapse Assistant' : 'Expand Assistant'}
+          title={isOpen ? 'Collapse Assistant' : 'Expand Assistant'}
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute left-0 top-1/2 z-10 flex items-center justify-center rounded-l-2xl transition-all duration-200 hover:brightness-110 active:scale-95"
+          className="absolute left-0 top-1/2 z-10 flex items-center justify-center transition-all duration-200 hover:brightness-110 active:scale-95 cursor-pointer"
           style={{
             background: 'rgba(255, 255, 255, 0.03)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRight: 'none',
+            borderRight: isOpen ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: isOpen ? '16px 0 0 16px' : '16px',
             width: '40px',
             height: '80px',
             transform: 'translate(-100%, -50%)',
@@ -273,7 +291,7 @@ export default function AssistPanelWeb({
             xmlns="http://www.w3.org/2000/svg"
             style={{
               transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)',
-              transition: 'transform 0.3s ease',
+              transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
             <path
@@ -292,18 +310,23 @@ export default function AssistPanelWeb({
           className="overflow-hidden rounded-3xl"
           style={{
             ...glassStyle,
+            border: isOpen ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid transparent',
             height: 'calc(100vh - 160px)',
             minHeight: '500px',
             maxHeight: '800px',
             width: isOpen ? `${width}px` : `${collapsedWidth}px`,
-            transition: isResizing ? 'none' : 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: isResizing
+              ? 'none'
+              : 'width 700ms cubic-bezier(0.16, 1, 0.3, 1), border-color 350ms ease-out',
           }}
         >
           <div
-            className="h-full w-full"
+            className="h-full"
             style={{
+              width: `${width}px`,
+              minWidth: `${width}px`,
               opacity: isOpen ? 1 : 0,
-              transition: 'opacity 0.2s ease-out',
+              transition: 'opacity 0.25s ease-out',
             }}
           >
             {activeTab === 0 ? (

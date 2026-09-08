@@ -35,10 +35,10 @@ import { RulerSnappingProvider } from '@/app/features/canvas_page/globals/ruler.
 /**
  * Animation sequence:
  *   stage 0 → page hidden (translateY + opacity 0)
- *   stage 1 → page fades/drifts in            (~0ms   → 550ms)
- *   stage 2 → toolbar buttons pop in           (~600ms)
- *   stage 3 → sidebar appears (collapsed)      (~900ms)
- *   stage 4 → sidebar auto-expands             (~1500ms)  ← longer delay, slower expansion
+ *   stage 1 → page fades/drifts in                                       (~0ms   → 550ms)
+ *   stage 2 → toolbar buttons pop in                                     (~600ms)
+ *   stage 3 → sidebar & assistant panel appear (collapsed)               (~900ms)
+ *   stage 4 → sidebar expands vertically & assist panel expands horizontally (~1500ms)
  */
 export default function CanvasPage() {
   const [stage, setStage] = useState(0);
