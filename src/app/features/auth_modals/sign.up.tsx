@@ -121,6 +121,7 @@ export interface SignUpFormProps {
   onSwitchToSignIn?: () => void;
   onTermsClick?: () => void;
   onPrivacyClick?: () => void;
+  onSignUpSubmit?: (email: string) => void;
   email?: string;
   setEmail?: (val: string) => void;
   password?: string;
@@ -132,6 +133,7 @@ export function SignUpForm({
   onSwitchToSignIn,
   onTermsClick,
   onPrivacyClick,
+  onSignUpSubmit,
   email: externalEmail,
   setEmail: externalSetEmail,
   password: externalPassword,
@@ -156,7 +158,12 @@ export function SignUpForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (onSuccess) onSuccess();
+    if (!email) return;
+    if (onSignUpSubmit) {
+      onSignUpSubmit(email);
+    } else if (onSuccess) {
+      onSuccess();
+    }
   };
 
   return (
@@ -337,6 +344,7 @@ export interface SignUpProps {
   onSwitchToSignIn?: () => void;
   onTermsClick?: () => void;
   onPrivacyClick?: () => void;
+  onSignUpSubmit?: (email: string) => void;
 }
 
 export default function SignUp({
@@ -344,6 +352,7 @@ export default function SignUp({
   onSwitchToSignIn,
   onTermsClick,
   onPrivacyClick,
+  onSignUpSubmit,
 }: SignUpProps = {}) {
   return (
     <div
@@ -383,6 +392,7 @@ export default function SignUp({
             onSwitchToSignIn={onSwitchToSignIn}
             onTermsClick={onTermsClick}
             onPrivacyClick={onPrivacyClick}
+            onSignUpSubmit={onSignUpSubmit}
           />
         </div>
       </div>

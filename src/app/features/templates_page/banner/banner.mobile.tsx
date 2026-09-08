@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthUser, signOutUser } from '@/app/core/services/auth.state';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -20,14 +23,81 @@ interface BannerMobileProps {
   onSignInClick?: () => void;
 }
 
-export default function BannerMobile({ onSignInClick: _ }: BannerMobileProps = {}) {
+export default function BannerMobile({ onSignInClick }: BannerMobileProps = {}) {
+  const user = useAuthUser();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   return (
     <>
     <div
       className={`relative z-10 w-screen overflow-hidden bg-white ${poppins.variable} ${futuraDisplay.variable}`}
       style={{ borderRadius: '0 0 1.75rem 1.75rem', minHeight: 148 }}
     >
-      {/* Sign in intentionally omitted on mobile — not enough space */}
+      {/* Top right mobile auth button / profile */}
+      <div className="absolute right-4 top-3 z-20">
+        {!user ? (
+          <button
+            type="button"
+            onClick={onSignInClick}
+            className="px-3 py-1.5 rounded-full text-xs font-semibold text-[#f5f5f5] bg-[#0b0d12] shadow-sm"
+            style={{ fontFamily: 'var(--font-poppins)' }}
+          >
+            Sign in
+          </button>
+        ) : (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold text-[#f5f5f5] bg-[#0b0d12] shadow-sm border border-white/20"
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            >
+              <div className="relative w-4 h-4 shrink-0 flex items-center justify-center">
+                <Image
+                  src="/assets/icons/profile_icon.svg"
+                  alt="Profile"
+                  width={16}
+                  height={16}
+                  className="object-contain"
+                />
+              </div>
+              <span className="max-w-[100px] truncate">{user.email}</span>
+            </button>
+
+            <AnimatePresence>
+              {isDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                  className="absolute right-0 top-full mt-1.5 w-52 rounded-xl border-2 border-white p-2.5 shadow-2xl z-30"
+                  style={{ backgroundColor: '#17171a', fontFamily: 'var(--font-poppins)' }}
+                >
+                  <div className="px-2 py-1">
+                    <p className="text-[10px] text-white/50 uppercase tracking-wider font-normal" style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}>Signed in as</p>
+                    <p className="text-xs font-bold text-white truncate mt-0.5" style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}>{user.email}</p>
+                  </div>
+                  <div className="h-[1px] bg-white/10 my-1.5" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      signOutUser();
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-xs font-bold text-white hover:bg-white/10 text-left cursor-pointer"
+                    style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
+                  >
+                    <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span className="text-white hover:text-red-300 transition-colors">Sign - out</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
 
       {/* Single row: pill+Denise left, text right — both centered on the same axis */}
       <div className="flex h-full w-full items-center" style={{ minHeight: 148, paddingTop: 8, paddingBottom: 16 }}>

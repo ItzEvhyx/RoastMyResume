@@ -9,6 +9,7 @@ import { SignInForm } from './sign.in';
 import { SignUpForm } from './sign.up';
 import Terms from '../legal_terms/terms';
 import PrivacyPolicy from '../legal_terms/privacy.policy';
+import OtpModal from './otp.modal';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -96,6 +97,10 @@ export default function AuthModal({
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
+  // OTP Verification Modal State
+  const [isOtpOpen, setIsOtpOpen] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+
   const handleClose = () => {
     if (onClose) {
       onClose();
@@ -132,43 +137,47 @@ export default function AuthModal({
   }, [open]);
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div
-          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${poppins.variable} ${futuraDisplay.variable}`}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Authentication"
-          style={{ fontFamily: 'var(--font-poppins)' }}
-        >
-          {/* Dimmed backdrop with smooth fade in / fade out */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
-            onClick={handleClose}
-            className="absolute inset-0 h-full w-full cursor-default bg-black/75 backdrop-blur-[3px]"
-          />
-
-          {/* Modal card with tactile spring pop-up animation */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.78, y: 28 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: 16 }}
-            transition={{
-              type: 'spring',
-              stiffness: 400,
-              damping: 26,
-              mass: 0.85,
-            }}
-            className="relative z-10 flex w-full max-w-4xl lg:max-w-[940px] flex-col items-center justify-center overflow-hidden rounded-[32px] border-2 border-white p-6 sm:p-10 lg:p-12 shadow-2xl"
-            style={{
-              backgroundColor: '#17171a',
-              minHeight: 'min(620px, 90vh)',
-            }}
-            onClick={(e) => e.stopPropagation()}
+    <>
+      <AnimatePresence mode="wait">
+        {open && !isOtpOpen && (
+          <div
+            key="auth-modal-root"
+            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 ${poppins.variable} ${futuraDisplay.variable}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Authentication"
+            style={{ fontFamily: 'var(--font-poppins)' }}
           >
+            {/* Dimmed backdrop with smooth fade in / fade out */}
+            <motion.div
+              key="auth-modal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              onClick={handleClose}
+              className="absolute inset-0 h-full w-full cursor-default bg-black/75 backdrop-blur-[3px]"
+            />
+
+            {/* Modal card with tactile spring pop-up animation */}
+            <motion.div
+              key="auth-modal-card"
+              initial={{ opacity: 0, scale: 0.78, y: 28 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 16 }}
+              transition={{
+                type: 'spring',
+                stiffness: 400,
+                damping: 26,
+                mass: 0.85,
+              }}
+              className="relative z-10 flex w-full max-w-4xl lg:max-w-[940px] flex-col items-center justify-center overflow-hidden rounded-[32px] border-2 border-white p-6 sm:p-10 lg:p-12 shadow-2xl"
+              style={{
+                backgroundColor: '#17171a',
+                minHeight: 'min(620px, 90vh)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
             {/* Close Button */}
             <button
               type="button"
@@ -255,6 +264,10 @@ export default function AuthModal({
                             password={signUpPassword}
                             setPassword={setSignUpPassword}
                             onSuccess={handleClose}
+                            onSignUpSubmit={(emailToVerify) => {
+                              setOtpEmail(emailToVerify);
+                              setIsOtpOpen(true);
+                            }}
                             onSwitchToSignIn={() => {
                               setDirection(-1);
                               setView('signin');
@@ -298,8 +311,21 @@ export default function AuthModal({
               </div>
             )}
           </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* OTP Verification Modal (Sending OTP & Verify OTP stages) */}
+      <OtpModal
+        key="auth-otp-modal"
+        isOpen={isOtpOpen}
+        email={otpEmail}
+        onClose={() => setIsOtpOpen(false)}
+        onVerified={() => {
+          setIsOtpOpen(false);
+          handleClose();
+        }}
+      />
+    </>
   );
 }

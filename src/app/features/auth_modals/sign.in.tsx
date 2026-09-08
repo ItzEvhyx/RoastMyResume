@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
+import { setAuthUser } from '@/app/core/services/auth.state';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -139,6 +140,8 @@ export function SignInForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) return;
+    setAuthUser({ email: email.trim().toLowerCase() });
     if (onSuccess) onSuccess();
   };
 

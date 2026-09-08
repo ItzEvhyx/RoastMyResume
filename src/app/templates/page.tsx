@@ -14,7 +14,7 @@ import FAQWeb from '@/app/features/templates_page/faq/faq.web';
 import FAQMobile from '@/app/features/templates_page/faq/faq.mobile';
 import FooterWeb from '@/app/features/templates_page/footer/footer.web';
 import FooterMobile from '@/app/features/templates_page/footer/footer.mobile';
-import AuthModal from '@/app/features/auth_modals/auth_modal';
+import AuthModal from '@/app/features/auth_modals/auth.modal';
 
 export default function TemplatesPage() {
   const isMobile = useMediaQuery('(max-width: 767px)');
