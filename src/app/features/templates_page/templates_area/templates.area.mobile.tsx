@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Poppins } from 'next/font/google';
-import { FolderUp } from 'lucide-react';
+import Image from 'next/image';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -269,7 +269,7 @@ export default function TemplatesAreaMobile() {
         </span>
         <button className="flex items-center gap-1.5 text-xs text-white/55 transition-colors hover:text-white"
           style={{ fontFamily: 'var(--font-poppins)' }}>
-          <FolderUp size={13} />
+          <Image src="/assets/icons/folder_icon.svg" alt="folder" width={13} height={13} className="opacity-55" />
           Upload yours
         </button>
       </div>

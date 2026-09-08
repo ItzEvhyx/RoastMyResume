@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Poppins } from 'next/font/google';
-import { FolderUp } from 'lucide-react';
+import Image from 'next/image';
 import SpecularButton from '@/components/specular_button';
 
 const poppins = Poppins({
@@ -316,7 +316,7 @@ export default function TemplatesAreaWeb() {
           className="flex items-center gap-2 text-sm text-white/60 transition-colors duration-200 hover:text-white"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
         >
-          <FolderUp size={16} className="text-white/50" />
+          <Image src="/assets/icons/folder_icon.svg" alt="folder" width={16} height={16} className="opacity-50" />
           Upload yours
         </button>
       </div>
