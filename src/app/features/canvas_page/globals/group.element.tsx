@@ -135,13 +135,15 @@ function useResize(
 
 // ─── Handle node ──────────────────────────────────────────────────────────────
 
-function Handle({ style, cursor, onMouseDown }: {
+function Handle({ style, cursor, onMouseDown, dataNoExport = false }: {
   style: React.CSSProperties;
   cursor: string;
   onMouseDown: (e: React.MouseEvent) => void;
+  dataNoExport?: boolean;
 }) {
   return (
     <div
+      data-no-export={dataNoExport ? 'true' : undefined}
       className="absolute rounded-sm border-2 border-black bg-white"
       style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, cursor, zIndex: 3, ...style }}
       onMouseDown={onMouseDown}
@@ -284,6 +286,7 @@ export function DraggableGroup({
 
       {/* Transparent selection boundary; it must not obscure the group preview. */}
       <div
+        data-no-export="true"
         aria-label="Group"
         style={{
           position: 'absolute',
@@ -307,23 +310,31 @@ export function DraggableGroup({
 
           {/* Corner handles */}
           <Handle cursor="nwse-resize" style={{ left: -HALF, top: -HALF }}
-            onMouseDown={e => startResize(e, 'nw', snapBase)} />
+            onMouseDown={e => startResize(e, 'nw', snapBase)} 
+            dataNoExport={true} />
           <Handle cursor="nesw-resize" style={{ right: -HALF, top: -HALF }}
-            onMouseDown={e => startResize(e, 'ne', snapBase)} />
+            onMouseDown={e => startResize(e, 'ne', snapBase)} 
+            dataNoExport={true} />
           <Handle cursor="nwse-resize" style={{ right: -HALF, bottom: -HALF }}
-            onMouseDown={e => startResize(e, 'se', snapBase)} />
+            onMouseDown={e => startResize(e, 'se', snapBase)} 
+            dataNoExport={true} />
           <Handle cursor="nesw-resize" style={{ left: -HALF, bottom: -HALF }}
-            onMouseDown={e => startResize(e, 'sw', snapBase)} />
+            onMouseDown={e => startResize(e, 'sw', snapBase)} 
+            dataNoExport={true} />
 
           {/* Edge handles */}
           <Handle cursor="ns-resize" style={{ left: '50%', top: -HALF, transform: 'translateX(-50%)' }}
-            onMouseDown={e => startResize(e, 'n', snapBase)} />
+            onMouseDown={e => startResize(e, 'n', snapBase)} 
+            dataNoExport={true} />
           <Handle cursor="ns-resize" style={{ left: '50%', bottom: -HALF, transform: 'translateX(-50%)' }}
-            onMouseDown={e => startResize(e, 's', snapBase)} />
+            onMouseDown={e => startResize(e, 's', snapBase)} 
+            dataNoExport={true} />
           <Handle cursor="ew-resize" style={{ left: -HALF, top: '50%', transform: 'translateY(-50%)' }}
-            onMouseDown={e => startResize(e, 'w', snapBase)} />
+            onMouseDown={e => startResize(e, 'w', snapBase)} 
+            dataNoExport={true} />
           <Handle cursor="ew-resize" style={{ right: -HALF, top: '50%', transform: 'translateY(-50%)' }}
-            onMouseDown={e => startResize(e, 'e', snapBase)} />
+            onMouseDown={e => startResize(e, 'e', snapBase)} 
+            dataNoExport={true} />
         </>
       )}
     </div>

@@ -44,7 +44,9 @@ export async function exportCanvasToPdf(fileName: string = 'resume.pdf') {
     zIndex: '-1',
   });
 
+  // ------------------------------------------------------------------
   // Deep-clone the source element, preserving its children and inline styles
+  // ------------------------------------------------------------------
   const clone = source.cloneNode(true) as HTMLElement;
   Object.assign(clone.style, {
     position: 'relative',
@@ -55,16 +57,53 @@ export async function exportCanvasToPdf(fileName: string = 'resume.pdf') {
     transform: 'none',
   });
 
+  // ------------------------------------------------------------------
+  // Remove all UI elements from the clone before capturing
+  // ------------------------------------------------------------------
+  const uiSelectors = [
+    '[data-no-export="true"]',
+    '.text-toolbar',
+    '.divider-toolbar',
+    '.icon-toolbar',
+  ];
+
+  uiSelectors.forEach(selector => {
+    try {
+      const elements = clone.querySelectorAll(selector);
+      elements.forEach(el => el.remove());
+    } catch (e) {
+      console.warn(`Failed to remove ${selector}:`, e);
+    }
+  });
+
+  // Remove selection borders (look for divs with specific border styles)
+  const allElements = clone.querySelectorAll('*');
+  allElements.forEach(el => {
+    const htmlEl = el as HTMLElement;
+    const style = htmlEl.style;
+    
+    // Remove selection borders (black 2px borders around elements)
+    if (style.border === '2px solid rgb(0, 0, 0)' || style.border === '2px solid #000000') {
+      htmlEl.remove();
+    }
+    
+    // Remove resize handles (white boxes with black borders)
+    if (htmlEl.className && 
+        (htmlEl.className.includes('bg-white') && htmlEl.className.includes('border-black') && htmlEl.className.includes('border-2'))) {
+      htmlEl.remove();
+    }
+  });
+
   host.appendChild(clone);
   document.body.appendChild(host);
 
   try {
     // ------------------------------------------------------------------
-    // 2. Capture the clone at 3× for a crisp high-res image
+    // Capture the clone at 2× for a crisp high-res image (faster than 3×)
     // ------------------------------------------------------------------
     const dataUrl = await domToPng(clone, {
       quality: 1,
-      scale: 3,
+      scale: 2,
       backgroundColor: '#ffffff',
       // Tell modern-screenshot the exact logical dimensions so it never
       // tries to measure via getBoundingClientRect on a transformed node
@@ -73,7 +112,7 @@ export async function exportCanvasToPdf(fileName: string = 'resume.pdf') {
     });
 
     // ------------------------------------------------------------------
-    // 3. Embed into a perfectly-sized A4 PDF (no margins)
+    // Embed into a perfectly-sized A4 PDF (no margins)
     // ------------------------------------------------------------------
     const pdf = new jsPDF({
       orientation: 'portrait',
@@ -90,7 +129,7 @@ export async function exportCanvasToPdf(fileName: string = 'resume.pdf') {
     console.error('[exportCanvasToPdf] Export failed:', err);
   } finally {
     // ------------------------------------------------------------------
-    // 4. Always clean up the temporary DOM node
+    // Always clean up the temporary DOM node
     // ------------------------------------------------------------------
     document.body.removeChild(host);
   }

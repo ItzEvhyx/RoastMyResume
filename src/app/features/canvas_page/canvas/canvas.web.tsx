@@ -503,9 +503,13 @@ export default function CanvasWeb() {
               <PenCanvas />
 
               {/* Lasso selection layer — sits above elements when active */}
-              <LassoCanvas />
+              <div data-no-export="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                <LassoCanvas />
+              </div>
+              
               {/* Selection boundary highlights — sibling SVG, same coordinate space */}
               <svg
+                data-no-export="true"
                 aria-hidden
                 style={{
                   position: 'absolute',
@@ -520,9 +524,16 @@ export default function CanvasWeb() {
               >
                 <SelectionBoundary />
               </svg>
-              <RulerGuides />
               
-              {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
+              <div data-no-export="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                <RulerGuides />
+              </div>
+              
+              {edgeWarning && (
+                <div data-no-export="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                  <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />
+                </div>
+              )}
               {/* Render text elements */}
               {textElements.map(element => (
                 <DraggableText

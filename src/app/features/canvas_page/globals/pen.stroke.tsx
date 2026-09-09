@@ -154,10 +154,11 @@ export function DraggablePenStroke({ stroke, isSelected, onSelect, onUpdate, onD
       <PenStrokeGraphic stroke={stroke} />
       {isSelected && !dragging && !resizing && (
         <>
-          <div className="pointer-events-none absolute" style={{ inset: -3, border: '1px dashed rgba(99,102,241,0.9)', borderRadius: 3 }} />
+          <div data-no-export="true" className="pointer-events-none absolute" style={{ inset: -3, border: '1px dashed rgba(99,102,241,0.9)', borderRadius: 3 }} />
           {(['nw', 'ne', 'se', 'sw'] as Handle[]).map(handle => (
             <div
               key={handle}
+              data-no-export="true"
               className="absolute bg-white border-2 border-black rounded-sm"
               style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, left: handle.includes('w') ? -HANDLE_SIZE / 2 : undefined, right: handle.includes('e') ? -HANDLE_SIZE / 2 : undefined, top: handle.includes('n') ? -HANDLE_SIZE / 2 : undefined, bottom: handle.includes('s') ? -HANDLE_SIZE / 2 : undefined, cursor: `${handle}-resize`, zIndex: 2 }}
               onMouseDown={event => startResize(event, handle)}

@@ -70,8 +70,37 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick }: Too
   }, []);
 
   const handleExportPdf = async () => {
-    const fileName = `${resumeTitle.trim() || 'Untitled Resume'}.pdf`;
-    await exportCanvasToPdf(fileName);
+    const button = document.activeElement as HTMLButtonElement;
+    const originalText = button?.textContent;
+    
+    try {
+      // Show loading state immediately
+      if (button) {
+        button.disabled = true;
+        const textSpan = button.querySelector('span');
+        if (textSpan) textSpan.textContent = 'Exporting...';
+      }
+      
+      const fileName = `${resumeTitle.trim() || 'Untitled Resume'}.pdf`;
+      await exportCanvasToPdf(fileName);
+      
+      // Show success briefly
+      if (button) {
+        const textSpan = button.querySelector('span');
+        if (textSpan) textSpan.textContent = 'Exported!';
+        setTimeout(() => {
+          if (textSpan && originalText) textSpan.textContent = originalText;
+          button.disabled = false;
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      if (button) {
+        button.disabled = false;
+        const textSpan = button.querySelector('span');
+        if (textSpan && originalText) textSpan.textContent = originalText;
+      }
+    }
   };
 
   return (

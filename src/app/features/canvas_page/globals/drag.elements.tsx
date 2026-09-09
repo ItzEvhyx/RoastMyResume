@@ -410,15 +410,18 @@ function ResizeHandleNode({
   cursor,
   onMouseDown,
   onTouchStart,
+  dataNoExport = false,
 }: {
   style: React.CSSProperties;
   variant?: HandleVariant;
   cursor: string;
   onMouseDown: (e: React.MouseEvent) => void;
   onTouchStart: (e: React.TouchEvent) => void;
+  dataNoExport?: boolean;
 }) {
   return (
     <div
+      data-no-export={dataNoExport ? 'true' : undefined}
       className={`absolute bg-white border-2 border-black ${variant === 'circle' ? 'rounded-full' : 'rounded-sm'}`}
       style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, cursor, zIndex: 2, ...style }}
       onMouseDown={onMouseDown}
@@ -776,6 +779,7 @@ export function DraggableText({
 
           {/* Selection border */}
           <div
+            data-no-export="true"
             className="pointer-events-none absolute inset-0"
             style={{ border: '2px solid #000000', marginTop: -2, marginLeft: -2, width: 'calc(100% + 4px)', height: 'calc(100% + 4px)' }}
           />
@@ -783,24 +787,30 @@ export function DraggableText({
           {/* Corner handles */}
           <ResizeHandleNode cursor="nwse-resize" style={{ left: -8, top: -8 }}
             onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+            onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} 
+            dataNoExport={true} />
           <ResizeHandleNode cursor="nesw-resize" style={{ right: -8, top: -8 }}
             onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+            onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} 
+            dataNoExport={true} />
           <ResizeHandleNode cursor="nwse-resize" style={{ right: -8, bottom: -8 }}
             onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+            onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} 
+            dataNoExport={true} />
           <ResizeHandleNode cursor="nesw-resize" style={{ left: -8, bottom: -8 }}
             onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+            onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} 
+            dataNoExport={true} />
 
           {/* Side handles */}
           <ResizeHandleNode cursor="ew-resize" style={{ left: -8, top: '50%', transform: 'translateY(-50%)' }}
             onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
+            onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} 
+            dataNoExport={true} />
           <ResizeHandleNode cursor="ew-resize" style={{ right: -8, top: '50%', transform: 'translateY(-50%)' }}
             onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)}
-            onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
+            onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} 
+            dataNoExport={true} />
         </>
       )}
 
@@ -966,12 +976,14 @@ export function DraggableDivider({
 
           {/* Selection outline */}
           <div
+            data-no-export="true"
             className="pointer-events-none absolute"
             style={{ left: -2, top: HIT_PADDING - 2, width: 'calc(100% + 4px)', height: thickness + 4, border: '1px dashed rgba(0,0,0,0.4)' }}
           />
 
           {/* Width indicator — right side, same style as shape W/H badge */}
           <output
+            data-no-export="true"
             className="pointer-events-none absolute whitespace-nowrap rounded-lg px-3.5 py-2 text-sm text-white"
             aria-label={`Divider width: ${Math.round(element.width)} pixels`}
             style={{
@@ -998,6 +1010,7 @@ export function DraggableDivider({
             style={{ left: -HANDLE_SIZE / 2, top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2 }}
             onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)}
             onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)}
+            dataNoExport={true}
           />
 
           {/* Right handle */}
@@ -1007,6 +1020,7 @@ export function DraggableDivider({
             style={{ right: -HANDLE_SIZE / 2, top: HIT_PADDING + thickness / 2 - HANDLE_SIZE / 2 }}
             onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)}
             onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)}
+            dataNoExport={true}
           />
         </>
       )}
@@ -1524,6 +1538,7 @@ export function DraggableIcon({
 
           {/* Selection border */}
           <div
+            data-no-export="true"
             className="pointer-events-none absolute inset-0"
             style={{
               border: '2px solid #000000',
@@ -1536,6 +1551,7 @@ export function DraggableIcon({
 
           {element.isShape && (
             <output
+              data-no-export="true"
               className="pointer-events-none absolute whitespace-nowrap rounded-lg px-3.5 py-2 text-sm text-white"
               aria-label={`Shape dimensions: width ${Math.round(elementWidth)} pixels, height ${Math.round(elementHeight)} pixels`}
               style={{
@@ -1558,21 +1574,21 @@ export function DraggableIcon({
 
           {element.isShape ? (
             <>
-              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ left: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
-              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ right: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
-              <ResizeHandleNode variant="circle" cursor="nwse-resize" style={{ right: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
-              <ResizeHandleNode variant="circle" cursor="nesw-resize" style={{ left: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
-              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', top: -6, width: 20, height: 12, transform: 'translateX(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'n', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'n', snapBase)} />
-              <ResizeHandleNode cursor="ew-resize" style={{ right: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
-              <ResizeHandleNode cursor="ns-resize" style={{ left: '50%', bottom: -6, width: 20, height: 12, transform: 'translateX(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 's', snapBase)} onTouchStart={(e) => startResizeTouch(e, 's', snapBase)} />
-              <ResizeHandleNode cursor="ew-resize" style={{ left: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} variant="circle" cursor="nwse-resize" style={{ left: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} variant="circle" cursor="nesw-resize" style={{ right: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} variant="circle" cursor="nwse-resize" style={{ right: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} variant="circle" cursor="nesw-resize" style={{ left: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="ns-resize" style={{ left: '50%', top: -6, width: 20, height: 12, transform: 'translateX(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'n', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'n', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="ew-resize" style={{ right: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'e', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'e', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="ns-resize" style={{ left: '50%', bottom: -6, width: 20, height: 12, transform: 'translateX(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 's', snapBase)} onTouchStart={(e) => startResizeTouch(e, 's', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="ew-resize" style={{ left: -6, top: '50%', width: 12, height: 20, transform: 'translateY(-50%)' }} onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} />
             </>
           ) : (
             <>
-              <ResizeHandleNode cursor="nwse-resize" style={{ left: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
-              <ResizeHandleNode cursor="nesw-resize" style={{ right: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
-              <ResizeHandleNode cursor="nwse-resize" style={{ right: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
-              <ResizeHandleNode cursor="nesw-resize" style={{ left: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="nwse-resize" style={{ left: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'nw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'nw', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="nesw-resize" style={{ right: -8, top: -8 }} onMouseDown={(e) => startResizeMouse(e, 'ne', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'ne', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="nwse-resize" style={{ right: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'se', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'se', snapBase)} />
+              <ResizeHandleNode dataNoExport={true} cursor="nesw-resize" style={{ left: -8, bottom: -8 }} onMouseDown={(e) => startResizeMouse(e, 'sw', snapBase)} onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} />
             </>
           )}
         </>
