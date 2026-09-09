@@ -5,6 +5,7 @@ import { useMediaQuery } from '@/lib/use_media_query';
 import StitchCanvasBackground from '@/rb_components/stitch_canvas_background';
 import { CanvasProvider } from '@/app/features/canvas_page/context/CanvasContext';
 import { TextProvider } from '@/app/features/canvas_page/context/TextContext';
+import { DeniseAnalysisProvider } from '@/app/features/canvas_page/context/DeniseAnalysisContext';
 import { DividerProvider } from '@/app/features/canvas_page/context/DividerContext';
 import { IconProvider } from '@/app/features/canvas_page/context/IconContext';
 import { PenProvider } from '@/app/features/canvas_page/context/PenContext';
@@ -31,7 +32,14 @@ import { UndoProvider } from '@/app/features/canvas_page/globals/undo';
 import { usePen } from '@/app/features/canvas_page/context/PenContext';
 import { useText } from '@/app/features/canvas_page/context/TextContext';
 import { RulerSnappingProvider } from '@/app/features/canvas_page/globals/ruler.snapping';
+import { useCanvasPersistence } from '@/app/features/canvas_page/hooks/use.canvas.persistence';
 import AuthModal from '@/app/features/auth_modals/auth.modal';
+
+// Component that handles canvas persistence
+function CanvasPersistenceManager() {
+  useCanvasPersistence();
+  return null;
+}
 
 /**
  * Animation sequence:
@@ -91,6 +99,7 @@ export default function CanvasPage() {
       <UndoProvider>
         <LayerOrderProvider>
         <TextProvider>
+          <DeniseAnalysisProvider>
           <DividerProvider>
             <IconProvider>
               <PenProvider>
@@ -98,6 +107,10 @@ export default function CanvasPage() {
                 <GroupProvider>
                 <RulerSnappingProvider>
                 <ClipboardProvider>
+            
+            {/* Canvas Persistence Manager - handles auto-save/load */}
+            <CanvasPersistenceManager />
+            
             <main className="relative h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0e1015]">
 
               {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
@@ -165,6 +178,7 @@ export default function CanvasPage() {
               </PenProvider>
             </IconProvider>
           </DividerProvider>
+          </DeniseAnalysisProvider>
         </TextProvider>
         </LayerOrderProvider>
       </UndoProvider>

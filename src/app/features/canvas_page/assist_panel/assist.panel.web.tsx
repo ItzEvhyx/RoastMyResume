@@ -5,11 +5,11 @@ import { Poppins } from 'next/font/google';
 import { animate } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import DeniseSignInMsgWeb from './denise_signin/signin.msg.web';
-import AskDenise from './denise_tab/ask_denise';
+import AskDenise from './denise_tab/ask.denise';
 import JobMatch from './job_match/job.match';
 import ATSCheck from './ats_check/ats.check';
 import Layouts from './layout_tab/layouts';
-import SlideAnimation from './slide_anim/slide.animationt';
+import SlideAnimation from './animations/slide.animationt';
 import { useAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
@@ -45,6 +45,8 @@ export default function AssistPanelWeb({
   const [internalSignedIn, setInternalSignedIn] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
+  const didDragResize = useRef(false);
+  const resizeOriginX = useRef(0);
 
   const user = useAuthUser();
 
@@ -158,6 +160,10 @@ export default function AssistPanelWeb({
     const handleMouseMove = (e: MouseEvent) => {
       if (!panelRef.current) return;
 
+      if (Math.abs(e.clientX - resizeOriginX.current) > 4) {
+        didDragResize.current = true;
+      }
+
       const panelRect = panelRef.current.getBoundingClientRect();
       const newWidth = panelRect.right - e.clientX;
 
@@ -266,26 +272,42 @@ export default function AssistPanelWeb({
 
       {/* Content Panel with Chevron Button */}
       <div className="relative">
-        {/* Resize Handle - draggable left border */}
+        {/* Wider left-edge resize hit target */}
         {isOpen && (
           <div
-            onMouseDown={() => setIsResizing(true)}
-            className="absolute left-0 top-0 z-20 h-full w-1 cursor-ew-resize transition-colors hover:bg-white/20"
-            style={{
-              transform: 'translateX(-50%)',
+            onMouseDown={(e) => {
+              e.preventDefault();
+              didDragResize.current = false;
+              resizeOriginX.current = e.clientX;
+              setIsResizing(true);
             }}
+            className="absolute left-0 top-0 z-20 h-full w-3 -translate-x-1/2 cursor-ew-resize"
+            title="Drag to resize"
           >
-            <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity hover:opacity-100" />
+            <div className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-white/0 transition-colors hover:bg-white/25" />
           </div>
         )}
 
-        {/* Chevron Toggle Button */}
+        {/* Chevron: click toggles; drag horizontally resizes when open */}
         <button
           type="button"
-          aria-label={isOpen ? 'Collapse Assistant' : 'Expand Assistant'}
-          title={isOpen ? 'Collapse Assistant' : 'Expand Assistant'}
-          onClick={() => setIsOpen(!isOpen)}
-          className="absolute left-0 top-1/2 z-10 flex items-center justify-center transition-all duration-200 hover:brightness-110 active:scale-95 cursor-pointer"
+          aria-label={isOpen ? 'Resize or collapse Assistant' : 'Expand Assistant'}
+          title={isOpen ? 'Drag to resize · click to collapse' : 'Expand Assistant'}
+          onMouseDown={(e) => {
+            if (!isOpen) return;
+            e.preventDefault();
+            didDragResize.current = false;
+            resizeOriginX.current = e.clientX;
+            setIsResizing(true);
+          }}
+          onClick={() => {
+            if (didDragResize.current) {
+              didDragResize.current = false;
+              return;
+            }
+            setIsOpen((open) => !open);
+          }}
+          className="absolute left-0 top-1/2 z-30 flex items-center justify-center transition-all duration-200 hover:brightness-110 active:scale-95 cursor-ew-resize"
           style={{
             background: 'rgba(255, 255, 255, 0.03)',
             backdropFilter: 'blur(12px)',
@@ -296,6 +318,7 @@ export default function AssistPanelWeb({
             width: '40px',
             height: '80px',
             transform: 'translate(-100%, -50%)',
+            cursor: isOpen ? 'ew-resize' : 'pointer',
           }}
         >
           <svg
@@ -307,6 +330,7 @@ export default function AssistPanelWeb({
             style={{
               transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)',
               transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              pointerEvents: 'none',
             }}
           >
             <path

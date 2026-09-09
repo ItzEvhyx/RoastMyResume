@@ -20,6 +20,9 @@ import type { DividerElement } from '../context/DividerContext';
 import type { TextElement } from '../context/TextContext';
 import type { IconElement } from '../context/IconContext';
 import type { PenStroke } from '../context/PenContext';
+import { useDeniseAnalysis } from '../context/DeniseAnalysisContext';
+import ScanAnimation from '../assist_panel/animations/scan.animation';
+import DeniseHighlightsOverlay from '../assist_panel/animations/denise.highlights';
 
 /**
  * A4 Resume dimensions:
@@ -57,6 +60,7 @@ export default function CanvasWeb() {
   } = useGroup();
   const { register, unregister } = useClipboard();
   const { setElements: setRulerElements } = useRulerSnapping();
+  const { isScanning } = useDeniseAnalysis();
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [edgeWarning, setEdgeWarning] = useState<EdgeWarning | null>(null);
@@ -534,6 +538,7 @@ export default function CanvasWeb() {
                   <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />
                 </div>
               )}
+
               {/* Render text elements */}
               {textElements.map(element => (
                 <DraggableText
@@ -653,6 +658,10 @@ export default function CanvasWeb() {
                   onTransformEnd={clearEdgeWarning}
                 />
               ))}
+
+              {/* Denise analysis overlays — above content, below selection chrome */}
+              <DeniseHighlightsOverlay />
+              <ScanAnimation active={isScanning} />
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { clearCanvasState } from '../../services/canvas.persistence';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -180,6 +181,16 @@ export default function Layouts() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
+  const handleTemplateClick = (template: Template) => {
+    // If "Start from Scratch" (blank template) is selected, clear all saved canvas state
+    if (template.blank) {
+      clearCanvasState();
+      // Reload the page to start with a fresh canvas
+      window.location.reload();
+    }
+    // TODO: Add logic for other templates
+  };
+
   const filteredTemplates = selectedCategory
     ? TEMPLATES.filter(t => t.category === selectedCategory)
     : TEMPLATES;
@@ -283,6 +294,7 @@ export default function Layouts() {
               filteredTemplates.map((template, index) => (
                 <motion.button
                   key={template.id}
+                  onClick={() => handleTemplateClick(template)}
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: index * 0.05, duration: 0.3 }}

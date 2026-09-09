@@ -19,6 +19,7 @@ interface DividerContextType {
     dividerElements: DividerElement[];
     selectedDividerId: string | null;
     addDividerElement: (x: number, y: number, initialWidth?: number) => string;
+    addFullDividerElement: (el: Omit<DividerElement, 'id'>) => string;
     updateDivider: (id: string, updates: Partial<DividerElement>) => void;
     /** Start batching updates (for drag/resize operations) */
     startUpdateBatch: () => void;
@@ -44,6 +45,30 @@ export function DividerProvider({ children }: { children: ReactNode }) {
             width: initialWidth ?? 300,
             thickness: 2,
             color: '#000000',
+            zIndex: getNextLayer(),
+        };
+
+        setDividerElements(prev => [...prev, newElement]);
+        setSelectedDividerId(newElement.id);
+        
+        // Undo: remove the element, Redo: add it back
+        record(
+            () => {
+                setDividerElements(prev => prev.filter(element => element.id !== newElement.id));
+                setSelectedDividerId(current => current === newElement.id ? null : current);
+            },
+            () => {
+                setDividerElements(prev => [...prev, newElement]);
+                setSelectedDividerId(newElement.id);
+            }
+        );
+        return newElement.id;
+    };
+
+    const addFullDividerElement = (el: Omit<DividerElement, 'id'>) => {
+        const newElement: DividerElement = {
+            ...el,
+            id: `divider-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
             zIndex: getNextLayer(),
         };
 
@@ -116,6 +141,7 @@ export function DividerProvider({ children }: { children: ReactNode }) {
                 dividerElements,
                 selectedDividerId,
                 addDividerElement,
+                addFullDividerElement,
                 updateDivider,
                 startUpdateBatch,
                 endUpdateBatch,

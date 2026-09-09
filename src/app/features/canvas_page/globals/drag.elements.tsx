@@ -737,6 +737,7 @@ export function DraggableText({
       {isEditing ? (
         <textarea
           ref={inputRef}
+          data-text-id={element.id}
           value={element.content}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -749,6 +750,7 @@ export function DraggableText({
         />
       ) : (
         <div
+          data-text-id={element.id}
           onDoubleClick={(e) => { e.stopPropagation(); if (isSelected && !element.isLocked) setIsEditing(true); }}
           style={textStyle}
         >

@@ -169,11 +169,27 @@
     animation: none;
   }
 }
+/* Light shimmer for dark UI surfaces (Ask Denise loading). */
+.text-shimmer-on-dark {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.28) 40%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.28) 60%,
+    rgba(255, 255, 255, 0.28) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: text-shimmer 2.5s linear infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-  .text-shimmer {
+  .text-shimmer-on-dark {
     animation: none;
-  }
-  .wave-char {
-    animation: none;
+    color: rgba(255, 255, 255, 0.45);
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.45);
   }
 }
