@@ -8,6 +8,7 @@ import DeniseSignInMsgWeb from './denise_signin/signin.msg.web';
 import AskDenise from './denise_tab/ask_denise';
 import JobMatch from './job_match/job.match';
 import ATSCheck from './ats_check/ats.check';
+import Layouts from './layout_tab/layouts';
 import SlideAnimation from './slide_anim/slide.animationt';
 import { useAuthUser } from '@/app/core/session/session';
 
@@ -353,13 +354,7 @@ export default function AssistPanelWeb({
                   {activeTab === 0 && <AskDenise />}
                   {activeTab === 1 && <JobMatch />}
                   {activeTab === 2 && <ATSCheck />}
-                  {activeTab === 3 && (
-                    <div className="flex h-full items-center justify-center p-6 whitespace-nowrap">
-                      <span className="text-sm font-medium text-white/60">
-                        Layouts Content
-                      </span>
-                    </div>
-                  )}
+                  {activeTab === 3 && <Layouts />}
                 </>
               )}
             </SlideAnimation>

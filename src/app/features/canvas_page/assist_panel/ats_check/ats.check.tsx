@@ -21,18 +21,28 @@ export default function ATSCheck() {
     <div className={`flex flex-col h-full p-6 ${poppins.variable} ${futuraDisplay.variable}`}>
       {/* Header Section */}
       <div className="mb-6">
-        <h1 
-          className="text-white mb-4 text-center leading-tight" 
-          style={{ 
-            fontFamily: 'var(--font-futura-display)', 
-            fontWeight: 800,
-            fontSize: 'clamp(2rem, 3.5vw, 2.75rem)',
-          }}
-        >
-          ATS Check
-        </h1>
+        <div className="flex items-center gap-3 mb-4">
+          {/* Check icon next to title */}
+          <Image 
+            src="/assets/icons/check_icon.png" 
+            alt="Check" 
+            width={32} 
+            height={32}
+            className="opacity-90"
+          />
+          <h1 
+            className="text-white leading-tight" 
+            style={{ 
+              fontFamily: 'var(--font-futura-display)', 
+              fontWeight: 800,
+              fontSize: 'clamp(2rem, 3.5vw, 2.75rem)',
+            }}
+          >
+            ATS Check
+          </h1>
+        </div>
         <p 
-          className="text-white/70 text-center leading-relaxed"
+          className="text-white/70 leading-relaxed text-left"
           style={{
             fontFamily: 'var(--font-poppins)',
             fontWeight: 600,
