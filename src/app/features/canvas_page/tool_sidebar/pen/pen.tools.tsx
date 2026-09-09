@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ColorPicker } from '../../globals/color.picker';
 import { PenThicknessPicker } from './pen.thickness';
 import { PenEraserPicker } from './pen.eraser';
+import { LockButton } from '../../globals/lock.elements';
 import { useMediaQuery } from '@/lib/use_media_query';
 
 const glassStyle: React.CSSProperties = {
@@ -24,6 +25,8 @@ interface PenToolsProps {
   onThicknessChange: (thickness: number) => void;
   onEraserSizeChange: (size: number) => void;
   onEraserToggle: () => void;
+  isLocked?: boolean;
+  onLockToggle?: () => void;
 }
 
 export function PenTools({
@@ -36,6 +39,8 @@ export function PenTools({
   onThicknessChange,
   onEraserSizeChange,
   onEraserToggle,
+  isLocked = false,
+  onLockToggle,
 }: PenToolsProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   
@@ -107,6 +112,14 @@ export function PenTools({
           onSelect={onEraserSizeChange}
           onToggle={onEraserToggle}
         />
+
+        {/* Lock button - only show if onLockToggle is provided (when a stroke is selected) */}
+        {onLockToggle && (
+          <>
+            <div className="w-full h-[1px] bg-white/10" />
+            <LockButton isLocked={isLocked} onToggle={onLockToggle} />
+          </>
+        )}
       </div>
     </div>
   );

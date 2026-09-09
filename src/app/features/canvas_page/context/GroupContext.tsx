@@ -60,6 +60,7 @@ export interface GroupElement {
   originHeight: number;
   members: GroupMembers;
   zIndex?: number;
+  isLocked?: boolean;
 }
 
 interface GroupContextType {
@@ -67,7 +68,7 @@ interface GroupContextType {
   selectedGroupId: string | null;
   setSelectedGroupId: (id: string | null) => void;
   addGroup: (bbox: { x: number; y: number; width: number; height: number }, members: GroupMembers) => string;
-  updateGroup: (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex'>>) => void;
+  updateGroup: (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex' | 'isLocked'>>) => void;
   startUpdateBatch: () => void;
   endUpdateBatch: () => void;
   deleteGroup: (id: string) => void;
@@ -170,7 +171,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   );
 
   const updateGroup = useCallback(
-    (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex'>>) => {
+    (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex' | 'isLocked'>>) => {
       setGroupElements(prev =>
         prev.map(g => (g.id === id ? { ...g, ...updates } : g)),
       );

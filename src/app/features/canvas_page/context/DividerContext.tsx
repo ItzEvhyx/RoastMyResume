@@ -12,6 +12,7 @@ export interface DividerElement {
     thickness?: number;
     color?: string;
     zIndex?: number;
+    isLocked?: boolean;
 }
 
 interface DividerContextType {

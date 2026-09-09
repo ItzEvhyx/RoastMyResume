@@ -8,6 +8,7 @@ import { ItalicToggle } from './italize';
 import { UnderlineToggle } from './underline';
 import { BulletListToggle, ListType } from './bulletpoint';
 import { AlignmentToggle, TextAlign } from './alignment';
+import { LockButton } from '../../globals/lock.elements';
 import { useMediaQuery } from '@/lib/use_media_query';
 
 interface TextToolbarProps {
@@ -27,6 +28,8 @@ interface TextToolbarProps {
   onListToggle: () => void;
   textAlign: TextAlign;
   onAlignToggle: () => void;
+  isLocked?: boolean;
+  onLockToggle: () => void;
 }
 
 const TOOLBAR_HEIGHT = 60;
@@ -49,6 +52,8 @@ export function TextToolbar({
   onListToggle,
   textAlign,
   onAlignToggle,
+  isLocked = false,
+  onLockToggle,
 }: TextToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const centerX = elementX + elementWidth / 2;
@@ -56,6 +61,7 @@ export function TextToolbar({
 
   return (
     <div
+      data-no-export="true"
       className="absolute pointer-events-auto select-none"
       onMouseDown={(e) => {
         e.stopPropagation();
@@ -139,6 +145,11 @@ export function TextToolbar({
 
         {/* Alignment */}
         <AlignmentToggle textAlign={textAlign} onToggle={onAlignToggle} />
+
+        <Divider />
+
+        {/* Lock */}
+        <LockButton isLocked={isLocked} onToggle={onLockToggle} />
       </div>
     </div>
   );

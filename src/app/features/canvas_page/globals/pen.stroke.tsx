@@ -114,12 +114,14 @@ export function DraggablePenStroke({ stroke, isSelected, onSelect, onUpdate, onD
   }, [isSelected, onDelete]);
 
   const startDrag = (clientX: number, clientY: number) => {
+    if (stroke.isLocked) return;
     onSelect();
     dragStart.current = { pointerX: clientX, pointerY: clientY, x: stroke.x, y: stroke.y };
     startUpdateBatch();
     setDragging(true);
   };
   const startResize = (event: React.MouseEvent | React.TouchEvent, handle: Handle) => {
+    if (stroke.isLocked) return;
     event.preventDefault();
     event.stopPropagation();
     const point = 'touches' in event ? event.touches[0] : event;
@@ -155,16 +157,20 @@ export function DraggablePenStroke({ stroke, isSelected, onSelect, onUpdate, onD
       {isSelected && !dragging && !resizing && (
         <>
           <div data-no-export="true" className="pointer-events-none absolute" style={{ inset: -3, border: '1px dashed rgba(99,102,241,0.9)', borderRadius: 3 }} />
-          {(['nw', 'ne', 'se', 'sw'] as Handle[]).map(handle => (
-            <div
-              key={handle}
-              data-no-export="true"
-              className="absolute bg-white border-2 border-black rounded-sm"
-              style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, left: handle.includes('w') ? -HANDLE_SIZE / 2 : undefined, right: handle.includes('e') ? -HANDLE_SIZE / 2 : undefined, top: handle.includes('n') ? -HANDLE_SIZE / 2 : undefined, bottom: handle.includes('s') ? -HANDLE_SIZE / 2 : undefined, cursor: `${handle}-resize`, zIndex: 2 }}
-              onMouseDown={event => startResize(event, handle)}
-              onTouchStart={event => startResize(event, handle)}
-            />
-          ))}
+          {!stroke.isLocked && (
+            <>
+              {(['nw', 'ne', 'se', 'sw'] as Handle[]).map(handle => (
+                <div
+                  key={handle}
+                  data-no-export="true"
+                  className="absolute bg-white border-2 border-black rounded-sm"
+                  style={{ width: HANDLE_SIZE, height: HANDLE_SIZE, left: handle.includes('w') ? -HANDLE_SIZE / 2 : undefined, right: handle.includes('e') ? -HANDLE_SIZE / 2 : undefined, top: handle.includes('n') ? -HANDLE_SIZE / 2 : undefined, bottom: handle.includes('s') ? -HANDLE_SIZE / 2 : undefined, cursor: `${handle}-resize`, zIndex: 2 }}
+                  onMouseDown={event => startResize(event, handle)}
+                  onTouchStart={event => startResize(event, handle)}
+                />
+              ))}
+            </>
+          )}
         </>
       )}
     </div>

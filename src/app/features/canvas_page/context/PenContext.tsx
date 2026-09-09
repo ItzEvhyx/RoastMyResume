@@ -17,6 +17,7 @@ export interface PenStroke {
   color: string;
   thickness: number;
   zIndex?: number;
+  isLocked?: boolean;
 }
 
 type Point = { x: number; y: number };

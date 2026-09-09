@@ -10,6 +10,7 @@ import { useMediaQuery } from '@/lib/use_media_query';
 import { ShapeBorderPicker } from './shapes.border';
 import { ShapeCornerRoundingPicker } from './shapes.corner.rounding';
 import { ShapeFrameToggle } from './shapes.frame';
+import { LockButton, ToolbarDivider as LockDivider } from '../../globals/lock.elements';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -50,6 +51,8 @@ interface ShapeToolbarProps {
   onCornerRadiusChange: (cornerRadius: number) => void;
   isFrame: boolean;
   onFrameToggle: () => void;
+  isLocked?: boolean;
+  onLockToggle: () => void;
 }
 
 const FLOATING_TOOLBAR_HEIGHT = 60;
@@ -70,6 +73,8 @@ export function ShapeToolbar({
   onCornerRadiusChange,
   isFrame,
   onFrameToggle,
+  isLocked = false,
+  onLockToggle,
 }: ShapeToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const centerX = elementX + elementWidth / 2;
@@ -81,6 +86,7 @@ export function ShapeToolbar({
 
   return (
     <div
+      data-no-export="true"
       className="absolute pointer-events-auto select-none"
       style={{
         left: centerX,
@@ -126,6 +132,8 @@ export function ShapeToolbar({
           onChange={onCornerRadiusChange}
         />
         <ShapeFrameToggle isFrame={isFrame} onToggle={onFrameToggle} />
+        <ShapeToolbarDivider />
+        <LockButton isLocked={isLocked} onToggle={onLockToggle} />
       </div>
     </div>
   );

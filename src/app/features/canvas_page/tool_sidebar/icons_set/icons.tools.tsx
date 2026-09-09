@@ -2,6 +2,7 @@
 
 import { ColorPicker } from '../../globals/color.picker';
 import { FlipButton, FlipState } from '../../globals/flip.element';
+import { LockButton, ToolbarDivider as LockDivider } from '../../globals/lock.elements';
 import { useMediaQuery } from '@/lib/use_media_query';
 
 interface IconToolbarProps {
@@ -15,6 +16,8 @@ interface IconToolbarProps {
   onFlip: () => void;
   /** When true the color picker is hidden — raster images can't be tinted. */
   isRaster?: boolean;
+  isLocked?: boolean;
+  onLockToggle: () => void;
 }
 
 const TOOLBAR_HEIGHT = 60;
@@ -30,6 +33,8 @@ export function IconToolbar({
   flip,
   onFlip,
   isRaster = false,
+  isLocked = false,
+  onLockToggle,
 }: IconToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const centerX = elementX + (elementWidth ?? elementSize) / 2;
@@ -42,6 +47,7 @@ export function IconToolbar({
 
   return (
     <div
+      data-no-export="true"
       className="absolute pointer-events-auto select-none"
       onMouseDown={stopAll}
       onPointerDown={stopAll}
@@ -88,6 +94,11 @@ export function IconToolbar({
 
         {/* Flip */}
         <FlipButton flip={flip} onFlip={onFlip} />
+
+        <LockDivider />
+
+        {/* Lock */}
+        <LockButton isLocked={isLocked} onToggle={onLockToggle} />
       </div>
     </div>
   );

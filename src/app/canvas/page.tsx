@@ -184,7 +184,13 @@ function PenToolsWrapper() {
     setEraserSize,
     isEraserActive,
     setIsEraserActive,
+    selectedStrokeId,
+    strokes,
+    updateStroke,
   } = usePen();
+  
+  // Find the selected stroke if one exists
+  const selectedStroke = selectedStrokeId ? strokes.find(s => s.id === selectedStrokeId) : undefined;
   
   return (
     <PenTools
@@ -197,6 +203,8 @@ function PenToolsWrapper() {
       onThicknessChange={setPenThickness}
       onEraserSizeChange={setEraserSize}
       onEraserToggle={() => setIsEraserActive(!isEraserActive)}
+      isLocked={selectedStroke?.isLocked}
+      onLockToggle={selectedStroke ? () => updateStroke(selectedStroke.id, { isLocked: !selectedStroke.isLocked }) : undefined}
     />
   );
 }

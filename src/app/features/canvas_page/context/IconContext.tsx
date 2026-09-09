@@ -38,6 +38,7 @@ export interface IconElement {
    */
   flip?: 0 | 1 | 2 | 3;
   zIndex?: number;
+  isLocked?: boolean;
 }
 
 interface IconContextType {

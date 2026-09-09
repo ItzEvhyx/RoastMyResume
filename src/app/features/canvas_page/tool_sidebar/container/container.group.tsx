@@ -167,10 +167,10 @@ export function SelectionBoundary() {
  */
 export function ContainerGroupToolbar() {
   const { lassoState, selection, selectionCount, clearLasso, setIsLassoActive } = useContainer();
-  const { textElements, deleteElement, activeTool, setActiveTool } = useText();
-  const { dividerElements, deleteDivider } = useDivider();
-  const { iconElements, deleteIcon } = useIcon();
-  const { strokes, removeStroke } = usePen();
+  const { textElements, deleteElement, activeTool, setActiveTool, updateElement } = useText();
+  const { dividerElements, deleteDivider, updateDivider } = useDivider();
+  const { iconElements, deleteIcon, updateIcon } = useIcon();
+  const { strokes, removeStroke, updateStroke } = usePen();
   const { zoom, pan } = useCanvas();
   const { addGroup } = useGroup();
 
@@ -279,6 +279,30 @@ export function ContainerGroupToolbar() {
     setActiveTool,
   ]);
 
+  // ── Lock handler ────────────────────────────────────────────────────────
+  const isAnyLocked = useMemo(() => {
+    const selectedTexts = textElements.filter(el => selection.textIds.includes(el.id));
+    const selectedDividers = dividerElements.filter(el => selection.dividerIds.includes(el.id));
+    const selectedIcons = iconElements.filter(el => selection.iconIds.includes(el.id));
+    const selectedStrokes = strokes.filter(el => selection.strokeIds.includes(el.id));
+    
+    return [...selectedTexts, ...selectedDividers, ...selectedIcons, ...selectedStrokes].some(el => el.isLocked);
+  }, [selection, textElements, dividerElements, iconElements, strokes]);
+
+  const handleLockToggle = useCallback(() => {
+    const selectedTexts = textElements.filter(el => selection.textIds.includes(el.id));
+    const selectedDividers = dividerElements.filter(el => selection.dividerIds.includes(el.id));
+    const selectedIcons = iconElements.filter(el => selection.iconIds.includes(el.id));
+    const selectedStrokes = strokes.filter(el => selection.strokeIds.includes(el.id));
+    
+    const newLockState = !isAnyLocked;
+    
+    selectedTexts.forEach(el => updateElement(el.id, { isLocked: newLockState }));
+    selectedDividers.forEach(el => updateDivider(el.id, { isLocked: newLockState }));
+    selectedIcons.forEach(el => updateIcon(el.id, { isLocked: newLockState }));
+    selectedStrokes.forEach(el => updateStroke(el.id, { isLocked: newLockState }));
+  }, [selection, textElements, dividerElements, iconElements, strokes, isAnyLocked, updateElement, updateDivider, updateIcon, updateStroke]);
+
   // ── Visibility guard ─────────────────────────────────────────────────────
   if (lassoState !== 'committed' || selectionCount === 0 || !toolbarPosition) return null;
 
@@ -357,6 +381,21 @@ export function ContainerGroupToolbar() {
           }
           label="Delete"
           color="rgba(255,120,120,1)"
+        />
+
+        <Divider />
+
+        {/* Lock button */}
+        <ToolbarButton
+          onClick={handleLockToggle}
+          icon={
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          }
+          label={isAnyLocked ? 'Unlock' : 'Lock'}
+          color="#ffffff"
         />
       </div>
     </div>

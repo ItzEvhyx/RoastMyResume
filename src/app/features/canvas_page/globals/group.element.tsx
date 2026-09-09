@@ -222,6 +222,7 @@ export function DraggableGroup({
   const { start: startResize } = useResize(
     zoom,
     (handle, snap, dx, dy) => {
+      if (group.isLocked) return;
       let { x, y, w, h } = snap;
       if (handle === 'nw' || handle === 'w' || handle === 'sw') {
         const nw = Math.max(MIN_SIZE, Math.min(MAX_SIZE, w - dx)); x = snap.x + (w - nw); w = nw;
@@ -273,6 +274,7 @@ export function DraggableGroup({
         ...animStyle,
       }}
       onMouseDown={e => {
+        if (group.isLocked) return;
         e.stopPropagation();
         onSelect();
         startDrag(e, group.x, group.y);
@@ -306,35 +308,41 @@ export function DraggableGroup({
             zoom={zoom}
             onUngroup={onUngroup}
             onDelete={onDelete}
+            isLocked={group.isLocked}
+            onLockToggle={() => updateGroup(group.id, { isLocked: !group.isLocked })}
           />
 
-          {/* Corner handles */}
-          <Handle cursor="nwse-resize" style={{ left: -HALF, top: -HALF }}
-            onMouseDown={e => startResize(e, 'nw', snapBase)} 
-            dataNoExport={true} />
-          <Handle cursor="nesw-resize" style={{ right: -HALF, top: -HALF }}
-            onMouseDown={e => startResize(e, 'ne', snapBase)} 
-            dataNoExport={true} />
-          <Handle cursor="nwse-resize" style={{ right: -HALF, bottom: -HALF }}
-            onMouseDown={e => startResize(e, 'se', snapBase)} 
-            dataNoExport={true} />
-          <Handle cursor="nesw-resize" style={{ left: -HALF, bottom: -HALF }}
-            onMouseDown={e => startResize(e, 'sw', snapBase)} 
-            dataNoExport={true} />
+          {/* Corner handles - only show when not locked */}
+          {!group.isLocked && (
+            <>
+              <Handle cursor="nwse-resize" style={{ left: -HALF, top: -HALF }}
+                onMouseDown={e => startResize(e, 'nw', snapBase)} 
+                dataNoExport={true} />
+              <Handle cursor="nesw-resize" style={{ right: -HALF, top: -HALF }}
+                onMouseDown={e => startResize(e, 'ne', snapBase)} 
+                dataNoExport={true} />
+              <Handle cursor="nwse-resize" style={{ right: -HALF, bottom: -HALF }}
+                onMouseDown={e => startResize(e, 'se', snapBase)} 
+                dataNoExport={true} />
+              <Handle cursor="nesw-resize" style={{ left: -HALF, bottom: -HALF }}
+                onMouseDown={e => startResize(e, 'sw', snapBase)} 
+                dataNoExport={true} />
 
-          {/* Edge handles */}
-          <Handle cursor="ns-resize" style={{ left: '50%', top: -HALF, transform: 'translateX(-50%)' }}
-            onMouseDown={e => startResize(e, 'n', snapBase)} 
-            dataNoExport={true} />
-          <Handle cursor="ns-resize" style={{ left: '50%', bottom: -HALF, transform: 'translateX(-50%)' }}
-            onMouseDown={e => startResize(e, 's', snapBase)} 
-            dataNoExport={true} />
-          <Handle cursor="ew-resize" style={{ left: -HALF, top: '50%', transform: 'translateY(-50%)' }}
-            onMouseDown={e => startResize(e, 'w', snapBase)} 
-            dataNoExport={true} />
-          <Handle cursor="ew-resize" style={{ right: -HALF, top: '50%', transform: 'translateY(-50%)' }}
-            onMouseDown={e => startResize(e, 'e', snapBase)} 
-            dataNoExport={true} />
+              {/* Edge handles */}
+              <Handle cursor="ns-resize" style={{ left: '50%', top: -HALF, transform: 'translateX(-50%)' }}
+                onMouseDown={e => startResize(e, 'n', snapBase)} 
+                dataNoExport={true} />
+              <Handle cursor="ns-resize" style={{ left: '50%', bottom: -HALF, transform: 'translateX(-50%)' }}
+                onMouseDown={e => startResize(e, 's', snapBase)} 
+                dataNoExport={true} />
+              <Handle cursor="ew-resize" style={{ left: -HALF, top: '50%', transform: 'translateY(-50%)' }}
+                onMouseDown={e => startResize(e, 'w', snapBase)} 
+                dataNoExport={true} />
+              <Handle cursor="ew-resize" style={{ right: -HALF, top: '50%', transform: 'translateY(-50%)' }}
+                onMouseDown={e => startResize(e, 'e', snapBase)} 
+                dataNoExport={true} />
+            </>
+          )}
         </>
       )}
     </div>
@@ -468,10 +476,14 @@ function UngroupToolbar({
   zoom,
   onUngroup,
   onDelete,
+  isLocked = false,
+  onLockToggle,
 }: {
   zoom: number;
   onUngroup: () => void;
   onDelete: () => void;
+  isLocked?: boolean;
+  onLockToggle: () => void;
 }) {
   const TOOLBAR_H = 48;
   const GAP = 12;
@@ -480,6 +492,7 @@ function UngroupToolbar({
 
   return (
     <div
+      data-no-export="true"
       className="pointer-events-auto absolute"
       style={{
         left: '50%',
@@ -536,6 +549,21 @@ function UngroupToolbar({
             </svg>
           }
           label="Delete"
+        />
+
+        <ToolDivider />
+
+        {/* Lock button */}
+        <PillButton
+          onClick={onLockToggle}
+          color="#ffffff"
+          icon={
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          }
+          label={isLocked ? 'Unlock' : 'Lock'}
         />
       </div>
     </div>

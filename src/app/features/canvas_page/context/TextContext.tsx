@@ -23,6 +23,7 @@ export interface TextElement {
   textAlign?: TextAlign;
   textCategory?: 'header' | 'subheader' | 'body' | 'meta' | null;
   zIndex?: number;
+  isLocked?: boolean;
 }
 
 interface TextContextType {

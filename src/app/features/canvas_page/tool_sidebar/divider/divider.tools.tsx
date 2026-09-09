@@ -2,6 +2,7 @@
 
 import { ColorPicker } from '../../globals/color.picker';
 import { ThicknessPicker } from './divider.thickness';
+import { LockButton } from '../../globals/lock.elements';
 import { useMediaQuery } from '@/lib/use_media_query';
 
 interface DividerToolbarProps {
@@ -12,6 +13,8 @@ interface DividerToolbarProps {
     onColorChange: (color: string) => void;
     thickness: number;
     onThicknessSelect: (thickness: number) => void;
+    isLocked?: boolean;
+    onLockToggle: () => void;
 }
 
 const TOOLBAR_HEIGHT = 60;
@@ -25,6 +28,8 @@ export function DividerToolbar({
     onColorChange,
     thickness,
     onThicknessSelect,
+    isLocked = false,
+    onLockToggle,
 }: DividerToolbarProps) {
     const isMobile = useMediaQuery('(max-width: 767px)');
     const centerX = elementX + elementWidth / 2;
@@ -32,6 +37,7 @@ export function DividerToolbar({
 
     return (
         <div
+            data-no-export="true"
             className="absolute pointer-events-auto select-none"
             onMouseDown={(e) => {
                 e.stopPropagation();
@@ -97,6 +103,11 @@ export function DividerToolbar({
 
                 {/* Line thickness */}
                 <ThicknessPicker thickness={thickness} onSelect={onThicknessSelect} />
+
+                <Divider />
+
+                {/* Lock */}
+                <LockButton isLocked={isLocked} onToggle={onLockToggle} />
             </div>
         </div>
     );
