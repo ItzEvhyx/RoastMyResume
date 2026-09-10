@@ -215,10 +215,11 @@ type CartesiaKeyEntry = { envName: string; key: string };
  * Also accepts legacy comma-separated CARTESIA_API_KEYS if present.
  */
 export function getCartesiaApiKeyEntries(): CartesiaKeyEntry[] {
-  const fromNamed = CARTESIA_KEY_ENV_NAMES.map((envName) => {
+  const fromNamed: CartesiaKeyEntry[] = [];
+  for (const envName of CARTESIA_KEY_ENV_NAMES) {
     const key = process.env[envName]?.trim();
-    return key ? { envName, key } : null;
-  }).filter((entry): entry is CartesiaKeyEntry => entry !== null);
+    if (key) fromNamed.push({ envName, key });
+  }
 
   if (fromNamed.length > 0) return fromNamed;
 
