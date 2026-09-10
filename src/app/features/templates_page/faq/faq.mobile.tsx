@@ -44,7 +44,7 @@ const FAQS = [
   },
   {
     q: 'Are the templates ATS-compatible?',
-    a: 'The ATS and General templates are designed to pass applicant tracking systems. Creative templates prioritise visual impact over ATS compatibility.',
+    a: 'ATS Friendly templates are built to pass applicant tracking systems. Business, Tech, and Generic layouts prioritise visual structure — choose based on your target role.',
   },
   {
     q: 'How is this different from other resume builders?',

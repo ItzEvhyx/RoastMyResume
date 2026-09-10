@@ -48,7 +48,7 @@ const FAQS = [
   },
   {
     q: 'Are the templates ATS-compatible?',
-    a: 'The ATS and General templates are designed specifically to pass applicant tracking systems — single column, standard section headings, no tables or graphics that confuse parsers. The Creative templates prioritise visual impression over ATS compatibility, so choose based on your target role.',
+    a: 'ATS Friendly templates are single-column with plain text and dividers so applicant tracking systems can parse them cleanly. Business, Tech, and Generic layouts can use sidebars, shapes, and icons for a stronger visual impression — pick based on your target role.',
   },
 ];
 

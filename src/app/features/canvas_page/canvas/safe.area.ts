@@ -211,6 +211,17 @@ export function clampIconToSafeArea(element: IconElement, updates: Partial<IconE
   const next = { ...element, ...updates };
   const w = next.width ?? next.size;
   const h = next.height ?? next.size;
+
+  // Full-bleed template columns may sit on the page edge; still stay on-canvas.
+  if (next.bypassSafeArea) {
+    const x = clamp(next.x, 0, CANVAS_WIDTH - w);
+    const y = clamp(next.y, 0, CANVAS_HEIGHT - h);
+    return {
+      updates: { ...updates, x, y },
+      wasClamped: x !== next.x || y !== next.y,
+    };
+  }
+
   const x = clamp(next.x, SAFE_MARGIN, CANVAS_WIDTH - SAFE_MARGIN - w);
   const y = clamp(next.y, SAFE_MARGIN, CANVAS_HEIGHT - SAFE_MARGIN - h);
   return {

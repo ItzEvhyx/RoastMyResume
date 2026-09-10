@@ -39,6 +39,11 @@ export interface IconElement {
   flip?: 0 | 1 | 2 | 3;
   zIndex?: number;
   isLocked?: boolean;
+  /**
+   * Template bleed columns may sit flush to the page edge.
+   * Text and normal user elements stay inside the safe margin.
+   */
+  bypassSafeArea?: boolean;
 }
 
 interface IconContextType {

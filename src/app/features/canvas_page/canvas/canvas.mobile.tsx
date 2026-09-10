@@ -271,6 +271,7 @@ export default function CanvasMobile() {
           svgUrl: src.svgUrl ?? '',
           color: src.color ?? '#000000',
           flip: src.flip,
+          bypassSafeArea: src.bypassSafeArea,
         });
       },
     });
