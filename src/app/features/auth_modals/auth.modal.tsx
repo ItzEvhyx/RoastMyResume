@@ -10,6 +10,7 @@ import { SignUpForm } from './sign.up';
 import Terms from '../legal_terms/terms';
 import PrivacyPolicy from '../legal_terms/privacy.policy';
 import OtpModal from './otp.modal';
+import AuthSuccessModal from './auth.success.modal';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -103,6 +104,9 @@ export default function AuthModal({
   const [isOtpOpen, setIsOtpOpen] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
 
+  // Post sign-up success celebration (Google / non-OTP paths)
+  const [isSignupSuccessOpen, setIsSignupSuccessOpen] = useState(false);
+
   // Tracks whether the modal is closing due to a successful auth action
   // so we can play a different (pop-out) exit animation.
   const [isSuccessClose, setIsSuccessClose] = useState(false);
@@ -154,7 +158,7 @@ export default function AuthModal({
   return (
     <>
       <AnimatePresence mode="wait">
-        {open && !isOtpOpen && (
+        {open && !isOtpOpen && !isSignupSuccessOpen && (
           <div
             key="auth-modal-root"
             className={`fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto ${poppins.variable} ${futuraDisplay.variable}`}
@@ -292,7 +296,9 @@ export default function AuthModal({
                             setEmail={setSignUpEmail}
                             password={signUpPassword}
                             setPassword={setSignUpPassword}
-                            onSuccess={handleAuthSuccess}
+                            onSuccess={() => {
+                              setIsSignupSuccessOpen(true);
+                            }}
                             onSignUpSubmit={(emailToVerify) => {
                               setOtpEmail(emailToVerify);
                               setIsOtpOpen(true);
@@ -353,6 +359,15 @@ export default function AuthModal({
         onClose={() => setIsOtpOpen(false)}
         onVerified={() => {
           setIsOtpOpen(false);
+          handleAuthSuccess();
+        }}
+      />
+
+      {/* Google / direct sign-up success celebration */}
+      <AuthSuccessModal
+        isOpen={isSignupSuccessOpen}
+        onComplete={() => {
+          setIsSignupSuccessOpen(false);
           handleAuthSuccess();
         }}
       />
