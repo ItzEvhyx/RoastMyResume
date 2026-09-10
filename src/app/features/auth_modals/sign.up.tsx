@@ -6,6 +6,10 @@ import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
 import { getClientFirestore } from '@/app/core/services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import {
+  signUpWithGoogle,
+  isGooglePopupCancelled,
+} from './google.auth';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -52,18 +56,16 @@ function SolidLockIcon({ className = 'w-4.5 h-4.5' }: { className?: string }) {
   );
 }
 
-// Eye toggle icon for show/hide password
+// Eye toggle — solid filled (matches mail / lock icons)
 function EyeIcon({ className = 'w-7 h-7' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
       <path
-        d="M2 12C3.8 7.5 7.6 4.5 12 4.5C16.4 4.5 20.2 7.5 22 12C20.2 16.5 16.4 19.5 12 19.5C7.6 19.5 3.8 16.5 2 12Z"
-        stroke="#ffffff"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        d="M12 5C7.2 5 3.1 8.1 1.5 12C3.1 15.9 7.2 19 12 19s8.9-3.1 10.5-7C20.9 8.1 16.8 5 12 5Z"
+        fill="#ffffff"
       />
-      <circle cx="12" cy="12" r="3.8" fill="#ffffff" />
+      <circle cx="12" cy="12" r="3.6" fill="#17171a" />
+      <circle cx="12" cy="12" r="1.5" fill="#ffffff" />
     </svg>
   );
 }
@@ -72,24 +74,29 @@ function EyeOffIcon({ className = 'w-7 h-7' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
       <path
-        d="M9.88 9.88a3.8 3.8 0 1 0 4.24 4.24"
+        d="M12 5C7.2 5 3.1 8.1 1.5 12C3.1 15.9 7.2 19 12 19s8.9-3.1 10.5-7C20.9 8.1 16.8 5 12 5Z"
+        fill="#ffffff"
+      />
+      <circle cx="12" cy="12" r="3.6" fill="#17171a" />
+      <circle cx="12" cy="12" r="1.5" fill="#ffffff" />
+      <line
+        x1="4"
+        y1="4"
+        x2="20"
+        y2="20"
+        stroke="#17171a"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+      />
+      <line
+        x1="3"
+        y1="3"
+        x2="21"
+        y2="21"
         stroke="#ffffff"
         strokeWidth="2.2"
         strokeLinecap="round"
       />
-      <path
-        d="M10.73 5.08A10.43 10.43 0 0 1 12 4.5c4.4 0 8.2 3 10 7.5a13.16 13.16 0 0 1-1.67 2.68"
-        stroke="#ffffff"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M6.61 6.61A13.526 13.526 0 0 0 2 12c1.8 4.5 5.6 7.5 10 7.5a9.74 9.74 0 0 0 5.39-1.61"
-        stroke="#ffffff"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <line x1="3" y1="3" x2="21" y2="21" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -152,7 +159,9 @@ export function SignUpForm({
 
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -165,6 +174,7 @@ export function SignUpForm({
     if (!email) return;
 
     setEmailError(null);
+    setGoogleError(null);
     setIsCheckingAccount(true);
 
     try {
@@ -190,6 +200,25 @@ export function SignUpForm({
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    setEmailError(null);
+    setGoogleError(null);
+    setIsGoogleSubmitting(true);
+
+    try {
+      await signUpWithGoogle();
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      if (isGooglePopupCancelled(err)) return;
+      console.error('Google sign-up error:', err);
+      const msg =
+        err instanceof Error ? err.message : 'Google sign-up failed. Please try again.';
+      setGoogleError(msg);
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
+  };
+
   return (
     <div
       className={`w-full max-w-[420px] sm:max-w-[460px] flex flex-col items-center ${poppins.variable} ${futuraDisplay.variable}`}
@@ -206,12 +235,38 @@ export function SignUpForm({
       {/* Sign - up with Google Button */}
       <button
         type="button"
-        className="w-full h-[48px] sm:h-[62px] bg-white text-black rounded-full font-bold text-sm sm:text-lg flex items-center justify-center gap-2.5 sm:gap-3.5 hover:bg-neutral-100 active:scale-[0.99] transition-all duration-200 shadow-lg"
+        onClick={handleGoogleSignUp}
+        disabled={isCheckingAccount || isGoogleSubmitting}
+        className={`w-full h-[48px] sm:h-[62px] bg-white text-black rounded-full font-bold text-sm sm:text-lg flex items-center justify-center gap-2.5 sm:gap-3.5 transition-all duration-200 shadow-lg ${
+          isCheckingAccount || isGoogleSubmitting
+            ? 'opacity-70 cursor-not-allowed'
+            : 'hover:bg-neutral-100 active:scale-[0.99]'
+        }`}
         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
       >
-        <GoogleIcon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
-        <span>Sign - up with Google</span>
+        {isGoogleSubmitting ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-5 w-5 sm:h-6 sm:w-6" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+            </svg>
+            Creating account...
+          </span>
+        ) : (
+          <>
+            <GoogleIcon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
+            <span>Sign - up with Google</span>
+          </>
+        )}
       </button>
+
+      {googleError && (
+        <p
+          className="w-full mt-2 px-2 text-red-400 text-xs sm:text-sm font-medium text-center sm:text-left"
+          style={{ fontFamily: 'var(--font-poppins)' }}
+        >
+          {googleError}
+        </p>
+      )}
 
       {/* Line Divider with "Or" */}
       <div className="w-full flex items-center my-1.5 sm:my-3.5">

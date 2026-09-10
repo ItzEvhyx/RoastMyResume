@@ -7,6 +7,7 @@ import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthUser, signOutUser } from '@/app/core/session/session';
+import { FORCE_LANDING_KEY } from '@/app/core/session/force.landing';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -40,7 +41,14 @@ export default function BannerMobile({ onSignInClick, onSignOutClick }: BannerMo
       <div className="absolute left-4 top-3 z-20">
         <button
           type="button"
-          onClick={() => router.push('/')}
+          onClick={() => {
+            try {
+              sessionStorage.setItem(FORCE_LANDING_KEY, '1');
+            } catch {
+              // ignore
+            }
+            router.push('/landing');
+          }}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b0d12] shadow-sm transition-all duration-200 active:scale-95"
           aria-label="Back"
         >

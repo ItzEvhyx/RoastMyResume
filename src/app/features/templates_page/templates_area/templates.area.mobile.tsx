@@ -161,7 +161,8 @@ export default function TemplatesAreaMobile() {
             alt=""
             width={14}
             height={14}
-            className="opacity-50"
+            draggable={false}
+            className="pointer-events-none select-none opacity-50"
           />
           Upload yours
         </button>

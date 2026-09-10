@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMediaQuery } from '@/lib/use_media_query';
 import { useAuthUser } from '@/app/core/session/session';
 import LandingDesktop from '@/app/features/landing_page/landing.desktop';
 import LandingMobile from '@/app/features/landing_page/landing.mobile';
 import DeniseModal from '@/rb_components/denise_modal';
+import { FORCE_LANDING_KEY } from '@/app/core/session/force.landing';
 
 /**
  * Device switch: renders exactly one landing tree based on viewport width, so
@@ -19,13 +20,28 @@ export default function LandingPage() {
   const router = useRouter();
   const user = useAuthUser();
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const [allowLanding, setAllowLanding] = useState(false);
+  const [checkedForce, setCheckedForce] = useState(false);
 
-  // Signed-in users skip marketing and land on templates.
   useEffect(() => {
-    if (user) router.replace('/templates');
-  }, [user, router]);
+    try {
+      if (sessionStorage.getItem(FORCE_LANDING_KEY) === '1') {
+        sessionStorage.removeItem(FORCE_LANDING_KEY);
+        setAllowLanding(true);
+      }
+    } catch {
+      // ignore
+    }
+    setCheckedForce(true);
+  }, []);
 
-  if (user) {
+  // Signed-in users skip marketing on normal entry — not when Back forced landing.
+  useEffect(() => {
+    if (!checkedForce) return;
+    if (user && !allowLanding) router.replace('/templates');
+  }, [user, router, allowLanding, checkedForce]);
+
+  if (!checkedForce || (user && !allowLanding)) {
     return <main className="min-h-screen w-full bg-black" />;
   }
 

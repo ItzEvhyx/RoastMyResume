@@ -292,7 +292,7 @@ export default function AuthModal({
                             setEmail={setSignUpEmail}
                             password={signUpPassword}
                             setPassword={setSignUpPassword}
-                            onSuccess={handleClose}
+                            onSuccess={handleAuthSuccess}
                             onSignUpSubmit={(emailToVerify) => {
                               setOtpEmail(emailToVerify);
                               setIsOtpOpen(true);

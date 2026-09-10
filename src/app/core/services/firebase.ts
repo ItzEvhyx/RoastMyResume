@@ -1,5 +1,6 @@
 // src/app/core/services/firebase.ts
 import { getApps, getApp, initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 /**
@@ -35,6 +36,7 @@ function getClientApp(): FirebaseApp {
 }
 
 let clientDb: Firestore | null = null;
+let clientAuth: Auth | null = null;
 
 /** Get the client Firestore instance (browser-side, governed by security rules). */
 export function getClientFirestore(): Firestore {
@@ -42,4 +44,12 @@ export function getClientFirestore(): Firestore {
     clientDb = getFirestore(getClientApp());
   }
   return clientDb;
+}
+
+/** Get the client Auth instance (browser-side Google / email flows). */
+export function getClientAuth(): Auth {
+  if (!clientAuth) {
+    clientAuth = getAuth(getClientApp());
+  }
+  return clientAuth;
 }

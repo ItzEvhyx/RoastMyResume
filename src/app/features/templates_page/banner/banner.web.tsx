@@ -8,6 +8,7 @@ import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import SpecularButton from '@/components/specular_button';
 import { useAuthUser, signOutUser } from '@/app/core/session/session';
+import { FORCE_LANDING_KEY } from '@/app/core/session/force.landing';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -59,7 +60,14 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
       <div className="absolute left-8 top-6 z-20">
         <button
           type="button"
-          onClick={() => router.push('/')}
+          onClick={() => {
+            try {
+              sessionStorage.setItem(FORCE_LANDING_KEY, '1');
+            } catch {
+              // ignore
+            }
+            router.push('/landing');
+          }}
           className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
           style={{
             fontFamily: 'var(--font-poppins)',

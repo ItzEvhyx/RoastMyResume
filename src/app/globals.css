@@ -138,6 +138,28 @@
   display: none; /* Chrome / Safari / WebKit */
 }
 
+/* Lock decorative / product media in place — no native drag ghost, no iOS
+   long-press save callout. Mirrors grab_icon + depth-carousel__img. */
+img,
+video,
+svg,
+picture {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+[data-allow-media-interact] img,
+[data-allow-media-interact] video,
+[data-allow-media-interact] svg,
+[data-allow-media-interact] picture {
+  -webkit-user-drag: auto;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
 /* Shimmer sweep for placeholder / loading text. Applies a moving light band
    across the text via a clipped gradient. */
 @keyframes text-shimmer {

@@ -51,6 +51,14 @@ export async function POST(req: NextRequest) {
 
     const userData = userSnap.data();
 
+    // Google-only accounts have no app password — must use Continue with Google.
+    if (userData?.provider === 'google' && !userData?.password) {
+      return NextResponse.json(
+        { error: 'This account uses Google. Please continue with Google.' },
+        { status: 401 }
+      );
+    }
+
     // Validate password
     if (!userData?.password || userData.password !== password) {
       return NextResponse.json(

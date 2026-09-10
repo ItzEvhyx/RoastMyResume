@@ -165,7 +165,8 @@ export default function TemplatesAreaWeb() {
             alt="folder"
             width={16}
             height={16}
-            className="opacity-50"
+            draggable={false}
+            className="pointer-events-none select-none opacity-50"
           />
           Upload yours
         </button>
