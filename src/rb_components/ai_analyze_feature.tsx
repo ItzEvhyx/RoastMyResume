@@ -28,14 +28,14 @@ const futuraDisplay = localFont({
 const futuraStack = 'var(--font-futura-display), sans-serif';
 
 /**
- * "Let AI analyze" feature card animation.
+ * "Let Denise Analyze" feature card animation.
  *
  * Sequence (plays once per page load, then persists):
  *   1. Blurred text appears spanning the container via a typewriter reveal.
  *   2. A bar scanner sweeps top -> bottom.
  *   3. Everything disappears.
  *   4. An AI shimmer line shows in the center.
- *   5. The response writes in: header "Let AI analyze" + body, left-aligned
+ *   5. The response writes in: header "Let Denise Analyze" + body, left-aligned
  *      with an icon.
  *   6. Persists.
  *
@@ -183,7 +183,7 @@ export default function AiAnalyzeFeature({ className = '' }: { className?: strin
         className="ai-shimmer-text absolute inset-0 z-20 flex items-center justify-center px-8 text-center text-xl font-semibold"
         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}
       >
-        The AI is thinking of a comeback...
+        Denise is coming up with a comeback...
       </p>
 
       {/* Final content — icon on the LEFT, text stacked to its right.
@@ -194,7 +194,7 @@ export default function AiAnalyzeFeature({ className = '' }: { className?: strin
         </span>
         <div className="flex flex-col gap-1 md:gap-2">
           <h3 className="text-xl leading-none text-black md:text-4xl" style={{ fontFamily: futuraStack, fontWeight: 800 }}>
-            Let AI analyze
+            Let Denise Analyze
           </h3>
           <p
             className="text-xs leading-snug text-neutral-600 md:text-lg"

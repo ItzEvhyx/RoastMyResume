@@ -359,16 +359,21 @@ export default function AuthModal({
         onClose={() => setIsOtpOpen(false)}
         onVerified={() => {
           setIsOtpOpen(false);
-          handleAuthSuccess();
+          setSignUpPassword('');
+          setDirection(-1);
+          setView('signin');
         }}
       />
 
-      {/* Google / direct sign-up success celebration */}
+      {/* Google sign-up success → then prompt sign-in */}
       <AuthSuccessModal
         isOpen={isSignupSuccessOpen}
+        subtitle="Welcome to RoastMyResume. Please sign in to continue."
         onComplete={() => {
           setIsSignupSuccessOpen(false);
-          handleAuthSuccess();
+          setSignUpPassword('');
+          setDirection(-1);
+          setView('signin');
         }}
       />
     </>

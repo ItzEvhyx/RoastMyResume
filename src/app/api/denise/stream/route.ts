@@ -11,6 +11,12 @@ import {
   synthesizeSpeechPcm,
   type DeniseSpeakMode,
 } from '@/app/core/services/cartesia';
+import {
+  AiRateLimitError,
+  consumeAiRateLimit,
+  resolveRequestEmail,
+  type AiRateStatus,
+} from '@/app/core/services/ratelimit';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -23,6 +29,7 @@ interface DeniseBody {
   messages?: unknown;
   approvedElements?: unknown;
   skipInterview?: unknown;
+  email?: unknown;
 }
 
 function isValidMessage(value: unknown): value is ConversationMessage {
@@ -99,6 +106,45 @@ export async function POST(request: Request) {
   const voiceEnabled = Boolean(
     process.env.CARTESIA_API_KEY && process.env.CARTESIA_VOICE_ID,
   );
+
+  const email = resolveRequestEmail(request, body);
+  if (!email) {
+    return Response.json(
+      { error: 'Sign in to use Denise.' },
+      { status: 401 },
+    );
+  }
+
+  const conversation = body.messages as ConversationMessage[];
+  // One daily use per new thread (first assistant-less request), not per follow-up.
+  const isNewSession = !conversation.some((m) => m.role === 'assistant');
+  let rateLimit: AiRateStatus | null = null;
+
+  if (isNewSession) {
+    try {
+      rateLimit = await consumeAiRateLimit(
+        email,
+        mode as 'roast' | 'help',
+      );
+    } catch (err) {
+      if (err instanceof AiRateLimitError) {
+        return Response.json(
+          {
+            error: err.message,
+            remaining: 0,
+            feature: err.feature,
+            limit: err.limit,
+          },
+          { status: 429 },
+        );
+      }
+      console.error('[api/denise/stream] rate limit failed:', err);
+      return Response.json(
+        { error: 'Could not verify AI usage limits.' },
+        { status: 500 },
+      );
+    }
+  }
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -195,7 +241,11 @@ export async function POST(request: Request) {
         if (rest) enqueueSpeech(rest);
 
         await ttsChain;
-        send({ type: 'done', result });
+        send({
+          type: 'done',
+          result,
+          ...(rateLimit ? { rateLimit } : {}),
+        });
       } catch (err) {
         console.error('[api/denise/stream] failed:', err);
         send({

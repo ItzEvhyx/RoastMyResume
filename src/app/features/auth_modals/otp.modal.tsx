@@ -7,7 +7,6 @@ import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getClientFirestore } from '@/app/core/services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { setAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -384,9 +383,7 @@ export default function OtpModal({
         console.warn('Firestore write warning:', firestoreErr);
       }
 
-      // Set authenticated user globally
-      setAuthUser({ email: email.trim().toLowerCase() });
-
+      // Account created — do not auto-sign-in; parent opens the sign-in form.
       setStep('verified');
 
       setTimeout(() => {
@@ -681,7 +678,7 @@ export default function OtpModal({
                 className="text-white/80 text-xs sm:text-lg font-normal"
                 style={{ fontFamily: 'var(--font-poppins)' }}
               >
-                Welcome to RoastMyResume. Setting up your workspace...
+                Welcome to RoastMyResume. Please sign in to continue.
               </p>
             </motion.div>
           )}

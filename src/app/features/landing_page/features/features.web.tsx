@@ -1,11 +1,13 @@
 'use client';
 
+import Image from 'next/image';
 import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import DragDropFeature from '@/rb_components/drag_drop_feature';
 import AiAnalyzeFeature from '@/rb_components/ai_analyze_feature';
 import ApplyChangesFeature from '@/rb_components/apply_changes_feature';
 import ExportPdfFeature from '@/rb_components/export_pdf_feature';
+import ToolsSnapshotFeature from '@/rb_components/tools_snapshot_feature';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -44,9 +46,17 @@ export default function Features() {
         Order of the divs below drives this — don't reorder them.
       */}
       <div className="grid h-[640px] grid-cols-1 grid-rows-[repeat(6,1fr)] gap-4 md:h-[760px] md:grid-cols-2 md:grid-rows-4">
-        {/* left-big — canvas snapshot placeholder */}
-        <div className="row-span-1 grid place-items-center rounded-2xl bg-white md:row-span-3">
-          <span className="text-lg font-semibold text-neutral-400">Snapshot of the canvas</span>
+        {/* left-big — canvas snapshot */}
+        <div className="relative row-span-1 overflow-hidden rounded-2xl border border-white/80 bg-white md:row-span-3">
+          <Image
+            src="/assets/images/canvas_snapshot.png"
+            alt="Resume canvas editor snapshot"
+            fill
+            className="object-cover object-top"
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority
+            draggable={false}
+          />
         </div>
 
         {/* right-1 — Drag & drop animation */}
@@ -64,9 +74,9 @@ export default function Features() {
           <ApplyChangesFeature />
         </div>
 
-        {/* left-bottom — tools snapshot placeholder */}
-        <div className="grid place-items-center rounded-2xl bg-white">
-          <span className="text-lg font-semibold text-neutral-400">Tools snapshot</span>
+        {/* left-bottom — tools snapshot */}
+        <div className="overflow-hidden rounded-2xl bg-white">
+          <ToolsSnapshotFeature />
         </div>
 
         {/* right-4 — Export to pdf animation */}

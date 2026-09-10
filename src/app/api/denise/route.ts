@@ -5,6 +5,11 @@ import {
   type ConversationMessage,
   type DeniseMode,
 } from '@/app/core/services/claude';
+import {
+  AiRateLimitError,
+  consumeAiRateLimit,
+  resolveRequestEmail,
+} from '@/app/core/services/ratelimit';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +21,7 @@ interface DeniseBody {
   messages?: unknown;
   approvedElements?: unknown;
   skipInterview?: unknown;
+  email?: unknown;
 }
 
 function isValidMessage(value: unknown): value is ConversationMessage {
@@ -81,6 +87,44 @@ export async function POST(request: Request) {
   const approvedElements = parseApprovedElements(body.approvedElements);
   const skipInterview = body.skipInterview === true;
 
+  const email = resolveRequestEmail(request, body);
+  if (!email) {
+    return Response.json(
+      { error: 'Sign in to use Denise.' },
+      { status: 401 },
+    );
+  }
+
+  const conversation = body.messages as ConversationMessage[];
+  const isNewSession = !conversation.some((m) => m.role === 'assistant');
+
+  let rateLimit = null;
+  if (isNewSession) {
+    try {
+      rateLimit = await consumeAiRateLimit(
+        email,
+        mode as 'roast' | 'help',
+      );
+    } catch (err) {
+      if (err instanceof AiRateLimitError) {
+        return Response.json(
+          {
+            error: err.message,
+            remaining: 0,
+            feature: err.feature,
+            limit: err.limit,
+          },
+          { status: 429 },
+        );
+      }
+      console.error('[api/denise] rate limit failed:', err);
+      return Response.json(
+        { error: 'Could not verify AI usage limits.' },
+        { status: 500 },
+      );
+    }
+  }
+
   try {
     const result = await askDenise({
       mode: mode as DeniseMode,
@@ -89,7 +133,7 @@ export async function POST(request: Request) {
       approvedElements,
       skipInterview,
     });
-    return Response.json(result);
+    return Response.json({ ...result, ...(rateLimit ? { rateLimit } : {}) });
   } catch (err) {
     console.error('[api/denise] Claude request failed:', err);
     return Response.json(

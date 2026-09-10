@@ -9,7 +9,13 @@ import { Lottie } from 'lottie-react';
 import AtsCheckResults from './ats.check.results';
 import { useCanvasSnapshot } from '../../hooks/use.canvas.snapshot';
 import { useDeniseAnalysis } from '../../context/DeniseAnalysisContext';
+import {
+  AiUsageBadge,
+  aiRequestHeaders,
+  useAiRateLimits,
+} from '../../hooks/use.ai.rate.limits';
 import type { AtsCheckResult, AtsFactorId } from '@/app/core/services/claude';
+import type { AiRateStatus } from '@/app/core/services/ratelimit.shared';
 import scanningAtsAnimation from '../../../../../../public/assets/videos/lottie_animations/scanning_ats.json';
 
 const poppins = Poppins({
@@ -69,6 +75,15 @@ type Phase = 'idle' | 'analyzing' | 'results';
 export default function ATSCheck() {
   const canvasSnapshot = useCanvasSnapshot();
   const { beginScan, completeScan } = useDeniseAnalysis();
+  const {
+    email,
+    remaining,
+    unlimited,
+    exhausted,
+    limit,
+    refresh,
+    applyStatus,
+  } = useAiRateLimits('ats_check');
 
   const [phase, setPhase] = useState<Phase>('idle');
   const [statusIndex, setStatusIndex] = useState(0);
@@ -93,6 +108,14 @@ export default function ATSCheck() {
 
   const handleRun = useCallback(async () => {
     if (phase !== 'idle') return;
+    if (!email) {
+      setError('Sign in to use ATS Check.');
+      return;
+    }
+    if (exhausted) {
+      setError(`Daily limit reached (${limit}/${limit}). Try again tomorrow.`);
+      return;
+    }
 
     setError(null);
     setPhase('analyzing');
@@ -101,15 +124,19 @@ export default function ATSCheck() {
     try {
       const res = await fetch('/api/ats-check', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ canvasSnapshot }),
+        headers: aiRequestHeaders(email),
+        body: JSON.stringify({ canvasSnapshot, email }),
       });
       const data = (await res.json().catch(() => ({}))) as AtsCheckResult & {
         error?: string;
+        rateLimit?: AiRateStatus;
       };
       if (!res.ok) {
+        if (res.status === 429) void refresh();
         throw new Error(data.error || 'ATS check failed.');
       }
+      if (data.rateLimit) applyStatus(data.rateLimit);
+      else void refresh();
       setResult(data);
       setPhase('results');
     } catch (err) {
@@ -118,7 +145,17 @@ export default function ATSCheck() {
     } finally {
       completeScan();
     }
-  }, [phase, canvasSnapshot, beginScan, completeScan]);
+  }, [
+    phase,
+    email,
+    exhausted,
+    limit,
+    canvasSnapshot,
+    beginScan,
+    completeScan,
+    refresh,
+    applyStatus,
+  ]);
 
   return (
     <div
@@ -134,7 +171,7 @@ export default function ATSCheck() {
             className="opacity-90"
           />
           <h1
-            className="leading-tight text-white"
+            className="min-w-0 flex-1 leading-tight text-white"
             style={{
               fontFamily: 'var(--font-futura-display)',
               fontWeight: 800,
@@ -143,6 +180,13 @@ export default function ATSCheck() {
           >
             ATS Check
           </h1>
+          {email && (
+            <AiUsageBadge
+              remaining={remaining}
+              limit={limit}
+              unlimited={unlimited}
+            />
+          )}
         </div>
         <p
           className="text-left leading-relaxed text-white/70"
@@ -225,13 +269,16 @@ export default function ATSCheck() {
                 <button
                   type="button"
                   onClick={() => void handleRun()}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-4 text-black transition-all hover:bg-white/90 active:scale-95"
+                  disabled={!email || exhausted}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-4 text-black transition-all hover:bg-white/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
                   style={{
                     fontFamily: 'var(--font-poppins)',
                     fontWeight: 700,
                   }}
                 >
-                  <span className="text-base">Run ATS Check</span>
+                  <span className="text-base">
+                    {exhausted ? 'Daily limit reached' : 'Run ATS Check'}
+                  </span>
                   <Image
                     src="/assets/icons/scan_icon.png"
                     alt="Scan"

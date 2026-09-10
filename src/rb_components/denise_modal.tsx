@@ -83,14 +83,20 @@ export default function DeniseModal() {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const router = useRouter();
 
+  const clearTimers = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+  };
+
   const handleContinue = () => {
     closeDeniseModal();
     router.push('/templates');
   };
 
-  const clearTimers = () => {
-    timers.current.forEach(clearTimeout);
-    timers.current = [];
+  const handleSkipIntro = () => {
+    clearTimers();
+    setTyped(BODY);
+    setStage('done');
   };
 
   // Drive the staged reveal whenever the modal opens; tear it down on close.
@@ -200,6 +206,18 @@ export default function DeniseModal() {
         >
           <span className="text-2xl leading-none">&times;</span>
         </button>
+
+        {/* Skip intro — jumps straight to Continue */}
+        {!showContinue && (
+          <button
+            type="button"
+            onClick={handleSkipIntro}
+            className="absolute left-4 top-4 z-10 text-xs font-medium text-white/55 underline-offset-2 transition-colors hover:text-white hover:underline sm:text-sm"
+            style={{ fontFamily: 'var(--font-poppins)' }}
+          >
+            Skip intro
+          </button>
+        )}
 
         {/* Left — muted intro video
             Mobile  : capped height, centered, doesn't dominate the screen.

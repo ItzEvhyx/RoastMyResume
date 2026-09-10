@@ -10,7 +10,13 @@ import JobMatchAnimation from './job.match.animation';
 import JobMatchResults from './job.match.results';
 import { useCanvasSnapshot } from '../../hooks/use.canvas.snapshot';
 import { useDeniseAnalysis } from '../../context/DeniseAnalysisContext';
+import {
+  AiUsageBadge,
+  aiRequestHeaders,
+  useAiRateLimits,
+} from '../../hooks/use.ai.rate.limits';
 import type { ImageMediaType, JobMatchResult } from '@/app/core/services/claude';
+import type { AiRateStatus } from '@/app/core/services/ratelimit.shared';
 import scanningJobMatchAnimation from '../../../../../../public/assets/videos/lottie_animations/scanning_jobmatch.json';
 
 const poppins = Poppins({
@@ -78,6 +84,15 @@ function fileToAttachment(file: File): Promise<AttachedImage | null> {
 export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
   const canvasSnapshot = useCanvasSnapshot();
   const { beginScan, completeScan } = useDeniseAnalysis();
+  const {
+    email,
+    remaining,
+    unlimited,
+    exhausted,
+    limit,
+    refresh,
+    applyStatus,
+  } = useAiRateLimits('job_match');
 
   const [phase, setPhase] = useState<Phase>('idle');
   const [jobDescription, setJobDescription] = useState('');
@@ -93,6 +108,8 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
 
   const canSend =
     phase === 'idle' &&
+    !exhausted &&
+    Boolean(email) &&
     (jobDescription.trim().length > 0 || attachments.length > 0);
 
   // Rotate shimmer status while analyzing
@@ -165,6 +182,15 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
 
   const handleSend = useCallback(async () => {
     if (!canSend) return;
+    if (!email) {
+      setError('Sign in to use Job Match.');
+      return;
+    }
+    if (exhausted) {
+      setError(`Daily limit reached (${limit}/${limit}). Try again tomorrow.`);
+      return;
+    }
+
     const text = jobDescription.trim().slice(0, CHAR_LIMIT);
     const images = attachments.map(({ data, mediaType }) => ({ data, mediaType }));
 
@@ -175,19 +201,24 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
     try {
       const res = await fetch('/api/job-match', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: aiRequestHeaders(email),
         body: JSON.stringify({
           text,
           images,
           canvasSnapshot,
+          email,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as JobMatchResult & {
         error?: string;
+        rateLimit?: AiRateStatus;
       };
       if (!res.ok) {
+        if (res.status === 429) void refresh();
         throw new Error(data.error || 'Job match failed.');
       }
+      if (data.rateLimit) applyStatus(data.rateLimit);
+      else void refresh();
       setResult(data);
       setPhase('results');
     } catch (err) {
@@ -198,11 +229,16 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
     }
   }, [
     canSend,
+    email,
+    exhausted,
+    limit,
     jobDescription,
     attachments,
     canvasSnapshot,
     beginScan,
     completeScan,
+    refresh,
+    applyStatus,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -230,7 +266,7 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
           />
         </div>
         <h2
-          className="leading-tight text-white"
+          className="min-w-0 flex-1 leading-tight text-white"
           style={{
             fontFamily: 'var(--font-futura-display), sans-serif',
             fontWeight: 800,
@@ -239,6 +275,13 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
         >
           Job Match
         </h2>
+        {email && (
+          <AiUsageBadge
+            remaining={remaining}
+            limit={limit}
+            unlimited={unlimited}
+          />
+        )}
       </div>
 
       <p

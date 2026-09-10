@@ -33,7 +33,7 @@ export default function AuthSuccessModal({
   isOpen,
   onComplete,
   title = 'Account Created!',
-  subtitle = 'Welcome to RoastMyResume. Setting up your workspace...',
+  subtitle = 'Welcome to RoastMyResume. Please sign in to continue.',
   holdMs = 1600,
 }: AuthSuccessModalProps) {
   const onCompleteRef = useRef(onComplete);

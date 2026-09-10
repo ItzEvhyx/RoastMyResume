@@ -31,7 +31,7 @@ const futuraStack = 'var(--font-futura-display), sans-serif';
  * "Apply changes" feature card animation.
  *
  * Sequence (plays once per page load, then persists):
- *   1. A green "Apply changes?" button appears.
+ *   1. A black "Apply Denise's fixes" button appears.
  *   2. A cursor drags to it and presses it.
  *   3. A radial tick spinner + shimmer "Applying A.I recommendations..."
  *   4. Pops out.
@@ -168,10 +168,10 @@ export default function ApplyChangesFeature({ className = '' }: { className?: st
       {/* Green button */}
       <button
         data-button
-        className="pointer-events-none absolute z-20 rounded-full bg-green-500 px-6 py-3 text-base font-semibold text-white shadow-lg"
+        className="pointer-events-none absolute z-20 rounded-full bg-black px-6 py-3 text-base font-semibold text-white shadow-lg"
         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}
       >
-        Apply changes?
+        Apply Denise&rsquo;s fixes
       </button>
 
       {/* Cursor (transient) */}
@@ -222,13 +222,13 @@ export default function ApplyChangesFeature({ className = '' }: { className?: st
         </span>
         <div className="flex flex-col gap-1 md:gap-2">
           <h3 className="text-xl leading-none text-black md:text-4xl" style={{ fontFamily: futuraStack, fontWeight: 800 }}>
-            Apply changes
+            Apply Denise&rsquo;s fixes
           </h3>
           <p
             className="text-xs leading-snug text-neutral-600 md:text-lg"
             style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
           >
-            Fix what the AI flagged right on the canvas — no starting over, no
+            Fix what Denise flagged right on the canvas — no starting over, no
             copy-pasting into a new doc.
           </p>
         </div>

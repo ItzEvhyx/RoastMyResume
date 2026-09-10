@@ -4,6 +4,11 @@ import {
   type ImageMediaType,
   type JobMatchImage,
 } from '@/app/core/services/claude';
+import {
+  AiRateLimitError,
+  consumeAiRateLimit,
+  resolveRequestEmail,
+} from '@/app/core/services/ratelimit';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -19,6 +24,7 @@ interface JobMatchBody {
   text?: unknown;
   canvasSnapshot?: unknown;
   images?: unknown;
+  email?: unknown;
 }
 
 function parseImages(value: unknown): JobMatchImage[] {
@@ -58,9 +64,39 @@ export async function POST(request: Request) {
     );
   }
 
+  const email = resolveRequestEmail(request, body);
+  if (!email) {
+    return Response.json(
+      { error: 'Sign in to use Job Match.' },
+      { status: 401 },
+    );
+  }
+
+  let rateLimit;
+  try {
+    rateLimit = await consumeAiRateLimit(email, 'job_match');
+  } catch (err) {
+    if (err instanceof AiRateLimitError) {
+      return Response.json(
+        {
+          error: err.message,
+          remaining: 0,
+          feature: err.feature,
+          limit: err.limit,
+        },
+        { status: 429 },
+      );
+    }
+    console.error('[job-match] rate limit failed:', err);
+    return Response.json(
+      { error: 'Could not verify AI usage limits.' },
+      { status: 500 },
+    );
+  }
+
   try {
     const result = await runJobMatch({ text, images, canvasSnapshot });
-    return Response.json(result);
+    return Response.json({ ...result, rateLimit });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Job match failed.';
     if (err instanceof JobMatchValidationError) {

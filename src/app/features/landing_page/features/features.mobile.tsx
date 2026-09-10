@@ -1,11 +1,13 @@
 'use client';
 
+import Image from 'next/image';
 import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import DragDropFeature from '@/rb_components/drag_drop_feature';
 import AiAnalyzeFeature from '@/rb_components/ai_analyze_feature';
 import ApplyChangesFeature from '@/rb_components/apply_changes_feature';
 import ExportPdfFeature from '@/rb_components/export_pdf_feature';
+import ToolsSnapshotFeature from '@/rb_components/tools_snapshot_feature';
 import Reveal from '@/rb_components/reveal';
 
 const poppins = Poppins({
@@ -39,14 +41,22 @@ export default function FeaturesMobile() {
       <div className="flex flex-col gap-3">
         {/* Order: Canvas -> Tools snapshot -> Drag & drop -> AI analyze -> Apply changes -> Export to pdf */}
 
-        {/* Canvas snapshot placeholder */}
-        <Reveal className="grid aspect-square w-full place-items-center rounded-2xl bg-white">
-          <span className="text-base font-semibold text-neutral-400">Snapshot of the canvas</span>
+        {/* Canvas snapshot */}
+        <Reveal className="relative aspect-square w-full overflow-hidden rounded-2xl border border-white/80 bg-white">
+          <Image
+            src="/assets/images/canvas_snapshot.png"
+            alt="Resume canvas editor snapshot"
+            fill
+            className="object-cover object-top"
+            sizes="100vw"
+            priority
+            draggable={false}
+          />
         </Reveal>
 
-        {/* Tools snapshot placeholder */}
-        <Reveal className="grid aspect-[16/7] w-full place-items-center rounded-2xl bg-white">
-          <span className="text-base font-semibold text-neutral-400">Tools snapshot</span>
+        {/* Tools snapshot */}
+        <Reveal className="aspect-[16/7] w-full overflow-hidden rounded-2xl bg-white">
+          <ToolsSnapshotFeature />
         </Reveal>
 
         {/* Drag & drop animation */}

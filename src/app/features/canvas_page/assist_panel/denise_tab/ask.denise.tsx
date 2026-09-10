@@ -16,6 +16,12 @@ import {
 } from '../../services/denise.persistence';
 import { useSpeechToText } from '../../hooks/use.speech.to.text';
 import { useDeniseVoice } from '../../hooks/use.denise.voice';
+import {
+  AiUsageBadge,
+  aiRequestHeaders,
+  useAiRateLimits,
+} from '../../hooks/use.ai.rate.limits';
+import type { AiRateStatus } from '@/app/core/services/ratelimit.shared';
 import VoiceTranscribeModal from './voice.transcribe.modal';
 import { VolumeX } from 'lucide-react';
 import { useMediaQuery } from '@/lib/use_media_query';
@@ -344,6 +350,22 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     noteVoiceError,
   } = useDeniseVoice();
 
+  const {
+    email: rateEmail,
+    features: rateFeatures,
+    limit: rateLimitMax,
+    refresh: refreshRateLimits,
+    applyStatus: applyRateStatus,
+  } = useAiRateLimits();
+  const modeRate = rateFeatures[mode];
+  const rateUnlimited = Boolean(modeRate?.unlimited);
+  const rateRemaining = rateUnlimited
+    ? rateLimitMax
+    : (modeRate?.remaining ?? (rateEmail ? rateLimitMax : 0));
+  const rateExhausted = Boolean(
+    rateEmail && !rateUnlimited && rateRemaining <= 0,
+  );
+
   // Apply only after Help-me interview finishes and concrete fixes land.
   const showActionButtons =
     mode === 'help' && phase === 'fixes' && fixes.length > 0 && !isLoading;
@@ -401,6 +423,42 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     if (!trimmed || isLoading) return;
 
     const skipInterview = options?.skipInterview === true && mode === 'help';
+    const isNewSession = !messages.some((m) => m.role === 'assistant');
+
+    if (!rateEmail) {
+      setThreads((prev) => ({
+        ...prev,
+        [mode]: [
+          ...prev[mode],
+          { role: 'user', content: trimmed },
+          {
+            role: 'assistant',
+            content: 'Sign in to ask Denise — AI features need an account.',
+          },
+        ],
+      }));
+      setInputValue('');
+      return;
+    }
+
+    if (isNewSession && rateExhausted) {
+      setThreads((prev) => ({
+        ...prev,
+        [mode]: [
+          ...prev[mode],
+          { role: 'user', content: trimmed },
+          {
+            role: 'assistant',
+            content: `Daily limit reached for ${
+              mode === 'roast' ? 'Roast' : 'Help me'
+            } (${rateLimitMax}/${rateLimitMax}). Try again tomorrow.`,
+          },
+        ],
+      }));
+      setInputValue('');
+      return;
+    }
+
     stopDeniseVoice();
 
     const userMessage: ConversationMessage = { role: 'user', content: trimmed };
@@ -434,18 +492,20 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
 
       const res = await fetch('/api/denise/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: aiRequestHeaders(rateEmail),
         body: JSON.stringify({
           mode,
           canvasSnapshot,
           messages: updatedMessages,
           approvedElements: bulletproofById,
+          email: rateEmail,
           ...(skipInterview ? { skipInterview: true } : {}),
         }),
       });
 
       if (!res.ok || !res.body) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
+        if (res.status === 429) void refreshRateLimits();
         throw new Error(data.error || 'Denise is unavailable right now.');
       }
 
@@ -510,6 +570,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
         pcm?: string;
         sampleRate?: number;
         error?: string;
+        rateLimit?: AiRateStatus;
         result?: {
           content?: string;
           outOfScope?: boolean;
@@ -551,6 +612,8 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
           finalContent = safeContent;
           upsertAssistant(safeContent);
           applyAnalysis(payload.result);
+          if (payload.rateLimit) applyRateStatus(payload.rateLimit);
+          else if (isNewSession) void refreshRateLimits();
           return;
         }
 
@@ -633,6 +696,11 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     beginStreamSpeak,
     pushDenisePcm,
     noteVoiceError,
+    rateEmail,
+    rateExhausted,
+    rateLimitMax,
+    refreshRateLimits,
+    applyRateStatus,
   ]);
 
   const {
@@ -761,8 +829,8 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             -Human Resources-
           </p>
 
-          {/* Mode toggle + clear chat */}
-          <div className="flex items-center gap-2 self-start">
+          {/* Mode toggle + usage + clear chat */}
+          <div className="flex flex-wrap items-center gap-2 self-start">
             <div
               className="inline-flex w-fit items-center gap-0.5 rounded-full p-1"
               style={{
@@ -801,6 +869,14 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
                 Help me
               </button>
             </div>
+
+            {rateEmail && (
+              <AiUsageBadge
+                remaining={rateRemaining}
+                limit={rateLimitMax}
+                unlimited={rateUnlimited}
+              />
+            )}
 
             <button
               type="button"
@@ -948,7 +1024,10 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
                 { skipInterview: true },
               )
             }
-            disabled={waitingForDenise}
+            disabled={
+              waitingForDenise ||
+              (rateExhausted && !messages.some((m) => m.role === 'assistant'))
+            }
             className={`${actionBtnBase} mb-2 disabled:opacity-50 disabled:pointer-events-none`}
             style={{
               background: '#ffffff',

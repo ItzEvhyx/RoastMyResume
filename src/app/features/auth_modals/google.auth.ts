@@ -67,6 +67,7 @@ export async function signInWithGoogle(): Promise<{ email: string }> {
 
 /**
  * Sign up with Google — creates Auth user + Firestore profile, skips OTP.
+ * Does NOT start an app session; caller should send the user to sign-in.
  */
 export async function signUpWithGoogle(): Promise<{ email: string }> {
   const auth = getClientAuth();
@@ -83,12 +84,8 @@ export async function signUpWithGoogle(): Promise<{ email: string }> {
   const userSnap = await getDoc(userRef);
 
   if (userSnap.exists()) {
-    // Already registered — treat as signed in rather than duplicating.
-    setAuthUser({
-      email,
-      name: result.user.displayName ?? undefined,
-    });
-    return { email };
+    await signOut(auth);
+    throw new Error('Account already exists. Please sign in instead.');
   }
 
   await setDoc(
@@ -106,10 +103,8 @@ export async function signUpWithGoogle(): Promise<{ email: string }> {
     { merge: true },
   );
 
-  setAuthUser({
-    email,
-    name: result.user.displayName ?? undefined,
-  });
+  // Keep Firebase Auth signed out until the user explicitly signs in.
+  await signOut(auth);
 
   return { email };
 }
