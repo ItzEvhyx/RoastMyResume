@@ -493,7 +493,7 @@ export function DraggableText({
   const contentRef = useRef<HTMLDivElement>(null);
   const skipNextContentSync = useRef(false);
   const lastTapRef = useRef<number>(0);
-  const { zoom } = useCanvas();
+  const { zoom, isDocumentMode } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useText();
   const { snap: snapToGuides, endDrag: endGuideDrag } = useRulerSnapping();
   const plainContent = htmlToPlain(element.content || '');
@@ -652,7 +652,10 @@ export function DraggableText({
   // ── Mouse handlers ────────────────────────────────────────────────────────
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isEditing || element.isLocked) return;
+    if (isEditing || element.isLocked || isDocumentMode) {
+      if (isDocumentMode) onSelect();
+      return;
+    }
     e.preventDefault();
     onSelect();
     startDragMouse(e, element.x, element.y);
@@ -664,6 +667,10 @@ export function DraggableText({
     e.stopPropagation();
 
     const now = Date.now();
+    if (isDocumentMode) {
+      onSelect();
+      return;
+    }
     if (isSelected && !element.isLocked && now - lastTapRef.current < 300) {
       setIsEditing(true);
       lastTapRef.current = 0;
@@ -997,7 +1004,7 @@ export function DraggableText({
         <div
           ref={contentRef}
           data-text-id={element.id}
-          onDoubleClick={(e) => { e.stopPropagation(); if (isSelected && !element.isLocked) setIsEditing(true); }}
+          onDoubleClick={(e) => { e.stopPropagation(); if (isSelected && !element.isLocked && !isDocumentMode) setIsEditing(true); }}
           style={{ ...textStyle, height: 'auto', overflow: 'visible' }}
           dangerouslySetInnerHTML={{ __html: contentToHtml(element.content || 'Add text') }}
         />
@@ -1005,6 +1012,7 @@ export function DraggableText({
 
       {isSelected && !isDragging && (
         <>
+          {!isDocumentMode && (
           <TextToolbar
             elementX={0}
             elementY={0}
@@ -1039,6 +1047,7 @@ export function DraggableText({
             isLocked={element.isLocked}
             onLockToggle={() => onUpdate({ isLocked: !element.isLocked })}
           />
+          )}
 
           {/* Selection border — tied to explicit frame height (Canva-style) */}
           <div
@@ -1049,13 +1058,13 @@ export function DraggableText({
               top: -2,
               width: element.width + 4,
               height: frameHeight + 4,
-              border: '2px solid #000000',
+              border: isDocumentMode ? '2px solid #38bdf8' : '2px solid #000000',
               boxSizing: 'border-box',
             }}
           />
 
-          {/* Resize handles - only show when not locked */}
-          {!element.isLocked && (
+          {/* Resize handles - only show when not locked and not in document mode */}
+          {!element.isLocked && !isDocumentMode && (
             <>
               {/* Corner handles */}
               <ResizeHandleNode cursor="nwse-resize" style={{ left: -8, top: -8 }}
@@ -1129,7 +1138,7 @@ export function DraggableDivider({
   onDragEnd,
   onLongPress,
 }: DraggableDividerProps) {
-  const { zoom } = useCanvas();
+  const { zoom, isDocumentMode } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useDivider();
   const { snap: snapToGuides, endDrag: endGuideDrag } = useRulerSnapping();
   const thickness = element.thickness ?? 2;
@@ -1200,7 +1209,10 @@ export function DraggableDivider({
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (element.isLocked) return;
+    if (element.isLocked || isDocumentMode) {
+      if (isDocumentMode) onSelect();
+      return;
+    }
     onSelect();
     startDragMouse(e, element.x, element.y);
   };
@@ -1210,6 +1222,7 @@ export function DraggableDivider({
     if (element.isLocked || e.touches.length !== 1) return;
     e.stopPropagation();
     onSelect();
+    if (isDocumentMode) return;
     dismissPill();
     const t = e.touches[0];
     startDragTouch(t.clientX, t.clientY, element.x, element.y);
@@ -1471,7 +1484,7 @@ export function DraggableIcon({
   onDragEnd,
   onLongPress,
 }: DraggableIconProps) {
-  const { zoom } = useCanvas();
+  const { zoom, isDocumentMode } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useIcon();
   const { snap: snapToGuides, endDrag: endGuideDrag } = useRulerSnapping();
   const elementWidth = element.width ?? element.size;
@@ -1606,7 +1619,10 @@ export function DraggableIcon({
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (element.isLocked) return;
+    if (element.isLocked || isDocumentMode) {
+      if (isDocumentMode) onSelect();
+      return;
+    }
     onSelect();
     startDragMouse(e, element.x, element.y);
   };
@@ -1620,6 +1636,7 @@ export function DraggableIcon({
     const now = Date.now();
     lastTapRef.current = now;
     onSelect();
+    if (isDocumentMode) return;
     dismissPill();
     const t = e.touches[0];
     startDragTouch(t.clientX, t.clientY, element.x, element.y);

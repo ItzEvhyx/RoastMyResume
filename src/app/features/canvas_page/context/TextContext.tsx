@@ -22,6 +22,11 @@ export interface TextElement {
   listType?: ListType;
   textAlign?: TextAlign;
   textCategory?: 'header' | 'subheader' | 'body' | 'meta' | null;
+  /**
+   * Stable document-mode field key, e.g. `personal.name`, `contact.0`,
+   * `experience.1.bullets`. Used to map form inputs ↔ canvas text.
+   */
+  docField?: string;
   zIndex?: number;
   isLocked?: boolean;
 }

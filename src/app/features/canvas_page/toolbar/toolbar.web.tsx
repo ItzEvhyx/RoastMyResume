@@ -9,6 +9,7 @@ import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 import { exportCanvasToPdf } from '@/app/features/canvas_page/utils/exportToPdf';
 import GooeyTooltip from '@/app/features/canvas_page/components/GooeyTooltip';
 import { useRulerSnapping } from '@/app/features/canvas_page/globals/ruler.snapping';
+import { useDocumentMode } from '@/app/features/canvas_page/document_panel/use.document.mode';
 import { useAuthUser, signOutUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
@@ -49,6 +50,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
   const [isEditing, setIsEditing] = useState(false);
   const { isGrabMode, setIsGrabMode } = useCanvas();
   const { enabled: smartGuidesEnabled, toggle: toggleSmartGuides } = useRulerSnapping();
+  const { isDocumentMode, toggleDocumentMode } = useDocumentMode();
 
   const user = useAuthUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -177,6 +179,55 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
               }}
             >
               <Image src="/assets/tools_icons/grid_icon.png" alt="Toggle smart guides" width={20} height={20} draggable={false} className={`pointer-events-none select-none ${smartGuidesEnabled ? 'opacity-100' : 'opacity-50'}`} />
+            </button>
+          </GooeyTooltip>
+        </div>
+
+        <div style={popStyle(visible, 120)}>
+          <GooeyTooltip
+            label={isDocumentMode ? 'Convert back to editable canvas' : 'Convert to text document'}
+            position="bottom"
+          >
+            <button
+              onClick={toggleDocumentMode}
+              aria-pressed={isDocumentMode}
+              className="pointer-events-auto flex items-center gap-2 rounded-full px-3.5 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+              style={{
+                ...glassStyle,
+                fontFamily: 'var(--font-poppins)',
+                background: isDocumentMode ? 'rgba(56, 189, 248, 0.18)' : glassStyle.background,
+                boxShadow: isDocumentMode
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 1px rgba(56,189,248,0.35), 0 4px 16px rgba(0,0,0,0.35)'
+                  : glassStyle.boxShadow,
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className={isDocumentMode ? 'text-sky-300' : 'text-white/75'}
+                aria-hidden
+              >
+                {isDocumentMode ? (
+                  <>
+                    <rect x="3" y="3" width="7" height="7" rx="1.2" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.2" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.2" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.2" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M6 4h9l3 3v13H6V4z" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M8.5 10h7M8.5 14h7M8.5 18h4" strokeLinecap="round" />
+                  </>
+                )}
+              </svg>
+              <span className={`text-sm font-medium ${isDocumentMode ? 'text-sky-200' : 'text-white/80'}`}>
+                {isDocumentMode ? 'Editable canvas' : 'Text document'}
+              </span>
             </button>
           </GooeyTooltip>
         </div>

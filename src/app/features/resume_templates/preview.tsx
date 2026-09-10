@@ -45,7 +45,7 @@ export function TemplatePreview({
 
   if (!payload) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-[#f4f3ef]">
+      <div className="flex h-full w-full items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-2 text-neutral-300/60">
           <div className="h-8 w-8 rounded border-2 border-dashed border-neutral-300/40" />
           <span className="text-[9px] uppercase tracking-widest">Blank</span>

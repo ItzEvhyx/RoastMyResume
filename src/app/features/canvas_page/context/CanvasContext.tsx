@@ -9,6 +9,9 @@ interface CanvasContextType {
   setPan: (pan: { x: number; y: number }) => void;
   isGrabMode: boolean;
   setIsGrabMode: (mode: boolean) => void;
+  /** Form-driven editing mode — locks drag, hides tool sidebar, shows document panel. */
+  isDocumentMode: boolean;
+  setIsDocumentMode: (mode: boolean) => void;
   resetView: () => void;
 }
 
@@ -18,6 +21,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   const [zoom, setZoom] = useState(0.8);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isGrabMode, setIsGrabMode] = useState(false);
+  const [isDocumentMode, setIsDocumentMode] = useState(false);
 
   const resetView = () => {
     setZoom(0.8);
@@ -33,6 +37,8 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
         setPan,
         isGrabMode,
         setIsGrabMode,
+        isDocumentMode,
+        setIsDocumentMode,
         resetView,
       }}
     >

@@ -43,6 +43,8 @@ import { useCanvasPersistence } from '@/app/features/canvas_page/hooks/use.canva
 import { useLeaveCanvasGuard } from '@/app/features/canvas_page/hooks/use.leave.canvas.guard';
 import LeaveCanvasModal from '@/app/features/canvas_page/globals/leave.canvas.modal';
 import AuthModal from '@/app/features/auth_modals/auth.modal';
+import DocumentInputs from '@/app/features/canvas_page/document_panel/document.inputs';
+import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 
 // Component that handles canvas persistence
 function CanvasPersistenceManager() {
@@ -163,67 +165,19 @@ export default function CanvasPage() {
             <CanvasPersistenceManager />
             
             <main className="relative h-[100dvh] min-h-0 w-full overflow-hidden bg-[#0e1015]">
-
-              {/* Tool sidebar — appears at stage 3, expands at stage 4 */}
-              {isMobile === undefined ? null : isMobile
-                ? <ToolSidebarMobile stage={stage} />
-                : <ToolSidebarWeb stage={stage} />}
-
-              {isMobile && <MobilePanelDismissal />}
-
-              {/* Font Selector — appears when text is selected (desktop only) */}
-              {!isMobile && <FontSelector />}
-
-              {/* Tool panels position themselves beside the desktop toolbar or
-                  directly above the mobile toolbar. */}
-              <IconPicker />
-
-              <ShapesTools />
-
-              <LayersPanel />
-
-              <ImageTools />
-
-              <PenToolsWrapper />
-
-              {/* Container group toolbar — floats above selection when committed */}
-              <ContainerGroupToolbar />
-
-              {/* Assistant Panel — appears at stage 2 */}
-              {isMobile === undefined ? null : isMobile
-                ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} onSignUp={handleOpenSignUp} />
-                : <AssistPanelWeb stage={stage} onSignUp={handleOpenSignUp} />}
-
-              {/* Canvas — fades + drifts up at stage 1 */}
-              <div
-                style={{
-                  opacity: stage >= 1 ? 1 : 0,
-                  // `translateY(0)` still creates a containing block for
-                  // fixed descendants. Clear it once the entrance finishes.
-                  transform: stage >= 1 ? 'none' : 'translateY(18px)',
-                  transition: 'opacity 0.55s ease-out, transform 0.55s ease-out',
-                }}
-              >
-                <StitchCanvasBackground>
-                  {isMobile === undefined ? null : isMobile ? <CanvasMobile /> : <CanvasWeb />}
-                </StitchCanvasBackground>
-              </div>
-
-              {/* Toolbar — pops in at stage 2 */}
-              {isMobile === undefined ? null : isMobile
-                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} onBackClick={requestLeave} />
-                : <ToolbarWeb stage={stage} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} onBackClick={requestLeave} />}
-
-              {/* Auth Modal */}
-              <AuthModal
-                isOpen={isAuthModalOpen}
-                initialMode={authModalMode}
-                onClose={() => setIsAuthModalOpen(false)}
-                onAuthSuccess={handleAuthSuccess}
-              />
-
-              <LeaveCanvasModal
-                isOpen={isLeaveModalOpen}
+              <DocumentModeChrome
+                stage={stage}
+                isMobile={isMobile}
+                mobileAssistOpen={mobileAssistOpen}
+                setMobileAssistOpen={setMobileAssistOpen}
+                handleOpenSignIn={handleOpenSignIn}
+                handleOpenSignUp={handleOpenSignUp}
+                handleAuthSuccess={handleAuthSuccess}
+                requestLeave={requestLeave}
+                isAuthModalOpen={isAuthModalOpen}
+                authModalMode={authModalMode}
+                setIsAuthModalOpen={setIsAuthModalOpen}
+                isLeaveModalOpen={isLeaveModalOpen}
                 onStay={onStay}
                 onLeave={onLeave}
               />
@@ -277,6 +231,122 @@ function PenToolsWrapper() {
       isLocked={selectedStroke?.isLocked}
       onLockToggle={selectedStroke ? () => updateStroke(selectedStroke.id, { isLocked: !selectedStroke.isLocked }) : undefined}
     />
+  );
+}
+
+/** Chrome that respects document mode (hides tools, shows form panel on desktop). */
+function DocumentModeChrome({
+  stage,
+  isMobile,
+  mobileAssistOpen,
+  setMobileAssistOpen,
+  handleOpenSignIn,
+  handleOpenSignUp,
+  handleAuthSuccess,
+  requestLeave,
+  isAuthModalOpen,
+  authModalMode,
+  setIsAuthModalOpen,
+  isLeaveModalOpen,
+  onStay,
+  onLeave,
+}: {
+  stage: number;
+  isMobile: boolean | undefined;
+  mobileAssistOpen: boolean;
+  setMobileAssistOpen: Dispatch<SetStateAction<boolean>>;
+  handleOpenSignIn: () => void;
+  handleOpenSignUp: () => void;
+  handleAuthSuccess: () => void;
+  requestLeave: () => void;
+  isAuthModalOpen: boolean;
+  authModalMode: 'signin' | 'signup';
+  setIsAuthModalOpen: (open: boolean) => void;
+  isLeaveModalOpen: boolean;
+  onStay: () => void;
+  onLeave: () => void;
+}) {
+  const { isDocumentMode } = useCanvas();
+  const toolsHidden = Boolean(isDocumentMode && isMobile === false);
+
+  return (
+    <>
+      {/* Tool chrome — hidden (not overlapping) while document panel is active */}
+      {isMobile === undefined ? null : isMobile ? (
+        <ToolSidebarMobile stage={stage} />
+      ) : (
+        <div
+          className={
+            toolsHidden
+              ? 'pointer-events-none hidden'
+              : 'contents'
+          }
+          aria-hidden={toolsHidden}
+        >
+          <ToolSidebarWeb stage={stage} />
+        </div>
+      )}
+
+      {isMobile && !isDocumentMode && <MobilePanelDismissal />}
+
+      {!isMobile && (
+        <div
+          className={toolsHidden ? 'pointer-events-none hidden' : 'contents'}
+          aria-hidden={toolsHidden}
+        >
+          <FontSelector />
+        </div>
+      )}
+
+      <div
+        className={toolsHidden ? 'pointer-events-none hidden' : 'contents'}
+        aria-hidden={toolsHidden}
+      >
+        <IconPicker />
+        <ShapesTools />
+        <LayersPanel />
+        <ImageTools />
+        <PenToolsWrapper />
+        <ContainerGroupToolbar />
+      </div>
+
+      {/* Document form panel — desktop only; self-hides when inactive */}
+      {!isMobile && <DocumentInputs />}
+
+      {/* Assistant Panel — always available */}
+      {isMobile === undefined ? null : isMobile
+        ? <AssistPanelMobile stage={stage} isOpen={mobileAssistOpen} onSignUp={handleOpenSignUp} />
+        : <AssistPanelWeb stage={stage} onSignUp={handleOpenSignUp} />}
+
+      <div
+        style={{
+          opacity: stage >= 1 ? 1 : 0,
+          transform: stage >= 1 ? 'none' : 'translateY(18px)',
+          transition: 'opacity 0.55s ease-out, transform 0.55s ease-out',
+        }}
+      >
+        <StitchCanvasBackground>
+          {isMobile === undefined ? null : isMobile ? <CanvasMobile /> : <CanvasWeb />}
+        </StitchCanvasBackground>
+      </div>
+
+      {isMobile === undefined ? null : isMobile
+        ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} onBackClick={requestLeave} />
+        : <ToolbarWeb stage={stage} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} onBackClick={requestLeave} />}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
+
+      <LeaveCanvasModal
+        isOpen={isLeaveModalOpen}
+        onStay={onStay}
+        onLeave={onLeave}
+      />
+    </>
   );
 }
 
