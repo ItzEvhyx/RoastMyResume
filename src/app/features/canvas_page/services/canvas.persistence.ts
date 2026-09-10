@@ -13,6 +13,7 @@ import type { IconElement } from '../context/IconContext';
 import type { DividerElement } from '../context/DividerContext';
 import type { PenStroke } from '../context/PenContext';
 import type { GroupElement } from '../context/GroupContext';
+import { clearDeniseState } from './denise.persistence';
 
 const STORAGE_KEY = 'roastmyresume_canvas_state';
 const VERSION = 1; // Increment this if the data structure changes
@@ -175,6 +176,8 @@ export function clearCanvasState() {
   } catch (error) {
     console.error('Failed to clear canvas state:', error);
   }
+  // Denise chat + analysis belong to this document — wipe with scratch start
+  clearDeniseState();
 }
 
 /**

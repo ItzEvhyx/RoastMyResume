@@ -373,9 +373,11 @@ export default function AssistPanelWeb({
                 /* Show sign-in message for all tabs when not signed in */
                 <DeniseSignInMsgWeb onSignUp={handleSignUp} />
               ) : (
-                /* Show actual content when signed in */
+                /* Keep Ask Denise mounted so chat state isn't wiped on tab switch */
                 <>
-                  {activeTab === 0 && <AskDenise />}
+                  <div className={activeTab === 0 ? 'h-full' : 'hidden'}>
+                    <AskDenise />
+                  </div>
                   {activeTab === 1 && <JobMatch />}
                   {activeTab === 2 && <ATSCheck />}
                   {activeTab === 3 && <Layouts />}

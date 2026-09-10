@@ -28,9 +28,10 @@ interface ToolbarMobileProps {
   onAssistToggle?: (isOpen: boolean) => void;
   onSignInClick?: () => void;
   onSignOutClick?: () => void;
+  onBackClick?: () => void;
 }
 
-export default function ToolbarMobile({ stage, onAssistToggle, onSignInClick, onSignOutClick }: ToolbarMobileProps) {
+export default function ToolbarMobile({ stage, onAssistToggle, onSignInClick, onSignOutClick, onBackClick }: ToolbarMobileProps) {
   const router = useRouter();
   const [assistOpen, setAssistOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -53,7 +54,7 @@ export default function ToolbarMobile({ stage, onAssistToggle, onSignInClick, on
       {/* Left — Back only on mobile */}
       <div style={popStyle(visible, 0)}>
         <button
-          onClick={() => router.back()}
+          onClick={() => (onBackClick ? onBackClick() : router.back())}
           className="pointer-events-auto flex items-center gap-2 rounded-full px-3.5 py-2 transition-all duration-200 active:scale-95"
           style={glassStyle}
         >

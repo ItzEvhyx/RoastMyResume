@@ -4,12 +4,19 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { useText } from './TextContext';
+import {
+  loadDeniseState,
+  patchDeniseState,
+} from '../services/denise.persistence';
 
 export type DeniseSeverity = 'weak' | 'vague' | 'improve';
+export type DenisePhase = 'interview' | 'fixes';
 
 export interface DeniseHighlight {
   elementId: string;
@@ -27,6 +34,8 @@ interface DeniseAnalysisContextType {
   isAnalyzing: boolean;
   highlights: DeniseHighlight[];
   fixes: DeniseFix[];
+  /** Help-me: interview = gathering details; fixes = Apply ready. */
+  phase: DenisePhase;
   applied: boolean;
   showingAfter: boolean;
   /** Element ids Denise already rewrote — still match her suggested text. */
@@ -39,6 +48,7 @@ interface DeniseAnalysisContextType {
   setAnalysisResult: (result: {
     highlights: DeniseHighlight[];
     fixes: DeniseFix[];
+    phase?: DenisePhase;
   }) => void;
   /** Roast mode: update canvas highlights without wiping Help-me fixes / apply state. */
   setHighlightsOnly: (highlights: DeniseHighlight[]) => void;
@@ -61,10 +71,12 @@ export function isDeniseSeverity(value: unknown): value is DeniseSeverity {
 export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
   const { textElements, updateElement, startUpdateBatch, endUpdateBatch } = useText();
 
+  const hydratedRef = useRef(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [highlights, setHighlights] = useState<DeniseHighlight[]>([]);
   const [fixes, setFixes] = useState<DeniseFix[]>([]);
+  const [phase, setPhase] = useState<DenisePhase>('interview');
   const [applied, setApplied] = useState(false);
   const [showingAfter, setShowingAfter] = useState(false);
   const [checkpoint, setCheckpoint] = useState<Record<string, string>>({});
@@ -72,9 +84,56 @@ export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
     {},
   );
 
+  // Restore analysis after refresh (same lifetime as canvas document)
+  useEffect(() => {
+    const saved = loadDeniseState();
+    if (saved?.analysis) {
+      setHighlights(saved.analysis.highlights);
+      setFixes(saved.analysis.fixes);
+      setPhase(saved.analysis.phase);
+      setApplied(saved.analysis.applied);
+      setShowingAfter(saved.analysis.showingAfter);
+      setCheckpoint(saved.analysis.checkpoint);
+      setBulletproofById(saved.analysis.bulletproofById);
+    }
+    // Allow saves on next tick so hydrate doesn't immediately rewrite storage
+    const unlock = setTimeout(() => {
+      hydratedRef.current = true;
+    }, 0);
+    return () => clearTimeout(unlock);
+  }, []);
+
+  // Persist analysis whenever it changes
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (isScanning || isAnalyzing) return; // avoid mid-request churn
+    patchDeniseState({
+      analysis: {
+        highlights,
+        fixes,
+        phase,
+        applied,
+        showingAfter,
+        checkpoint,
+        bulletproofById,
+      },
+    });
+  }, [
+    highlights,
+    fixes,
+    phase,
+    applied,
+    showingAfter,
+    checkpoint,
+    bulletproofById,
+    isScanning,
+    isAnalyzing,
+  ]);
+
   const clearAnalysis = useCallback(() => {
     setHighlights([]);
     setFixes([]);
+    setPhase('interview');
     setApplied(false);
     setShowingAfter(false);
     setCheckpoint({});
@@ -88,6 +147,7 @@ export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
     setHighlights([]);
     if (clearFixes) {
       setFixes([]);
+      setPhase('interview');
       setApplied(false);
       setShowingAfter(false);
       setCheckpoint({});
@@ -111,10 +171,18 @@ export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
   );
 
   const setAnalysisResult = useCallback(
-    (result: { highlights: DeniseHighlight[]; fixes: DeniseFix[] }) => {
-      // Drop any highlights/fixes that target Denise-approved text still on canvas
+    (result: {
+      highlights: DeniseHighlight[];
+      fixes: DeniseFix[];
+      phase?: DenisePhase;
+    }) => {
+      const nextPhase = result.phase ?? (result.fixes.length > 0 ? 'fixes' : 'interview');
+      const nextFixes =
+        nextPhase === 'interview' ? [] : filterAgainstBulletproof(result.fixes);
+
       setHighlights(filterAgainstBulletproof(result.highlights));
-      setFixes(filterAgainstBulletproof(result.fixes));
+      setFixes(nextFixes);
+      setPhase(nextPhase === 'fixes' && nextFixes.length === 0 ? 'interview' : nextPhase);
       setApplied(false);
       setShowingAfter(false);
       setCheckpoint({});
@@ -221,6 +289,7 @@ export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
         isAnalyzing,
         highlights,
         fixes,
+        phase,
         applied,
         showingAfter,
         bulletproofById,

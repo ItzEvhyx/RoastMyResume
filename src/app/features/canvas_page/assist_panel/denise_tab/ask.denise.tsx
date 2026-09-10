@@ -8,6 +8,16 @@ import ReactMarkdown from 'react-markdown';
 import { useCanvasSnapshot } from '../../hooks/use.canvas.snapshot';
 import { useDeniseAnalysis } from '../../context/DeniseAnalysisContext';
 import { normalizeDeniseMarkdown } from '../../utils/denise.markdown';
+import {
+  loadDeniseState,
+  patchDeniseState,
+  type DeniseChatMode,
+  type DeniseChatMessage,
+} from '../../services/denise.persistence';
+import { useSpeechToText } from '../../hooks/use.speech.to.text';
+import { useDeniseVoice } from '../../hooks/use.denise.voice';
+import VoiceTranscribeModal from './voice.transcribe.modal';
+import { VolumeX, Trash2 } from 'lucide-react';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -47,6 +57,24 @@ const PLACEHOLDER_TEXTS = [
 interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+function loadInitialChat(): {
+  mode: DeniseChatMode;
+  threads: Record<DeniseChatMode, ConversationMessage[]>;
+} {
+  if (typeof window === 'undefined') {
+    return { mode: 'roast', threads: { roast: [], help: [] } };
+  }
+  const saved = loadDeniseState();
+  if (!saved) return { mode: 'roast', threads: { roast: [], help: [] } };
+  return {
+    mode: saved.mode,
+    threads: {
+      roast: saved.threads.roast as ConversationMessage[],
+      help: saved.threads.help as ConversationMessage[],
+    },
+  };
 }
 
 interface AskDeniseProps {
@@ -172,22 +200,118 @@ function ShimmerWave({ text }: { text: string }) {
   );
 }
 
+/** First-look / canvas scan — roast or fresh help review. */
+const SCAN_THOUGHTS = [
+  'Denise is reading your resume…',
+  'Denise is gathering her thoughts…',
+  'Denise is making her judgements…',
+  'Denise is lining up what to ask next…',
+];
+
+/** Help-me follow-up after the user answers an interview question. */
+const NOTE_THOUGHTS = [
+  'Denise is taking note of your answer…',
+  'Denise is connecting that to your bullets…',
+  'Denise is deciding what to ask next…',
+  'Denise is checking what details are still missing…',
+];
+
+/** Roast-mode loading colour. */
+const ROAST_THOUGHTS = [
+  'Denise is scanning your resume…',
+  'Reading your resume and sharpening the knives…',
+  'Denise is circling the fluff…',
+  'Denise is preparing the roast…',
+];
+
+type ThinkingKind = 'scan' | 'notes' | 'roast';
+
+function thoughtsFor(kind: ThinkingKind): string[] {
+  if (kind === 'notes') return NOTE_THOUGHTS;
+  if (kind === 'roast') return ROAST_THOUGHTS;
+  return SCAN_THOUGHTS;
+}
+
+/**
+ * Rotating “thought process” status while Denise works.
+ * Crossfades copy so it feels like distinct moments, not one frozen line.
+ */
+function DeniseThinkingStatus({ kind }: { kind: ThinkingKind }) {
+  const thoughts = thoughtsFor(kind);
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    setIndex(0);
+    setVisible(true);
+  }, [kind]);
+
+  useEffect(() => {
+    const lines = thoughtsFor(kind);
+    if (lines.length <= 1) return;
+
+    let fadeTimeout: ReturnType<typeof setTimeout> | null = null;
+    const id = setInterval(() => {
+      setVisible(false);
+      fadeTimeout = setTimeout(() => {
+        setIndex((i) => (i + 1) % lines.length);
+        setVisible(true);
+      }, 220);
+    }, 1600);
+
+    return () => {
+      clearInterval(id);
+      if (fadeTimeout) clearTimeout(fadeTimeout);
+    };
+  }, [kind]);
+
+  return (
+    <div
+      className="rounded-2xl px-3.5 py-2.5 transition-opacity duration-200"
+      style={{
+        background: 'rgba(255, 255, 255, 0.04)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        opacity: visible ? 1 : 0,
+      }}
+    >
+      <ShimmerWave text={thoughts[index] ?? thoughts[0]} />
+    </div>
+  );
+}
+
 const actionBtnBase =
   'w-full flex items-center justify-center gap-2 px-5 py-2 rounded-full transition-all duration-200 hover:brightness-110 active:scale-[0.98]';
 
 export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
-  const [mode, setMode] = useState<'roast' | 'help'>('roast');
+  const initial = useRef(loadInitialChat()).current;
+  const [mode, setMode] = useState<DeniseChatMode>(initial.mode);
   const [inputValue, setInputValue] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   /** Separate threads so switching modes swaps conversations, not deletes them. */
-  const [threads, setThreads] = useState<Record<'roast' | 'help', ConversationMessage[]>>({
-    roast: [],
-    help: [],
-  });
+  const [threads, setThreads] = useState<Record<DeniseChatMode, ConversationMessage[]>>(
+    initial.threads,
+  );
   const [isLoading, setIsLoading] = useState(false);
+  /** Which thought-process copy to rotate while waiting. */
+  const [thinkingKind, setThinkingKind] = useState<ThinkingKind>('scan');
+  const [micPop, setMicPop] = useState(false);
   const responseEndRef = useRef<HTMLDivElement>(null);
+  const readyToPersistRef = useRef(false);
 
   const messages = threads[mode];
+
+  // Persist chat across refresh; cleared only with Start from Scratch
+  useEffect(() => {
+    readyToPersistRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!readyToPersistRef.current) return;
+    patchDeniseState({
+      mode,
+      threads: threads as Record<DeniseChatMode, DeniseChatMessage[]>,
+    });
+  }, [mode, threads]);
 
   const canvasSnapshot = useCanvasSnapshot();
   const {
@@ -200,6 +324,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     toggleBeforeAfter,
     abandonFixes,
     fixes,
+    phase,
     applied,
     showingAfter,
     isScanning,
@@ -207,18 +332,51 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     bulletproofById,
   } = useDeniseAnalysis();
 
-  // Apply / abandon only belong to Help me — Roast is critique-only.
-  const showActionButtons = mode === 'help' && fixes.length > 0 && !isLoading;
+  const {
+    speak: speakDenise,
+    pushPcm: pushDenisePcm,
+    beginStreamSpeak,
+    stop: stopDeniseVoice,
+    isSpeaking: isDeniseSpeaking,
+    error: deniseVoiceError,
+    noteVoiceError,
+  } = useDeniseVoice();
+
+  // Apply only after Help-me interview finishes and concrete fixes land.
+  const showActionButtons =
+    mode === 'help' && phase === 'fixes' && fixes.length > 0 && !isLoading;
   const waitingForDenise = isLoading || isScanning || isAnalyzing;
+  const lastMessage = messages[messages.length - 1];
+  const showThinkingStatus =
+    waitingForDenise &&
+    !(lastMessage?.role === 'assistant' && lastMessage.content.trim());
 
   const handleModeChange = useCallback(
     (next: 'roast' | 'help') => {
       if (next === mode || waitingForDenise) return;
       // Keep highlights + Help-me fix/apply state across mode switches.
+      stopDeniseVoice();
       setMode(next);
     },
-    [mode, waitingForDenise],
+    [mode, waitingForDenise, stopDeniseVoice],
   );
+
+  const handleClearChat = useCallback(() => {
+    if (waitingForDenise) return;
+    stopDeniseVoice();
+    setThreads({ roast: [], help: [] });
+    setInputValue('');
+    // Reset canvas analysis tied to the cleared conversation
+    setHighlightsOnly([]);
+    setAnalysisResult({ highlights: [], fixes: [], phase: 'interview' });
+    abandonFixes();
+  }, [
+    waitingForDenise,
+    stopDeniseVoice,
+    setHighlightsOnly,
+    setAnalysisResult,
+    abandonFixes,
+  ]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -229,23 +387,39 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
 
   useEffect(() => {
     responseEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading, isScanning, isAnalyzing, mode]);
+  }, [messages, isLoading, isScanning, isAnalyzing, mode, thinkingKind]);
 
-  const handleSend = useCallback(async () => {
-    const trimmed = inputValue.trim();
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const trimmed = (typeof overrideText === 'string' ? overrideText : inputValue).trim();
     if (!trimmed || isLoading) return;
+
+    stopDeniseVoice();
 
     const userMessage: ConversationMessage = { role: 'user', content: trimmed };
     const updatedMessages = [...messages, userMessage];
+    // Follow-up answers in Help me: Denise already scanned — don't rescan the canvas.
+    const isHelpFollowUp =
+      mode === 'help' && messages.some((m) => m.role === 'assistant');
+
     setThreads((prev) => ({ ...prev, [mode]: updatedMessages }));
     setInputValue('');
     setIsLoading(true);
     setIsAnalyzing(true);
-    // Roast is critique-only — don't wipe pending Help-me fixes while scanning.
-    beginScan({ clearFixes: mode === 'help' });
+
+    if (isHelpFollowUp) {
+      setThinkingKind('notes');
+    } else if (mode === 'roast') {
+      setThinkingKind('roast');
+      beginScan({ clearFixes: false });
+    } else {
+      setThinkingKind('scan');
+      beginScan({ clearFixes: true });
+    }
 
     try {
-      const res = await fetch('/api/denise', {
+      beginStreamSpeak();
+
+      const res = await fetch('/api/denise/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -255,78 +429,173 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
           approvedElements: bulletproofById,
         }),
       });
-      const data = await res.json();
 
-      completeScan();
-
-      if (!res.ok) {
-        console.error('[AskDenise] API error:', data.error);
-        setThreads((prev) => ({
-          ...prev,
-          [mode]: [
-            ...prev[mode],
-            {
-              role: 'assistant',
-              content: 'Denise is unavailable right now. Try again in a moment.',
-            },
-          ],
-        }));
-        if (mode === 'roast') {
-          setHighlightsOnly([]);
-        } else {
-          setAnalysisResult({ highlights: [], fixes: [] });
-        }
-        return;
+      if (!res.ok || !res.body) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || 'Denise is unavailable right now.');
       }
 
-      const assistantContent =
-        typeof data.content === 'string' && data.content.trim()
-          ? data.content
-          : 'I reviewed your resume, but my notes got scrambled. Try again.';
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let sawDone = false;
+      let finalContent = '';
+      let releasedScan = false;
 
-      const safeContent =
-        assistantContent.trimStart().startsWith('{') &&
-        assistantContent.includes('"highlights"')
-          ? 'I reviewed your resume, but my notes got scrambled. Send that again and I’ll take another pass.'
-          : assistantContent;
+      const releaseScanEarly = () => {
+        if (releasedScan) return;
+        releasedScan = true;
+        completeScan();
+        setIsAnalyzing(false);
+      };
 
-      setThreads((prev) => ({
-        ...prev,
-        [mode]: [...prev[mode], { role: 'assistant', content: safeContent }],
-      }));
+      const upsertAssistant = (content: string) => {
+        setThreads((prev) => {
+          const thread = [...prev[mode]];
+          const last = thread[thread.length - 1];
+          if (last?.role === 'assistant') {
+            thread[thread.length - 1] = { role: 'assistant', content };
+          } else {
+            thread.push({ role: 'assistant', content });
+          }
+          return { ...prev, [mode]: thread };
+        });
+      };
 
-      if (data.outOfScope) {
-        if (mode === 'roast') {
-          setHighlightsOnly([]);
-        } else {
-          setAnalysisResult({ highlights: [], fixes: [] });
+      const applyAnalysis = (data: {
+        outOfScope?: boolean;
+        phase?: string;
+        highlights?: unknown;
+        fixes?: unknown;
+      }) => {
+        if (data.outOfScope) {
+          if (mode === 'roast') setHighlightsOnly([]);
+          else setAnalysisResult({ highlights: [], fixes: [], phase: 'interview' });
+          return;
         }
-      } else if (mode === 'roast') {
-        // Roast: surface weak points only — never touch Help-me fixes / apply UI.
-        setHighlightsOnly(Array.isArray(data.highlights) ? data.highlights : []);
-      } else {
+        if (mode === 'roast') {
+          setHighlightsOnly(Array.isArray(data.highlights) ? data.highlights : []);
+          return;
+        }
+        const nextPhase =
+          data.phase === 'fixes' || data.phase === 'interview'
+            ? data.phase
+            : Array.isArray(data.fixes) && data.fixes.length > 0
+              ? 'fixes'
+              : 'interview';
         setAnalysisResult({
           highlights: Array.isArray(data.highlights) ? data.highlights : [],
           fixes: Array.isArray(data.fixes) ? data.fixes : [],
+          phase: nextPhase,
         });
+      };
+
+      const handleEvent = (payload: {
+        type?: string;
+        content?: string;
+        pcm?: string;
+        sampleRate?: number;
+        error?: string;
+        result?: {
+          content?: string;
+          outOfScope?: boolean;
+          phase?: string;
+          highlights?: unknown;
+          fixes?: unknown;
+        };
+      }) => {
+        if (payload.type === 'text' && typeof payload.content === 'string') {
+          finalContent = payload.content;
+          if (payload.content.trim()) releaseScanEarly();
+          upsertAssistant(payload.content);
+          return;
+        }
+
+        if (
+          payload.type === 'audio' &&
+          typeof payload.pcm === 'string' &&
+          typeof payload.sampleRate === 'number'
+        ) {
+          releaseScanEarly();
+          pushDenisePcm(payload.pcm, payload.sampleRate);
+          return;
+        }
+
+        if (payload.type === 'voice_error' && payload.error) {
+          noteVoiceError(payload.error);
+          return;
+        }
+
+        if (payload.type === 'done' && payload.result) {
+          sawDone = true;
+          completeScan();
+          const safeContent =
+            typeof payload.result.content === 'string' && payload.result.content.trim()
+              ? payload.result.content
+              : finalContent ||
+                'I reviewed your resume, but my notes got scrambled. Try again.';
+          finalContent = safeContent;
+          upsertAssistant(safeContent);
+          applyAnalysis(payload.result);
+          return;
+        }
+
+        if (payload.type === 'error') {
+          throw new Error(payload.error || 'Denise is unavailable right now.');
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() ?? '';
+        for (const part of parts) {
+          const line = part
+            .split('\n')
+            .map((l) => l.trim())
+            .find((l) => l.startsWith('data:'));
+          if (!line) continue;
+          const json = line.slice(5).trim();
+          if (!json) continue;
+          try {
+            handleEvent(JSON.parse(json) as Parameters<typeof handleEvent>[0]);
+          } catch (err) {
+            console.error('[AskDenise] Bad SSE chunk:', err);
+          }
+        }
+      }
+
+      if (!sawDone) {
+        completeScan();
+        if (!finalContent.trim()) {
+          throw new Error('Denise is unavailable right now.');
+        }
       }
     } catch (err) {
       console.error('[AskDenise] Request failed:', err);
       completeScan();
-      setThreads((prev) => ({
-        ...prev,
-        [mode]: [
-          ...prev[mode],
-          {
-            role: 'assistant',
-            content: 'Something went wrong reaching Denise. Please try again.',
-          },
-        ],
-      }));
+      stopDeniseVoice();
+      const errContent =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Something went wrong reaching Denise. Please try again.';
+      setThreads((prev) => {
+        const thread = [...prev[mode]];
+        const last = thread[thread.length - 1];
+        if (last?.role === 'assistant' && !last.content.trim()) {
+          thread[thread.length - 1] = { role: 'assistant', content: errContent };
+        } else if (last?.role !== 'assistant' || last.content !== errContent) {
+          thread.push({ role: 'assistant', content: errContent });
+        }
+        return { ...prev, [mode]: thread };
+      });
+      void speakDenise(errContent, mode, mode === 'help' ? phase : null);
       if (mode === 'roast') {
         setHighlightsOnly([]);
       } else {
-        setAnalysisResult({ highlights: [], fixes: [] });
+        setAnalysisResult({ highlights: [], fixes: [], phase: 'interview' });
       }
     } finally {
       setIsLoading(false);
@@ -337,6 +606,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     isLoading,
     messages,
     mode,
+    phase,
     canvasSnapshot,
     bulletproofById,
     beginScan,
@@ -344,17 +614,84 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     setIsAnalyzing,
     setAnalysisResult,
     setHighlightsOnly,
+    speakDenise,
+    stopDeniseVoice,
+    beginStreamSpeak,
+    pushDenisePcm,
+    noteVoiceError,
   ]);
+
+  const {
+    isSupported: voiceSupported,
+    isListening,
+    isTranscribing,
+    error: voiceError,
+    clearError: clearVoiceError,
+    start: startVoice,
+    stop: stopVoice,
+    finish: finishVoice,
+  } = useSpeechToText({
+    onTranscript: (fullText) => setInputValue(fullText),
+  });
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      if (isListening || isTranscribing) return;
       handleSend();
     }
   };
 
+  const inputValueRef = useRef(inputValue);
+  inputValueRef.current = inputValue;
+  /** Text that was already in the box when recording started (kept on Retake). */
+  const voicePrefixRef = useRef('');
+
+  const handleMicClick = async () => {
+    if (waitingForDenise || isListening || isTranscribing) return;
+    stopDeniseVoice();
+    clearVoiceError();
+    setMicPop(true);
+    window.setTimeout(() => setMicPop(false), 320);
+    voicePrefixRef.current = inputValueRef.current.trim();
+    await startVoice(voicePrefixRef.current);
+  };
+
+  /** Stop recording, finalize transcript, then send to Denise. */
+  const handleVoiceDone = async () => {
+    if (isTranscribing) return;
+    const text = await finishVoice();
+    if (text) void handleSend(text);
+  };
+
+  /** Discard current take and start a fresh recording. */
+  const handleVoiceRetake = async () => {
+    if (waitingForDenise || isTranscribing) return;
+    clearVoiceError();
+    setInputValue(voicePrefixRef.current);
+    setMicPop(true);
+    window.setTimeout(() => setMicPop(false), 320);
+    // start() tears down the active session first
+    await startVoice(voicePrefixRef.current);
+  };
+
+  // Don't keep the mic open while Denise is thinking
+  useEffect(() => {
+    if (waitingForDenise && isListening) stopVoice();
+  }, [waitingForDenise, isListening, stopVoice]);
+
   return (
-    <div className={`flex h-full min-h-0 flex-col ${poppins.variable} ${futuraDisplay.variable}`}>
+    <div
+      className={`relative flex h-full min-h-0 flex-col ${poppins.variable} ${futuraDisplay.variable}`}
+    >
+      <VoiceTranscribeModal
+        isOpen={isListening || isTranscribing}
+        onCancel={() => {
+          stopVoice();
+          clearVoiceError();
+        }}
+      />
+
       {/* Header: larger Denise + text, toggles under HR */}
       <div className="relative flex flex-shrink-0 items-end gap-3 px-5 pt-3 pb-3">
         <div className="relative flex-shrink-0" style={{ width: 150, height: 175 }}>
@@ -365,6 +702,19 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             className="object-contain object-bottom"
             priority
           />
+          {isDeniseSpeaking && (
+            <button
+              type="button"
+              onClick={stopDeniseVoice}
+              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-black/45 transition-colors hover:bg-black/55"
+              aria-label="Stop Denise’s voice"
+              title="Mute Denise"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white shadow-lg ring-1 ring-white/25">
+                <VolumeX size={22} strokeWidth={2.25} />
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col justify-end pb-1">
@@ -391,51 +741,67 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             -Human Resources-
           </p>
 
-          {/* Mode toggle — directly under HR label */}
-          <div
-            className="relative inline-flex w-fit items-center self-start rounded-full p-1"
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-            }}
-          >
+          {/* Mode toggle + clear chat */}
+          <div className="flex items-center gap-2 self-start">
             <div
-              className="absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out"
+              className="relative inline-flex w-fit items-center rounded-full p-1"
               style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                left: mode === 'roast' ? '4px' : 'calc(50% - 4px)',
-                width: 'calc(50% - 4px)',
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => handleModeChange('roast')}
-              disabled={waitingForDenise}
-              className={`relative z-10 rounded-full px-6 py-1 transition-colors duration-200 ${
-                mode === 'roast' ? 'text-white' : 'text-white/50'
-              }`}
-              style={{
-                fontFamily: 'var(--font-poppins)',
-                fontWeight: 600,
-                fontSize: '0.8125rem',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             >
-              Roast
-            </button>
+              <div
+                className="absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  left: mode === 'roast' ? '4px' : 'calc(50% - 4px)',
+                  width: 'calc(50% - 4px)',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => handleModeChange('roast')}
+                disabled={waitingForDenise}
+                className={`relative z-10 rounded-full px-6 py-1 transition-colors duration-200 ${
+                  mode === 'roast' ? 'text-white' : 'text-white/50'
+                }`}
+                style={{
+                  fontFamily: 'var(--font-poppins)',
+                  fontWeight: 600,
+                  fontSize: '0.8125rem',
+                }}
+              >
+                Roast
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('help')}
+                disabled={waitingForDenise}
+                className={`relative z-10 rounded-full px-6 py-1 transition-colors duration-200 ${
+                  mode === 'help' ? 'text-white' : 'text-white/50'
+                }`}
+                style={{
+                  fontFamily: 'var(--font-poppins)',
+                  fontWeight: 600,
+                  fontSize: '0.8125rem',
+                }}
+              >
+                Help me
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={() => handleModeChange('help')}
-              disabled={waitingForDenise}
-              className={`relative z-10 rounded-full px-6 py-1 transition-colors duration-200 ${
-                mode === 'help' ? 'text-white' : 'text-white/50'
-              }`}
-              style={{
-                fontFamily: 'var(--font-poppins)',
-                fontWeight: 600,
-                fontSize: '0.8125rem',
-              }}
+              onClick={handleClearChat}
+              disabled={
+                waitingForDenise ||
+                (threads.roast.length === 0 && threads.help.length === 0)
+              }
+              title="Clear chat with Denise"
+              aria-label="Clear chat with Denise"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[#ef4444] transition-all duration-200 hover:bg-red-500/15 hover:text-[#f87171] active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
             >
-              Help me
+              <Trash2 size={17} fill="currentColor" strokeWidth={0} />
             </button>
           </div>
         </div>
@@ -463,19 +829,11 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
           ),
         )}
 
-        {waitingForDenise && (
-          <ShimmerWave
-            text={
-              isScanning
-                ? 'Denise is scanning your resume…'
-                : 'Reading your resume and sharpening the knives…'
-            }
-          />
-        )}
+        {showThinkingStatus && <DeniseThinkingStatus kind={thinkingKind} />}
         <div ref={responseEndRef} />
       </div>
 
-      {/* Compact action buttons — Help me only; before/after only after Apply */}
+      {/* Compact action buttons — Help me fixes phase only */}
       {showActionButtons && (
         <div className="flex-shrink-0 space-y-1.5 px-5 pb-2 pt-1">
           {applied ? (
@@ -548,8 +906,8 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
         </div>
       )}
 
-      {/* Chat input */}
-      <div className="flex-shrink-0 px-5 pb-4 pt-1">
+      {/* Chat input — above voice modal so live transcript stays visible */}
+      <div className="relative z-20 w-full min-w-0 flex-shrink-0 px-5 pb-4 pt-1">
         {mode === 'roast' && (
           <p
             className="mb-2 px-1 text-[11px] leading-snug text-white/45"
@@ -567,53 +925,162 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             mode.
           </p>
         )}
-        <div
-          className="relative flex items-center gap-3 rounded-full px-4 py-2.5"
-          style={{
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            opacity: waitingForDenise ? 0.6 : 1,
-          }}
-        >
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={PLACEHOLDER_TEXTS[placeholderIndex]}
-            disabled={waitingForDenise}
-            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40 disabled:cursor-not-allowed"
+        {voiceError && (
+          <p
+            className="mb-2 px-1 text-[11px] leading-snug text-red-300/90"
+            style={{ fontFamily: 'var(--font-poppins)', fontWeight: 500 }}
+          >
+            {voiceError}
+          </p>
+        )}
+        {deniseVoiceError && (
+          <p
+            className="mb-2 px-1 text-[11px] leading-snug text-red-300/90"
+            style={{ fontFamily: 'var(--font-poppins)', fontWeight: 500 }}
+          >
+            {deniseVoiceError}
+          </p>
+        )}
+        <div className="flex w-full min-w-0 flex-col gap-2">
+          <div
+            className="relative flex w-full min-w-0 items-center gap-2 rounded-full px-3 py-2.5 sm:gap-3 sm:px-4"
             style={{
-              fontFamily: 'var(--font-poppins)',
-              fontWeight: 400,
+              background: 'rgba(255, 255, 255, 0.08)',
+              border:
+                isListening || isTranscribing
+                  ? '1px solid rgba(255, 255, 255, 0.35)'
+                  : '1px solid rgba(255, 255, 255, 0.15)',
+              opacity: waitingForDenise ? 0.6 : 1,
+              boxShadow:
+                isListening || isTranscribing
+                  ? '0 0 0 1px rgba(255,255,255,0.08), 0 0 20px rgba(255,255,255,0.06)'
+                  : undefined,
             }}
-          />
+          >
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => {
+                if (isListening || isTranscribing) return;
+                setInputValue(e.target.value);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                isTranscribing && !isListening
+                  ? 'Connecting…'
+                  : isListening
+                    ? 'Listening… your words appear here'
+                    : PLACEHOLDER_TEXTS[placeholderIndex]
+              }
+              disabled={waitingForDenise || isTranscribing}
+              readOnly={isListening || isTranscribing}
+              className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40 disabled:cursor-not-allowed"
+              style={{
+                fontFamily: 'var(--font-poppins)',
+                fontWeight: 400,
+              }}
+            />
 
-          {inputValue.trim() ? (
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={waitingForDenise}
-              className="flex-shrink-0 transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50"
-              aria-label="Send message"
+            {!(isListening || isTranscribing) && (
+              <span
+                className={`inline-flex flex-shrink-0 items-center ${
+                  micPop ? 'mic-pop-press' : ''
+                }`}
+              >
+                {inputValue.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSend()}
+                    disabled={waitingForDenise}
+                    className="transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50"
+                    aria-label="Send message"
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+                      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleMicClick}
+                    disabled={waitingForDenise || !voiceSupported}
+                    className="transition-transform duration-200 hover:brightness-110 disabled:opacity-40"
+                    aria-label="Voice input"
+                    title={
+                      voiceSupported
+                        ? 'Speak your message'
+                        : 'Voice input isn’t supported in this browser'
+                    }
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                    </svg>
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
+
+          {(isListening || isTranscribing) && (
+            <div
+              className={`flex w-full min-w-0 items-center justify-end gap-2 ${
+                micPop ? 'mic-pop-press' : ''
+              }`}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="flex-shrink-0 transition-all duration-200 hover:brightness-110 active:scale-95"
-              aria-label="Voice input"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-              </svg>
-            </button>
+              <button
+                type="button"
+                onClick={() => void handleVoiceRetake()}
+                disabled={waitingForDenise || isTranscribing}
+                className="rounded-full px-3 py-1.5 text-[11px] font-semibold text-white/85 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 disabled:opacity-40"
+                style={{
+                  border: '1px solid rgba(255, 255, 255, 0.28)',
+                  fontFamily: 'var(--font-poppins)',
+                }}
+                aria-label="Retake — clear and record again"
+                title="Retake"
+              >
+                Retake
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleVoiceDone()}
+                disabled={waitingForDenise || isTranscribing}
+                className="rounded-full px-3 py-1.5 text-[11px] font-bold text-black transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-40"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  fontFamily: 'var(--font-poppins)',
+                }}
+                aria-label={
+                  isTranscribing
+                    ? 'Transcribing voice'
+                    : 'Done — send voice message'
+                }
+              >
+                {isTranscribing ? '…' : 'Done ✓'}
+              </button>
+            </div>
           )}
         </div>
+        <style jsx>{`
+          @keyframes mic-pop-press {
+            0% {
+              transform: scale(1);
+            }
+            35% {
+              transform: scale(0.72);
+            }
+            70% {
+              transform: scale(1.14);
+            }
+            100% {
+              transform: scale(1);
+            }
+          }
+          .mic-pop-press {
+            animation: mic-pop-press 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+        `}</style>
       </div>
     </div>
   );

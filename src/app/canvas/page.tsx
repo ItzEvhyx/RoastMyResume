@@ -40,6 +40,8 @@ import { usePen } from '@/app/features/canvas_page/context/PenContext';
 import { useText } from '@/app/features/canvas_page/context/TextContext';
 import { RulerSnappingProvider } from '@/app/features/canvas_page/globals/ruler.snapping';
 import { useCanvasPersistence } from '@/app/features/canvas_page/hooks/use.canvas.persistence';
+import { useLeaveCanvasGuard } from '@/app/features/canvas_page/hooks/use.leave.canvas.guard';
+import LeaveCanvasModal from '@/app/features/canvas_page/globals/leave.canvas.modal';
 import AuthModal from '@/app/features/auth_modals/auth.modal';
 
 // Component that handles canvas persistence
@@ -136,6 +138,13 @@ export default function CanvasPage() {
     runEntranceSequence(setStage, entranceTimersRef.current, 700);
   }, [clearEntranceTimers]);
 
+  const {
+    isLeaveModalOpen,
+    requestLeave,
+    onStay,
+    onLeave,
+  } = useLeaveCanvasGuard();
+
   return (
     <CanvasProvider>
       <UndoProvider>
@@ -202,8 +211,8 @@ export default function CanvasPage() {
 
               {/* Toolbar — pops in at stage 2 */}
               {isMobile === undefined ? null : isMobile
-                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} />
-                : <ToolbarWeb stage={stage} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} />}
+                ? <ToolbarMobile stage={stage} onAssistToggle={setMobileAssistOpen} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} onBackClick={requestLeave} />
+                : <ToolbarWeb stage={stage} onSignInClick={handleOpenSignIn} onSignOutClick={handleAuthSuccess} onBackClick={requestLeave} />}
 
               {/* Auth Modal */}
               <AuthModal
@@ -211,6 +220,12 @@ export default function CanvasPage() {
                 initialMode={authModalMode}
                 onClose={() => setIsAuthModalOpen(false)}
                 onAuthSuccess={handleAuthSuccess}
+              />
+
+              <LeaveCanvasModal
+                isOpen={isLeaveModalOpen}
+                onStay={onStay}
+                onLeave={onLeave}
               />
             </main>
             </ClipboardProvider>

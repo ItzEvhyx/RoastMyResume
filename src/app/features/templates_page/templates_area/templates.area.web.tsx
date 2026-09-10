@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Poppins } from 'next/font/google';
 import Image from 'next/image';
 import SpecularButton from '@/components/specular_button';
+import { clearCanvasState } from '@/app/features/canvas_page/services/canvas.persistence';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -183,10 +185,19 @@ function ResumePreview({ variant }: { variant: PreviewVariant }) {
 // ─── Single template card ──────────────────────────────────────────────────────
 
 function TemplateCard({ template, colIndex }: { template: Template; colIndex: number }) {
+  const router = useRouter();
   const [hovered, setHovered] = useState(false);
   // Mini preview anchors to top-left for cols 0-1, top-right for cols 2-3
   const previewAnchor = colIndex >= 2 ? 'top-2 right-2' : 'top-2 left-2';
   const href = template.blank || template.id === 'blank' ? '/canvas' : `/canvas?template=${template.id}`;
+  const isBlank = !!(template.blank || template.id === 'blank');
+
+  const handleBlankStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Fresh document: wipe resume + Denise chat before entering canvas
+    clearCanvasState();
+    router.push('/canvas');
+  };
 
   return (
     <Link
@@ -194,6 +205,7 @@ function TemplateCard({ template, colIndex }: { template: Template; colIndex: nu
       className="group relative flex cursor-pointer flex-col no-underline focus:outline-none"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={isBlank ? handleBlankStart : undefined}
     >
       {/* Paper thumbnail */}
       <div

@@ -38,9 +38,11 @@ interface ToolbarWebProps {
   stage: number;
   onSignInClick?: () => void;
   onSignOutClick?: () => void;
+  /** When set, Back asks for leave confirmation instead of navigating immediately. */
+  onBackClick?: () => void;
 }
 
-export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick }: ToolbarWebProps) {
+export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBackClick }: ToolbarWebProps) {
   const router = useRouter();
   const visible = stage >= 2;
   const [resumeTitle, setResumeTitle] = useState('Untitled Resume');
@@ -110,7 +112,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick }: Too
       <div className="flex items-center gap-3">
         <div style={popStyle(visible, 0)}>
           <button
-            onClick={() => router.back()}
+            onClick={() => (onBackClick ? onBackClick() : router.back())}
             className="pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
             style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
           >

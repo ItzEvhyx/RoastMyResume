@@ -219,11 +219,20 @@ export interface DeniseFix {
   suggestedContent: string;
 }
 
+/** Help-me flow: ask for details first, then deliver concrete rewrites. */
+export type DenisePhase = 'interview' | 'fixes';
+
 export interface DeniseResult {
   outOfScope: boolean;
   content: string;
   highlights: DeniseHighlight[];
   fixes: DeniseFix[];
+  /**
+   * Help mode: `interview` = clarifying questions only (no Apply).
+   * `fixes` = concrete rewrites ready to apply.
+   * Roast always uses `fixes` (highlights only on the client).
+   */
+  phase: DenisePhase;
 }
 
 /** Soft guidance for reply length — coverage of every highlight beats brevity. */
@@ -246,7 +255,7 @@ const DENISE_TOOL_NAME = 'submit_denise_review';
 const DENISE_REVIEW_TOOL: Anthropic.Tool = {
   name: DENISE_TOOL_NAME,
   description:
-    'Submit Denise’s resume review: a markdown chat reply plus canvas highlights and suggested rewrites.',
+    'Submit Denise’s resume review: a markdown chat reply plus canvas highlights and (when ready) concrete suggested rewrites.',
   input_schema: {
     type: 'object',
     properties: {
@@ -255,10 +264,36 @@ const DENISE_REVIEW_TOOL: Anthropic.Tool = {
         description:
           'True only when the user message is not career/resume related.',
       },
+      phase: {
+        type: 'string',
+        enum: ['interview', 'fixes'],
+        description:
+          'HELP mode: use "interview" while gathering missing metrics/details (fixes MUST be empty). Ask EXACTLY ONE question per turn. Use "fixes" only after enough answers to write concrete bullets — never bracket placeholders. ROAST mode: always "fixes".',
+      },
       content: {
         type: 'string',
         description:
-          'Markdown chat reply. MUST mention EVERY highlight quote (wrap each in **bold**), ideally as a bullet list covering all weak points. No JSON. If outOfScope, use the fixed out-of-scope sentence.',
+          'Markdown chat reply. HELP interview: EXACTLY ONE clarifying question about ONE weak quote (short opener optional). Never a list of multiple questions. HELP fixes / ROAST: list weak quotes in **bold** as specified. No JSON. If outOfScope, use the fixed out-of-scope sentence.',
+      },
+      interviewFocus: {
+        type: 'object',
+        description:
+          'Required when phase is "interview" (help mode). The single weak point you are asking about THIS turn.',
+        properties: {
+          elementId: {
+            type: 'string',
+            description: 'Canvas text element id for the quote you are probing',
+          },
+          quote: {
+            type: 'string',
+            description: 'Exact weak substring from that element',
+          },
+          question: {
+            type: 'string',
+            description: 'The single clarifying question for the user',
+          },
+        },
+        required: ['elementId', 'quote', 'question'],
       },
       highlights: {
         type: 'array',
@@ -289,7 +324,7 @@ const DENISE_REVIEW_TOOL: Anthropic.Tool = {
       fixes: {
         type: 'array',
         description:
-          'Full rewritten content for each weak top-level text element. When an element has many bullets, rewrite ALL of them in suggestedContent (not just the first few).',
+          'Full rewritten content for each weak top-level text element. EMPTY during interview phase. When phase is fixes: rewrite ALL weak bullets with REAL specifics from the user — NEVER [placeholders], <angle brackets>, or X%/TBD.',
         items: {
           type: 'object',
           properties: {
@@ -297,14 +332,14 @@ const DENISE_REVIEW_TOOL: Anthropic.Tool = {
             suggestedContent: {
               type: 'string',
               description:
-                'Full replacement for that element’s entire content — every bullet rewritten',
+                'Full replacement for that element’s entire content — every bullet rewritten with concrete facts only',
             },
           },
           required: ['elementId', 'suggestedContent'],
         },
       },
     },
-    required: ['outOfScope', 'content', 'highlights', 'fixes'],
+    required: ['outOfScope', 'phase', 'content', 'highlights', 'fixes'],
   },
 };
 
@@ -314,6 +349,12 @@ You are looking at a user's resume canvas. The full contents of every element on
 
 "Fluff" means vague, unquantified, generic, or cliche phrasing that says little: things like "responsible for", "team player", "hard worker", "results-driven", "synergy", "helped with", duties with no measurable impact, and passive filler.
 
+VOICE / DELIVERY (your \`content\` is spoken aloud by Denise’s voice):
+- Write for the ear, not a wall of text. Prefer short sentences and clear line breaks.
+- Use commas, em dashes, and occasional ellipses (…) so the voice can pause and breathe.
+- Vary rhythm: a sharp jab, a beat, then the punchline — especially in roast mode. Avoid rushing through long run-ons.
+- Do not stack dense lists into one breathless paragraph; each bullet should be speakable on its own.
+
 SCOPE — VERY IMPORTANT:
 You ONLY handle career-adjacent topics: resumes, CVs, cover letters, job applications, interviews, hiring, HR, recruiting, professional experience, and business/workplace topics relevant to applying for a position.
 If the user's message is NOT one of these topics, call ${DENISE_TOOL_NAME} with outOfScope=true, content exactly "${OUT_OF_SCOPE_MESSAGE}", and empty highlights/fixes arrays.
@@ -321,22 +362,36 @@ If the user's message is NOT one of these topics, call ${DENISE_TOOL_NAME} with 
 When the input IS in scope, you MUST call the ${DENISE_TOOL_NAME} tool (never reply with raw JSON in the assistant text).
 
 Rules for tool fields:
-- \`content\` — MUST LIST EVERY WEAK POINT using PROPER MARKDOWN:
+- \`phase\` — ROAST: always \`"fixes"\`. HELP: \`"interview"\` until you have enough real details from the user to rewrite without guessing; then \`"fixes"\`.
+- \`content\` — MUST use PROPER MARKDOWN:
   1. Short opener paragraph (can use *italics* for tone).
   2. Then a blank line.
-  3. Then a markdown bullet list where EACH weak point is on its OWN LINE starting with \`- \` (hyphen + space). NEVER put multiple bullets on one line. NEVER use the \`•\` character as a separator mid-paragraph.
-  4. Each bullet: \`- **exact quote** — your roast/tip\` (optional *italics* in the tip).
-  Example shape:
+  3. Then mode-specific body (see below). NEVER put multiple bullets on one line. NEVER use the \`•\` character as a separator mid-paragraph.
+  4. ROAST / HELP-fixes: a markdown bullet list where EACH weak point is on its OWN LINE starting with \`- \` (hyphen + space). Each bullet: \`- **exact quote** — your roast/tip\`. Coverage: every \`highlights\` quote must appear as its own \`- **quote**\` line.
+  5. HELP-interview — ONE-AT-A-TIME Q&A (CRITICAL):
+     - Ask about EXACTLY ONE weak quote this turn. Wait for the user's reply before asking about the next.
+     - Do NOT dump a list of questions. Do NOT use multiple \`- \` bullets that each ask something. One question only.
+     - Shape: optional 1-sentence opener, then the weak quote in **bold**, then ONE clear question (metrics, tools, what they built, outcomes).
+     - Also fill \`interviewFocus\` with that same elementId / quote / question.
+     - Read the conversation history: skip weak points the user already answered; pick the next unanswered highlight (worst / vaguest first).
+     - After they answer, briefly acknowledge (one short line is fine), then ask the next single question — still \`phase: "interview"\`, \`fixes: []\`.
+     - Only when you have enough real detail across the weak spots to rewrite without inventing numbers: switch to \`phase: "fixes"\`.
+  Example roast/fixes shape:
   \`\`\`
   Not even close.
 
   - **Responsible for helping** — zero ownership.
   - **worked hard to ensure** — vibes aren't metrics.
-  - **passionate about learning** — everyone is.
   \`\`\`
-  Coverage is non-negotiable: every \`highlights\` quote must appear as its own \`- **quote**\` line.
-- \`highlights\` — COMPREHENSIVE COVERAGE IS MANDATORY: Read the ENTIRE canvas snapshot end-to-end. Add a highlight for EVERY weak / vague / fluff bullet or phrase you find (typically one highlight per bad bullet). Multiple highlights with the SAME elementId are REQUIRED when one text box contains several bad lines. Do NOT stop after 2–3 items. Do NOT only cover the first bullets. \`quote\` MUST be an exact contiguous substring from that element's content (prefer the full weak bullet line). Cap at 40 highlights only if there are truly more than 40 distinct weak spots (pick the worst 40). The set of quotes in \`highlights\` and the set mentioned in \`content\` must match.
-- \`fixes\`: one entry per weak top-level text element. \`suggestedContent\` replaces the WHOLE element — rewrite EVERY weak bullet in that box, not just the ones you mentioned first. Preserve newlines/list structure. Rewrites must be SPECIFIC and quantified so they would never qualify as fluff themselves.
+  Example HELP-interview shape (ONE question only):
+  \`\`\`
+  Let's make this bullet real — starting with the vaguest one.
+
+  **Responsible for helping the development team with various tasks** — What were the main 2–3 things you actually worked on (feature, API, bug fix, migration, tests…)?
+  \`\`\`
+- \`highlights\` — COMPREHENSIVE COVERAGE IS MANDATORY: Read the ENTIRE canvas snapshot end-to-end. Add a highlight for EVERY weak / vague / fluff bullet or phrase you find (typically one highlight per bad bullet). Multiple highlights with the SAME elementId are REQUIRED when one text box contains several bad lines. Do NOT stop after 2–3 items. Do NOT only cover the first bullets. \`quote\` MUST be an exact contiguous substring from that element's content (prefer the full weak bullet line). Cap at 40 highlights only if there are truly more than 40 distinct weak spots (pick the worst 40). In roast / HELP-fixes phases, the set of quotes in \`highlights\` and the set mentioned in \`content\` must match. In HELP-interview, keep highlights comprehensive on the canvas, but \`content\` asks about only ONE of them this turn.
+- \`fixes\`: ROAST and HELP-fixes — one entry per weak top-level text element. \`suggestedContent\` replaces the WHOLE element — rewrite EVERY weak bullet in that box. Preserve newlines/list structure. Rewrites must be SPECIFIC and quantified using ONLY facts the user provided in the conversation (or clearly present on the canvas). HELP-interview — \`fixes\` MUST be an empty array.
+- PLACEHOLDER BAN (HELP fixes phase): NEVER write bracket stubs like \`[feature name]\`, \`[X%]\`, \`[tool: …]\`, angle-bracket tokens like \`<language>\`, or vague TBD/XXX fillers. If you still lack a fact, stay in \`phase: "interview"\` and ask the next single question — do not invent and do not stub.
 - Only use elementIds that appear in the canvas snapshot.
 
 DENISE-APPROVED TEXT — CRITICAL:
@@ -348,16 +403,25 @@ Every response must feel freshly written. NEVER reuse the same opening line, str
 const DENISE_ROAST_PERSONA = `MODE: ROAST.
 You're an HR recruiter who has seen thousands of terrible resumes and you're DONE being polite. Channel the brutally honest energy of Gordon Ramsay reviewing a trainee's dish — explosive, theatrical, brutally funny, and laser-targeted at the WRITING (never the person or protected characteristics). Sweep the WHOLE resume — every section, every bullet — and highlight every piece of fluff. In \`content\`, after a short opener, bullet-list EVERY weak quote (each in **bold**) with a cutting one-liner. Make them laugh and cringe simultaneously.
 
-Still populate \`fixes\` with stronger rewrites of each weak text element in full so the user can apply them after the roast — the roast lives in \`content\`; the fixes are the quiet recovery kit.
+Always set \`phase\` to \`"fixes"\`. You may still populate \`fixes\` with stronger rewrites as a quiet recovery kit, but the roast in \`content\` is the main deliverable — the client will not show Apply in roast mode.
 
 LENGTH: Keep the \`content\` markdown between ${DENISE_CHAR_LIMITS.roast.min} and ${DENISE_CHAR_LIMITS.roast.max} characters when possible — but if listing every highlight needs more room, listing every highlight wins.`;
 
 const DENISE_HELP_PERSONA = `MODE: HELP.
-You're a genuinely supportive senior HR recruiter who wants to help this person land their dream job. No insults, no jokes at their expense, no sugarcoating either. Be direct, warm, and actionable. Sweep the WHOLE resume — every section, every bullet — and highlight every weak line. In \`content\`, after a short intro, bullet-list EVERY weak quote (each in **bold**) with a one-line tip. Still cover all weak spots in \`highlights\` / \`fixes\`.
+You're a genuinely supportive senior HR coach in a one-to-one conversation — not a questionnaire bot and not a one-shot generative rewriter. Gather the REAL story turn by turn, then write sharp bullets yourself.
 
-\`fixes\` is the primary deliverable — every weak text box should get a full rewritten \`suggestedContent\` covering all of its bullets.
+FLOW (non-negotiable):
+1. Fresh help thread / still missing details: \`phase: "interview"\`, \`fixes: []\`.
+   - Populate comprehensive \`highlights\` so the canvas shows every weak line.
+   - In \`content\`, ask EXACTLY ONE question about ONE weak quote (fill \`interviewFocus\` to match).
+   - Sound like a helpful teammate sitting next to them.
+2. User answers → stay in \`interview\`. Briefly acknowledge, then ask the NEXT unanswered weak point (again exactly one question). Never re-ask something they already covered unless the answer was empty/useless.
+3. When you finally have enough real detail to rewrite the weak boxes without inventing metrics: \`phase: "fixes"\`. Write full \`suggestedContent\` using THEIR facts only. No brackets, no placeholder tokens, no made-up precision.
+4. If a single answer is still too vague for that bullet, ask one follow-up about THAT same bullet before moving on.
 
-LENGTH: Keep the \`content\` markdown between ${DENISE_CHAR_LIMITS.help.min} and ${DENISE_CHAR_LIMITS.help.max} characters when possible — but if listing every highlight needs more room, listing every highlight wins.`;
+FORBIDDEN in interview \`content\`: multi-question lists, "here are all the things I need", numbered questionnaires, or stacking several \`- **quote** — question\` lines.
+
+LENGTH: Interview turns should be short (roughly 80–400 characters of \`content\`). Fixes-phase replies may use up to ${DENISE_CHAR_LIMITS.help.max} characters when listing every highlight.`;
 
 function buildDeniseSystemPrompt(
   mode: DeniseMode,
@@ -425,8 +489,88 @@ function normalizeFixes(value: unknown): DeniseFix[] {
   return fixes;
 }
 
-function resultFromToolInput(input: Record<string, unknown>): DeniseResult | null {
-  const content = typeof input.content === 'string' ? input.content.trim() : '';
+/** Detect bracket / angle-bracket stub text Denise must not apply to the canvas. */
+function hasRewritePlaceholder(text: string): boolean {
+  return /\[[^\]]{1,80}\]/.test(text) || /<[^>]{1,60}>/.test(text);
+}
+
+function normalizePhase(
+  value: unknown,
+  mode: DeniseMode,
+  fixes: DeniseFix[],
+): DenisePhase {
+  if (mode === 'roast') return 'fixes';
+  if (value === 'interview' || value === 'fixes') return value;
+  // Infer: empty fixes → still interviewing; otherwise ready to apply
+  return fixes.length > 0 ? 'fixes' : 'interview';
+}
+
+interface InterviewFocus {
+  elementId: string;
+  quote: string;
+  question: string;
+}
+
+function normalizeInterviewFocus(value: unknown): InterviewFocus | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if (
+    typeof row.elementId !== 'string' ||
+    typeof row.quote !== 'string' ||
+    typeof row.question !== 'string'
+  ) {
+    return null;
+  }
+  const quote = row.quote.trim();
+  const question = row.question.trim();
+  if (!quote || !question) return null;
+  return { elementId: row.elementId, quote, question };
+}
+
+/** Force one-at-a-time interview copy even if the model lists many questions. */
+function buildSingleInterviewContent(
+  content: string,
+  focus: InterviewFocus | null,
+): string {
+  if (focus) {
+    const body = `**${focus.quote}** — ${focus.question}`;
+    const firstPara = content.trim().split(/\n{2,}/)[0]?.trim() ?? '';
+    const openerOk =
+      firstPara.length > 0 &&
+      firstPara.length < 200 &&
+      !/^\s*-\s/.test(firstPara) &&
+      !firstPara.includes('\n- ') &&
+      !firstPara.includes(focus.question) &&
+      (firstPara.match(/\?\s*$/m) ? false : true); // don't keep a paragraph that is already a Q list lead-in with ?
+    // Keep a warm one-line opener if it isn't itself another question list
+    if (openerOk && !/\?\s/.test(firstPara)) {
+      return `${firstPara}\n\n${body}`;
+    }
+    return body;
+  }
+
+  // Fallback: keep opener + first question-like block only
+  const trimmed = content.trim();
+  const bulletBlocks = trimmed.split(/\n(?=-\s)/);
+  if (bulletBlocks.length <= 1) {
+    const parts = trimmed.split(/\n{2,}/);
+    if (parts.length <= 2) return trimmed;
+    return parts.slice(0, 2).join('\n\n').trim();
+  }
+
+  const opener = bulletBlocks[0]?.startsWith('- ')
+    ? ''
+    : bulletBlocks[0]?.trim() ?? '';
+  const firstBullet = bulletBlocks.find((b) => b.trimStart().startsWith('- '))?.trim();
+  if (!firstBullet) return trimmed;
+  return [opener, firstBullet].filter(Boolean).join('\n\n');
+}
+
+function resultFromToolInput(
+  input: Record<string, unknown>,
+  mode: DeniseMode,
+): DeniseResult | null {
+  let content = typeof input.content === 'string' ? input.content.trim() : '';
   if (!content) return null;
 
   const outOfScope =
@@ -440,14 +584,34 @@ function resultFromToolInput(input: Record<string, unknown>): DeniseResult | nul
       content: OUT_OF_SCOPE_MESSAGE,
       highlights: [],
       fixes: [],
+      phase: 'fixes',
     };
+  }
+
+  let fixes = normalizeFixes(input.fixes);
+  let phase = normalizePhase(input.phase, mode, fixes);
+  const interviewFocus = normalizeInterviewFocus(input.interviewFocus);
+
+  if (mode === 'help' && phase === 'interview') {
+    fixes = [];
+    content = buildSingleInterviewContent(content, interviewFocus);
+  }
+
+  // Drop stub rewrites — force interview if nothing concrete remains
+  if (mode === 'help' && phase === 'fixes') {
+    fixes = fixes.filter((f) => !hasRewritePlaceholder(f.suggestedContent));
+    if (!fixes.length) {
+      phase = 'interview';
+      content = buildSingleInterviewContent(content, interviewFocus);
+    }
   }
 
   return {
     outOfScope: false,
     content,
     highlights: normalizeHighlights(input.highlights),
-    fixes: normalizeFixes(input.fixes),
+    fixes,
+    phase,
   };
 }
 
@@ -521,6 +685,16 @@ function finalizeDeniseResult(
 ): DeniseResult {
   if (result.outOfScope) return result;
   const filtered = filterApproved(result, approved);
+
+  // Interview turns are Q&A — don't force every highlight quote into the chat.
+  if (mode === 'help' && filtered.phase === 'interview') {
+    return {
+      ...filtered,
+      fixes: [],
+      content: normalizeDeniseMarkdown(filtered.content),
+    };
+  }
+
   const withAllMentions = ensureHighlightsInContent(
     filtered.content,
     filtered.highlights,
@@ -534,7 +708,10 @@ function finalizeDeniseResult(
 }
 
 /** Last-resort parse if the model ignored tools and dumped JSON text. */
-function parseDeniseJsonFallback(raw: string): DeniseResult | null {
+function parseDeniseJsonFallback(
+  raw: string,
+  mode: DeniseMode,
+): DeniseResult | null {
   let text = raw.trim();
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fence) text = fence[1].trim();
@@ -545,7 +722,7 @@ function parseDeniseJsonFallback(raw: string): DeniseResult | null {
 
   try {
     const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
-    return resultFromToolInput(parsed);
+    return resultFromToolInput(parsed, mode);
   } catch {
     return null;
   }
@@ -583,7 +760,10 @@ export async function askDenise(
 
   for (const block of response.content) {
     if (block.type === 'tool_use' && block.name === DENISE_TOOL_NAME) {
-      const parsed = resultFromToolInput(block.input as Record<string, unknown>);
+      const parsed = resultFromToolInput(
+        block.input as Record<string, unknown>,
+        mode,
+      );
       if (parsed) return finalizeDeniseResult(parsed, mode, approvedElements);
     }
   }
@@ -600,10 +780,11 @@ export async function askDenise(
       content: OUT_OF_SCOPE_MESSAGE,
       highlights: [],
       fixes: [],
+      phase: 'fixes',
     };
   }
 
-  const fromJson = parseDeniseJsonFallback(responseText);
+  const fromJson = parseDeniseJsonFallback(responseText, mode);
   if (fromJson) return finalizeDeniseResult(fromJson, mode, approvedElements);
 
   // Never surface raw JSON blobs in the chat panel
@@ -616,8 +797,155 @@ export async function askDenise(
         : responseText,
       highlights: [],
       fixes: [],
+      phase: mode === 'help' ? 'interview' : 'fixes',
     },
     mode,
     approvedElements,
   );
+}
+
+/**
+ * Pull a (possibly still-open) JSON string value for `"content"` from partial tool JSON.
+ */
+export function extractStreamingContentField(partialJson: string): string | null {
+  const marker = /"content"\s*:\s*"/;
+  const match = marker.exec(partialJson);
+  if (!match || match.index === undefined) return null;
+
+  let i = match.index + match[0].length;
+  let out = '';
+  while (i < partialJson.length) {
+    const c = partialJson[i];
+    if (c === '\\') {
+      if (i + 1 >= partialJson.length) break;
+      const n = partialJson[i + 1];
+      const map: Record<string, string> = {
+        n: '\n',
+        t: '\t',
+        r: '\r',
+        '"': '"',
+        '\\': '\\',
+        '/': '/',
+      };
+      out += map[n] ?? n;
+      i += 2;
+      continue;
+    }
+    if (c === '"') break;
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
+export type DeniseStreamHandlers = {
+  onContent?: (content: string) => void;
+};
+
+/**
+ * Stream Denise’s tool JSON so chat text can appear (and be spoken) before
+ * highlights/fixes are finalized.
+ */
+export async function askDeniseStream(
+  request: DeniseRequest,
+  handlers: DeniseStreamHandlers = {},
+): Promise<DeniseResult> {
+  const { mode, canvasSnapshot, messages, approvedElements } = request;
+
+  if (!messages.length) {
+    throw new Error('askDeniseStream requires at least one message.');
+  }
+
+  const anthropicMessages: Anthropic.MessageParam[] = messages.map((msg) => ({
+    role: msg.role,
+    content: msg.content,
+  }));
+
+  const stream = getClient().messages.stream({
+    model: CLAUDE_MODEL,
+    max_tokens: DENISE_MAX_TOKENS[mode],
+    temperature: 1,
+    system: buildDeniseSystemPrompt(mode, canvasSnapshot, approvedElements),
+    messages: anthropicMessages,
+    tools: [DENISE_REVIEW_TOOL],
+    tool_choice: { type: 'tool', name: DENISE_TOOL_NAME },
+  });
+
+  let partialJson = '';
+  let lastContent = '';
+
+  for await (const event of stream) {
+    if (
+      event.type === 'content_block_delta' &&
+      event.delta.type === 'input_json_delta' &&
+      typeof event.delta.partial_json === 'string'
+    ) {
+      partialJson += event.delta.partial_json;
+      const content = extractStreamingContentField(partialJson);
+      if (content !== null && content !== lastContent) {
+        lastContent = content;
+        handlers.onContent?.(content);
+      }
+    }
+  }
+
+  const response = await stream.finalMessage();
+
+  for (const block of response.content) {
+    if (block.type === 'tool_use' && block.name === DENISE_TOOL_NAME) {
+      const parsed = resultFromToolInput(
+        block.input as Record<string, unknown>,
+        mode,
+      );
+      if (parsed) {
+        const finalized = finalizeDeniseResult(parsed, mode, approvedElements);
+        if (finalized.content !== lastContent) {
+          handlers.onContent?.(finalized.content);
+        }
+        return finalized;
+      }
+    }
+  }
+
+  const responseText = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+
+  if (responseText === OUT_OF_SCOPE_SIGNAL) {
+    const result: DeniseResult = {
+      outOfScope: true,
+      content: OUT_OF_SCOPE_MESSAGE,
+      highlights: [],
+      fixes: [],
+      phase: 'fixes',
+    };
+    handlers.onContent?.(result.content);
+    return result;
+  }
+
+  const fromJson = parseDeniseJsonFallback(responseText, mode);
+  if (fromJson) {
+    const finalized = finalizeDeniseResult(fromJson, mode, approvedElements);
+    handlers.onContent?.(finalized.content);
+    return finalized;
+  }
+
+  const looksLikeJson = responseText.trimStart().startsWith('{');
+  const finalized = finalizeDeniseResult(
+    {
+      outOfScope: false,
+      content: looksLikeJson
+        ? 'I reviewed your resume, but my notes got scrambled. Send that again and I’ll take another pass.'
+        : responseText || lastContent || 'I reviewed your resume, but my notes got scrambled. Try again.',
+      highlights: [],
+      fixes: [],
+      phase: mode === 'help' ? 'interview' : 'fixes',
+    },
+    mode,
+    approvedElements,
+  );
+  handlers.onContent?.(finalized.content);
+  return finalized;
 }
