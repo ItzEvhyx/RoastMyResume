@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { useMediaQuery } from '@/lib/use_media_query';
 import StitchCanvasBackground from '@/rb_components/stitch_canvas_background';
 import { CanvasProvider } from '@/app/features/canvas_page/context/CanvasContext';
@@ -48,14 +55,57 @@ function CanvasPersistenceManager() {
  *   stage 2 → toolbar buttons pop in                                     (~600ms)
  *   stage 3 → sidebar & assistant panel appear (collapsed)               (~900ms)
  *   stage 4 → sidebar expands vertically & assist panel expands horizontally (~1500ms)
+ *
+ * Stages only advance forward (`Math.max`). Mixing `requestAnimationFrame` for
+ * stage 1 with absolute `setTimeout`s for 2–4 used to race when the tab was
+ * backgrounded: timeouts could reach stage 4, then a deferred rAF reset to 1
+ * and left the chrome permanently hidden.
  */
+const ENTRANCE_STEPS: ReadonlyArray<{ stage: number; delayMs: number }> = [
+  { stage: 1, delayMs: 0 },
+  { stage: 2, delayMs: 600 },
+  { stage: 3, delayMs: 900 },
+  { stage: 4, delayMs: 1500 },
+];
+
+function advanceStage(next: number) {
+  return (prev: number) => Math.max(prev, next);
+}
+
+function runEntranceSequence(
+  setStage: Dispatch<SetStateAction<number>>,
+  timers: Set<ReturnType<typeof setTimeout>>,
+  holdMs = 0,
+) {
+  const start = () => {
+    for (const { stage, delayMs } of ENTRANCE_STEPS) {
+      const id = setTimeout(() => setStage(advanceStage(stage)), delayMs);
+      timers.add(id);
+    }
+  };
+
+  if (holdMs <= 0) {
+    start();
+    return;
+  }
+
+  const holdId = setTimeout(start, holdMs);
+  timers.add(holdId);
+}
+
 export default function CanvasPage() {
   const [stage, setStage] = useState(0);
   const [mobileAssistOpen, setMobileAssistOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const entranceTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+
+  const clearEntranceTimers = useCallback(() => {
+    entranceTimersRef.current.forEach(clearTimeout);
+    entranceTimersRef.current.clear();
+  }, []);
 
   const handleOpenSignIn = () => {
     setAuthModalMode('signin');
@@ -68,31 +118,23 @@ export default function CanvasPage() {
   };
 
   useEffect(() => {
-    const timers = [
-      requestAnimationFrame(() => setStage(1)),            // page entry
-      setTimeout(() => setStage(2), 600),                  // toolbar pop in
-      setTimeout(() => setStage(3), 900),                  // sidebar appears
-      setTimeout(() => setStage(4), 1500),                 // sidebar expands (600ms after appearing)
-    ];
+    const timers = entranceTimersRef.current;
+    runEntranceSequence(setStage, timers);
     return () => {
-      cancelAnimationFrame(timers[0] as unknown as number);
-      timers.slice(1).forEach(t => clearTimeout(t as unknown as ReturnType<typeof setTimeout>));
+      timers.forEach(clearTimeout);
+      timers.clear();
     };
   }, []);
 
   // Replay the full 4-stage entrance animation after successful sign-in/sign-up
   const handleAuthSuccess = useCallback(() => {
+    clearEntranceTimers();
     // Fade everything out to stage 0 first
     setStage(0);
     // Hold on black briefly, then re-run the full entrance sequence —
     // matches the landing → templates transition feel.
-    setTimeout(() => {
-      requestAnimationFrame(() => setStage(1));  // page fade in
-      setTimeout(() => setStage(2), 600);         // toolbar pop in
-      setTimeout(() => setStage(3), 900);         // sidebar appears
-      setTimeout(() => setStage(4), 1500);        // sidebar expands
-    }, 700); // 550ms fade-out + brief hold
-  }, []);
+    runEntranceSequence(setStage, entranceTimersRef.current, 700);
+  }, [clearEntranceTimers]);
 
   return (
     <CanvasProvider>

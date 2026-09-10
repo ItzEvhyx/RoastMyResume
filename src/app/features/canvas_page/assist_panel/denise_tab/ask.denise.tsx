@@ -195,6 +195,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     completeScan,
     setIsAnalyzing,
     setAnalysisResult,
+    setHighlightsOnly,
     applyFixes,
     toggleBeforeAfter,
     abandonFixes,
@@ -206,18 +207,17 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     bulletproofById,
   } = useDeniseAnalysis();
 
-  const showActionButtons = fixes.length > 0 && !isLoading;
+  // Apply / abandon only belong to Help me — Roast is critique-only.
+  const showActionButtons = mode === 'help' && fixes.length > 0 && !isLoading;
   const waitingForDenise = isLoading || isScanning || isAnalyzing;
 
   const handleModeChange = useCallback(
     (next: 'roast' | 'help') => {
       if (next === mode || waitingForDenise) return;
+      // Keep highlights + Help-me fix/apply state across mode switches.
       setMode(next);
-      // Clear canvas highlights/action state from the other mode's review
-      // without wiping Denise-approved bulletproof text.
-      setAnalysisResult({ highlights: [], fixes: [] });
     },
-    [mode, waitingForDenise, setAnalysisResult],
+    [mode, waitingForDenise],
   );
 
   useEffect(() => {
@@ -241,7 +241,8 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     setInputValue('');
     setIsLoading(true);
     setIsAnalyzing(true);
-    beginScan();
+    // Roast is critique-only — don't wipe pending Help-me fixes while scanning.
+    beginScan({ clearFixes: mode === 'help' });
 
     try {
       const res = await fetch('/api/denise', {
@@ -270,7 +271,11 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             },
           ],
         }));
-        setAnalysisResult({ highlights: [], fixes: [] });
+        if (mode === 'roast') {
+          setHighlightsOnly([]);
+        } else {
+          setAnalysisResult({ highlights: [], fixes: [] });
+        }
         return;
       }
 
@@ -291,7 +296,14 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
       }));
 
       if (data.outOfScope) {
-        setAnalysisResult({ highlights: [], fixes: [] });
+        if (mode === 'roast') {
+          setHighlightsOnly([]);
+        } else {
+          setAnalysisResult({ highlights: [], fixes: [] });
+        }
+      } else if (mode === 'roast') {
+        // Roast: surface weak points only — never touch Help-me fixes / apply UI.
+        setHighlightsOnly(Array.isArray(data.highlights) ? data.highlights : []);
       } else {
         setAnalysisResult({
           highlights: Array.isArray(data.highlights) ? data.highlights : [],
@@ -311,7 +323,11 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
           },
         ],
       }));
-      setAnalysisResult({ highlights: [], fixes: [] });
+      if (mode === 'roast') {
+        setHighlightsOnly([]);
+      } else {
+        setAnalysisResult({ highlights: [], fixes: [] });
+      }
     } finally {
       setIsLoading(false);
       setIsAnalyzing(false);
@@ -327,6 +343,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     completeScan,
     setIsAnalyzing,
     setAnalysisResult,
+    setHighlightsOnly,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -458,7 +475,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
         <div ref={responseEndRef} />
       </div>
 
-      {/* Compact action buttons — before/after only after Apply */}
+      {/* Compact action buttons — Help me only; before/after only after Apply */}
       {showActionButtons && (
         <div className="flex-shrink-0 space-y-1.5 px-5 pb-2 pt-1">
           {applied ? (
@@ -533,6 +550,23 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
 
       {/* Chat input */}
       <div className="flex-shrink-0 px-5 pb-4 pt-1">
+        {mode === 'roast' && (
+          <p
+            className="mb-2 px-1 text-[11px] leading-snug text-white/45"
+            style={{ fontFamily: 'var(--font-poppins)', fontWeight: 500 }}
+          >
+            Tip: Want Denise to fix your resume for you? try out{' '}
+            <button
+              type="button"
+              onClick={() => handleModeChange('help')}
+              disabled={waitingForDenise}
+              className="text-white/70 underline decoration-white/30 underline-offset-2 transition-colors hover:text-white disabled:opacity-50"
+            >
+              Help me
+            </button>{' '}
+            mode.
+          </p>
+        )}
         <div
           className="relative flex items-center gap-3 rounded-full px-4 py-2.5"
           style={{

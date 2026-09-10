@@ -45,7 +45,9 @@ interface IconContextType {
   iconElements: IconElement[];
   selectedIconId: string | null;
   addIconElement: (x: number, y: number, svgUrl: string, size?: number) => string;
-  addFullIconElement: (el: Omit<IconElement, 'id'>) => string;
+  addFullIconElement: (el: Omit<IconElement, 'id'> & { id?: string }) => string;
+  /** Replace all icons (persistence). Does not record undo. */
+  hydrateIconElements: (elements: IconElement[]) => void;
   updateIcon: (id: string, updates: Partial<IconElement>) => void;
   /** Start batching updates (for drag/resize operations) */
   startUpdateBatch: () => void;
@@ -90,11 +92,11 @@ export function IconProvider({ children }: { children: ReactNode }) {
     return el.id;
   };
 
-  const addFullIconElement = (el: Omit<IconElement, 'id'>): string => {
+  const addFullIconElement = (el: Omit<IconElement, 'id'> & { id?: string }): string => {
     const full: IconElement = {
       ...el,
-      id: `icon-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      zIndex: getNextLayer(),
+      id: el.id ?? `icon-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      zIndex: el.zIndex ?? getNextLayer(),
     };
     setIconElements(prev => [...prev, full]);
     setSelectedIconId(full.id);
@@ -111,6 +113,11 @@ export function IconProvider({ children }: { children: ReactNode }) {
       }
     );
     return full.id;
+  };
+
+  const hydrateIconElements = (elements: IconElement[]) => {
+    setIconElements(elements);
+    setSelectedIconId(null);
   };
 
   const updateIcon = (id: string, updates: Partial<IconElement>) => {
@@ -164,6 +171,7 @@ export function IconProvider({ children }: { children: ReactNode }) {
         selectedIconId,
         addIconElement,
         addFullIconElement,
+        hydrateIconElements,
         updateIcon,
         startUpdateBatch,
         endUpdateBatch,

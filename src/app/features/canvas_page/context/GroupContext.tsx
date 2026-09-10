@@ -68,6 +68,8 @@ interface GroupContextType {
   selectedGroupId: string | null;
   setSelectedGroupId: (id: string | null) => void;
   addGroup: (bbox: { x: number; y: number; width: number; height: number }, members: GroupMembers) => string;
+  /** Replace all groups (persistence). Does not record undo. */
+  hydrateGroupElements: (elements: GroupElement[]) => void;
   updateGroup: (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex' | 'isLocked'>>) => void;
   startUpdateBatch: () => void;
   endUpdateBatch: () => void;
@@ -170,6 +172,11 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     [getNextLayer, record],
   );
 
+  const hydrateGroupElements = useCallback((elements: GroupElement[]) => {
+    setGroupElements(elements);
+    setSelectedGroupId(null);
+  }, []);
+
   const updateGroup = useCallback(
     (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex' | 'isLocked'>>) => {
       setGroupElements(prev =>
@@ -236,6 +243,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
         selectedGroupId,
         setSelectedGroupId,
         addGroup,
+        hydrateGroupElements,
         updateGroup,
         startUpdateBatch,
         endUpdateBatch,

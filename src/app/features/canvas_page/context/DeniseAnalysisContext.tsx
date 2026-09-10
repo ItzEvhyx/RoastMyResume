@@ -32,7 +32,7 @@ interface DeniseAnalysisContextType {
   /** Element ids Denise already rewrote — still match her suggested text. */
   bulletproofById: Record<string, string>;
   /** Start looping scan overlay (stops only via completeScan). */
-  beginScan: () => void;
+  beginScan: (options?: { clearFixes?: boolean }) => void;
   /** Stop the scan once Denise finishes thinking. */
   completeScan: () => void;
   setIsAnalyzing: (value: boolean) => void;
@@ -40,6 +40,8 @@ interface DeniseAnalysisContextType {
     highlights: DeniseHighlight[];
     fixes: DeniseFix[];
   }) => void;
+  /** Roast mode: update canvas highlights without wiping Help-me fixes / apply state. */
+  setHighlightsOnly: (highlights: DeniseHighlight[]) => void;
   applyFixes: () => void;
   toggleBeforeAfter: () => void;
   abandonFixes: () => void;
@@ -81,12 +83,15 @@ export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
     // Keep bulletproofById — approved rewrites stay trusted across asks
   }, []);
 
-  const beginScan = useCallback(() => {
+  const beginScan = useCallback((options?: { clearFixes?: boolean }) => {
+    const clearFixes = options?.clearFixes !== false;
     setHighlights([]);
-    setFixes([]);
-    setApplied(false);
-    setShowingAfter(false);
-    setCheckpoint({});
+    if (clearFixes) {
+      setFixes([]);
+      setApplied(false);
+      setShowingAfter(false);
+      setCheckpoint({});
+    }
     setIsScanning(true);
   }, []);
 
@@ -94,29 +99,34 @@ export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
     setIsScanning(false);
   }, []);
 
+  const filterAgainstBulletproof = useCallback(
+    <T extends { elementId: string }>(items: T[]): T[] =>
+      items.filter((item) => {
+        const approved = bulletproofById[item.elementId];
+        if (!approved) return true;
+        const live = textElements.find((t) => t.id === item.elementId);
+        return !live || live.content !== approved;
+      }),
+    [bulletproofById, textElements],
+  );
+
   const setAnalysisResult = useCallback(
     (result: { highlights: DeniseHighlight[]; fixes: DeniseFix[] }) => {
       // Drop any highlights/fixes that target Denise-approved text still on canvas
-      const filteredHighlights = result.highlights.filter((h) => {
-        const approved = bulletproofById[h.elementId];
-        if (!approved) return true;
-        const live = textElements.find((t) => t.id === h.elementId);
-        return !live || live.content !== approved;
-      });
-      const filteredFixes = result.fixes.filter((f) => {
-        const approved = bulletproofById[f.elementId];
-        if (!approved) return true;
-        const live = textElements.find((t) => t.id === f.elementId);
-        return !live || live.content !== approved;
-      });
-
-      setHighlights(filteredHighlights);
-      setFixes(filteredFixes);
+      setHighlights(filterAgainstBulletproof(result.highlights));
+      setFixes(filterAgainstBulletproof(result.fixes));
       setApplied(false);
       setShowingAfter(false);
       setCheckpoint({});
     },
-    [bulletproofById, textElements],
+    [filterAgainstBulletproof],
+  );
+
+  const setHighlightsOnly = useCallback(
+    (next: DeniseHighlight[]) => {
+      setHighlights(filterAgainstBulletproof(next));
+    },
+    [filterAgainstBulletproof],
   );
 
   const applySuggestedContents = useCallback(
@@ -218,6 +228,7 @@ export function DeniseAnalysisProvider({ children }: { children: ReactNode }) {
         completeScan,
         setIsAnalyzing,
         setAnalysisResult,
+        setHighlightsOnly,
         applyFixes,
         toggleBeforeAfter,
         abandonFixes,

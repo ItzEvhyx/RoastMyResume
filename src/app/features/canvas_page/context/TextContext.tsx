@@ -33,7 +33,9 @@ interface TextContextType {
   activeTool: string | null;
   addTextElement: (x: number, y: number, initialContent?: string, initialWidth?: number) => string;
   /** Paste a full element snapshot (all props), used by the clipboard system */
-  addFullTextElement: (el: Omit<TextElement, 'id'>) => string;
+  addFullTextElement: (el: Omit<TextElement, 'id'> & { id?: string }) => string;
+  /** Replace all text elements (persistence). Does not record undo. */
+  hydrateTextElements: (elements: TextElement[]) => void;
   updateElement: (id: string, updates: Partial<TextElement>) => void;
   /** Start batching updates (for drag/resize operations) */
   startUpdateBatch: () => void;
@@ -117,11 +119,11 @@ export function TextProvider({ children }: { children: ReactNode }) {
     endBatch();
   };
 
-  const addFullTextElement = (el: Omit<TextElement, 'id'>) => {
+  const addFullTextElement = (el: Omit<TextElement, 'id'> & { id?: string }) => {
     const newElement: TextElement = {
       ...el,
-      id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      zIndex: getNextLayer(),
+      id: el.id ?? `text-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      zIndex: el.zIndex ?? getNextLayer(),
     };
     setTextElements(prev => [...prev, newElement]);
     setSelectedId(newElement.id);
@@ -140,6 +142,11 @@ export function TextProvider({ children }: { children: ReactNode }) {
     return newElement.id;
   };
 
+  const hydrateTextElements = (elements: TextElement[]) => {
+    setTextElements(elements);
+    setSelectedId(null);
+  };
+
   const deleteElement = (id: string) => {
     const index = textElements.findIndex(element => element.id === id);
     const deleted = textElements[index];
@@ -149,7 +156,10 @@ export function TextProvider({ children }: { children: ReactNode }) {
     // Undo: restore the element, Redo: delete it again
     record(
       () => {
-        setTextElements(elements => [...elements.slice(0, index), deleted, ...elements.slice(index)]);
+        setTextElements(elements => {
+          if (elements.some(el => el.id === deleted.id)) return elements;
+          return [...elements.slice(0, index), deleted, ...elements.slice(index)];
+        });
         setSelectedId(previousSelection);
       },
       () => {
@@ -158,10 +168,9 @@ export function TextProvider({ children }: { children: ReactNode }) {
       }
     );
     
-    setTextElements(textElements.filter(el => el.id !== id));
-    if (selectedId === id) {
-      setSelectedId(null);
-    }
+    // Functional update so multi-deletes (e.g. grouping) all apply when batched
+    setTextElements(elements => elements.filter(el => el.id !== id));
+    setSelectedId(current => (current === id ? null : current));
   };
 
   return (
@@ -173,6 +182,7 @@ export function TextProvider({ children }: { children: ReactNode }) {
         activeTool,
         addTextElement,
         addFullTextElement,
+        hydrateTextElements,
         updateElement,
         startUpdateBatch,
         endUpdateBatch,

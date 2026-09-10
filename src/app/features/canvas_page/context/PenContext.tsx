@@ -118,7 +118,9 @@ interface PenContextType {
   selectedStrokeId: string | null;
   setSelectedStrokeId: (id: string | null) => void;
   addStroke: (points: Point[], color: string, thickness: number) => string;
-  addFullStroke: (stroke: Omit<PenStroke, 'id'>) => string;
+  addFullStroke: (stroke: Omit<PenStroke, 'id'> & { id?: string }) => string;
+  /** Replace all strokes (persistence). Does not record undo. */
+  hydrateStrokes: (next: PenStroke[]) => void;
   updateStroke: (id: string, updates: Partial<PenStroke>) => void;
   startUpdateBatch: () => void;
   endUpdateBatch: () => void;
@@ -163,8 +165,12 @@ export function PenProvider({ children }: { children: ReactNode }) {
     return stroke.id;
   };
 
-  const addFullStroke = (stroke: Omit<PenStroke, 'id'>) => {
-    const full: PenStroke = { ...stroke, id: `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, zIndex: getNextLayer() };
+  const addFullStroke = (stroke: Omit<PenStroke, 'id'> & { id?: string }) => {
+    const full: PenStroke = {
+      ...stroke,
+      id: stroke.id ?? `stroke-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      zIndex: stroke.zIndex ?? getNextLayer(),
+    };
     setStrokes(prev => [...prev, full]);
     setSelectedStrokeId(full.id);
     record(
@@ -172,6 +178,11 @@ export function PenProvider({ children }: { children: ReactNode }) {
       () => setStrokes(prev => [...prev, full]),
     );
     return full.id;
+  };
+
+  const hydrateStrokes = (next: PenStroke[]) => {
+    setStrokes(next);
+    setSelectedStrokeId(null);
   };
 
   const updateStroke = (id: string, updates: Partial<PenStroke>) => {
@@ -253,6 +264,7 @@ export function PenProvider({ children }: { children: ReactNode }) {
         setSelectedStrokeId,
         addStroke,
         addFullStroke,
+        hydrateStrokes,
         updateStroke,
         startUpdateBatch: startBatch,
         endUpdateBatch: endBatch,

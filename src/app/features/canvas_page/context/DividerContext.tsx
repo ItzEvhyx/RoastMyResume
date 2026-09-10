@@ -19,7 +19,9 @@ interface DividerContextType {
     dividerElements: DividerElement[];
     selectedDividerId: string | null;
     addDividerElement: (x: number, y: number, initialWidth?: number) => string;
-    addFullDividerElement: (el: Omit<DividerElement, 'id'>) => string;
+    addFullDividerElement: (el: Omit<DividerElement, 'id'> & { id?: string }) => string;
+    /** Replace all dividers (persistence). Does not record undo. */
+    hydrateDividerElements: (elements: DividerElement[]) => void;
     updateDivider: (id: string, updates: Partial<DividerElement>) => void;
     /** Start batching updates (for drag/resize operations) */
     startUpdateBatch: () => void;
@@ -65,11 +67,11 @@ export function DividerProvider({ children }: { children: ReactNode }) {
         return newElement.id;
     };
 
-    const addFullDividerElement = (el: Omit<DividerElement, 'id'>) => {
+    const addFullDividerElement = (el: Omit<DividerElement, 'id'> & { id?: string }) => {
         const newElement: DividerElement = {
             ...el,
-            id: `divider-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            zIndex: getNextLayer(),
+            id: el.id ?? `divider-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            zIndex: el.zIndex ?? getNextLayer(),
         };
 
         setDividerElements(prev => [...prev, newElement]);
@@ -87,6 +89,11 @@ export function DividerProvider({ children }: { children: ReactNode }) {
             }
         );
         return newElement.id;
+    };
+
+    const hydrateDividerElements = (elements: DividerElement[]) => {
+        setDividerElements(elements);
+        setSelectedDividerId(null);
     };
 
     const updateDivider = (id: string, updates: Partial<DividerElement>) => {
@@ -142,6 +149,7 @@ export function DividerProvider({ children }: { children: ReactNode }) {
                 selectedDividerId,
                 addDividerElement,
                 addFullDividerElement,
+                hydrateDividerElements,
                 updateDivider,
                 startUpdateBatch,
                 endUpdateBatch,

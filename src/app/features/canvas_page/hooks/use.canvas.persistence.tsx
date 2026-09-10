@@ -2,22 +2,23 @@
 
 /**
  * use.canvas.persistence.tsx
- * 
- * Custom hook that manages auto-saving and loading of canvas state
- * Syncs all element contexts with localStorage
+ *
+ * Custom hook that manages auto-saving and loading of canvas state.
+ * Syncs all element contexts with localStorage.
+ *
+ * Hydration *replaces* context state (never appends), so React Strict Mode's
+ * mount→unmount→remount cycle cannot stack duplicate elements.
  */
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useText } from '../context/TextContext';
 import { useIcon } from '../context/IconContext';
 import { useDivider } from '../context/DividerContext';
 import { usePen } from '../context/PenContext';
 import { useGroup } from '../context/GroupContext';
-import { 
-  saveCanvasState, 
-  loadCanvasState, 
-  debounce,
-  type CanvasState 
+import {
+  saveCanvasState,
+  loadCanvasState,
 } from '../services/canvas.persistence';
 
 /**
@@ -25,83 +26,88 @@ import {
  * Call this once at the top level of your canvas page
  */
 export function useCanvasPersistence() {
-  const { textElements, addFullTextElement } = useText();
-  const { iconElements, addFullIconElement } = useIcon();
-  const { dividerElements, addFullDividerElement } = useDivider();
-  const { strokes, addFullStroke } = usePen();
-  const { groupElements, addGroup } = useGroup();
-  
-  const hasLoadedRef = useRef(false);
+  const { textElements, hydrateTextElements } = useText();
+  const { iconElements, hydrateIconElements } = useIcon();
+  const { dividerElements, hydrateDividerElements } = useDivider();
+  const { strokes, hydrateStrokes } = usePen();
+  const { groupElements, hydrateGroupElements } = useGroup();
 
-  // Load saved state on mount
-  useEffect(() => {
-    if (hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
+  const readyToSaveRef = useRef(false);
+  const latestRef = useRef({
+    textElements,
+    iconElements,
+    dividerElements,
+    strokes,
+    groupElements,
+  });
+  latestRef.current = {
+    textElements,
+    iconElements,
+    dividerElements,
+    strokes,
+    groupElements,
+  };
 
-    const savedState = loadCanvasState();
-    if (!savedState) return;
-
-    console.log('Loading saved canvas state...', savedState);
-
-    // Restore text elements
-    savedState.textElements.forEach(el => {
-      addFullTextElement(el);
-    });
-
-    // Restore icon elements (includes shapes)
-    savedState.iconElements.forEach(el => {
-      addFullIconElement(el);
-    });
-
-    // Restore divider elements
-    savedState.dividerElements.forEach(el => {
-      addFullDividerElement(el);
-    });
-
-    // Restore pen strokes
-    savedState.penStrokes.forEach(stroke => {
-      addFullStroke(stroke);
-    });
-
-    // Restore groups
-    savedState.groupElements.forEach(group => {
-      addGroup(
-        { x: group.x, y: group.y, width: group.width, height: group.height },
-        group.members
-      );
-    });
-
-  }, []); // Empty deps - only run once on mount
-
-  // Auto-save whenever any elements change (debounced to avoid excessive writes)
-  const debouncedSave = useCallback(
-    debounce(() => {
-      if (!hasLoadedRef.current) return; // Don't save during initial load
-      
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleSave = () => {
+    if (!readyToSaveRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      const snap = latestRef.current;
       saveCanvasState({
-        textElements,
-        iconElements,
-        dividerElements,
-        penStrokes: strokes,
-        groupElements,
+        textElements: snap.textElements,
+        iconElements: snap.iconElements,
+        dividerElements: snap.dividerElements,
+        penStrokes: snap.strokes,
+        groupElements: snap.groupElements,
       });
-    }, 1000), // Save 1 second after last change
-    [textElements, iconElements, dividerElements, strokes, groupElements]
-  );
+    }, 1000);
+  };
+
+  // Load once per mount — replace state so remounts don't stack duplicates
+  useEffect(() => {
+    const savedState = loadCanvasState();
+    if (savedState) {
+      console.log('Loading saved canvas state...', savedState);
+      hydrateTextElements(savedState.textElements);
+      hydrateIconElements(savedState.iconElements);
+      hydrateDividerElements(savedState.dividerElements);
+      hydrateStrokes(savedState.penStrokes);
+      hydrateGroupElements(savedState.groupElements);
+    }
+
+    // Unlock saves after hydrate setStates flush
+    const unlock = setTimeout(() => {
+      readyToSaveRef.current = true;
+    }, 0);
+
+    return () => {
+      clearTimeout(unlock);
+      readyToSaveRef.current = false;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+    // Intentionally mount-only: hydrate* identities change every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    if (!hasLoadedRef.current) return; // Skip auto-save during initial load
-    debouncedSave();
-  }, [textElements, iconElements, dividerElements, strokes, groupElements, debouncedSave]);
+    scheduleSave();
+  }, [textElements, iconElements, dividerElements, strokes, groupElements]);
 
   return {
-    // Expose a manual save function if needed
-    saveNow: () => saveCanvasState({
-      textElements,
-      iconElements,
-      dividerElements,
-      penStrokes: strokes,
-      groupElements,
-    }),
+    saveNow: () => {
+      const snap = latestRef.current;
+      saveCanvasState({
+        textElements: snap.textElements,
+        iconElements: snap.iconElements,
+        dividerElements: snap.dividerElements,
+        penStrokes: snap.strokes,
+        groupElements: snap.groupElements,
+      });
+    },
   };
 }
