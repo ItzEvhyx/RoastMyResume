@@ -206,6 +206,11 @@ export interface DeniseRequest {
    * canvas text must not be highlighted or rewritten again.
    */
   approvedElements?: Record<string, string>;
+  /**
+   * Help mode only: skip clarifying questions and deliver concrete rewrites
+   * this turn. Default help flow still interviews first when unset/false.
+   */
+  skipInterview?: boolean;
 }
 
 export interface DeniseHighlight {
@@ -423,12 +428,26 @@ FORBIDDEN in interview \`content\`: multi-question lists, "here are all the thin
 
 LENGTH: Interview turns should be short (roughly 80–400 characters of \`content\`). Fixes-phase replies may use up to ${DENISE_CHAR_LIMITS.help.max} characters when listing every highlight.`;
 
+/** Help-me shortcut: user opted to skip Q&A and get rewrites immediately. */
+const DENISE_HELP_SKIP_INTERVIEW = `DIRECT FIXES OVERRIDE (user opted in — non-negotiable THIS turn):
+The user wants you to rewrite weak resume lines now without further clarifying questions.
+- Set \`phase: "fixes"\` immediately. Do NOT ask questions. Do NOT use \`phase: "interview"\`. Leave \`interviewFocus\` unused.
+- Populate comprehensive \`highlights\` and full \`fixes\` for every weak top-level text element.
+- Use facts clearly present on the canvas and any details already in the conversation.
+- Where metrics are still missing, sharpen with concrete role/action language from context — do NOT invent precise fake percentages, dollar amounts, or headcounts. Prefer specific-but-honest impact over placeholders or made-up numbers.
+- Still NEVER use [bracket] or <angle> placeholder stubs.
+- In \`content\`: short supportive opener, then a markdown bullet list of every weak quote with a brief tip on what you tightened (HELP-fixes shape). No questions.`;
+
 function buildDeniseSystemPrompt(
   mode: DeniseMode,
   canvasSnapshot: string,
   approvedElements?: Record<string, string>,
+  skipInterview?: boolean,
 ): string {
-  const persona = mode === 'roast' ? DENISE_ROAST_PERSONA : DENISE_HELP_PERSONA;
+  let persona = mode === 'roast' ? DENISE_ROAST_PERSONA : DENISE_HELP_PERSONA;
+  if (mode === 'help' && skipInterview) {
+    persona = `${DENISE_HELP_PERSONA}\n\n${DENISE_HELP_SKIP_INTERVIEW}`;
+  }
 
   let canvasBlock = canvasSnapshot
     ? `\n\nHere is the current state of the user's resume canvas:\n\n${canvasSnapshot}`
@@ -569,6 +588,7 @@ function buildSingleInterviewContent(
 function resultFromToolInput(
   input: Record<string, unknown>,
   mode: DeniseMode,
+  skipInterview = false,
 ): DeniseResult | null {
   let content = typeof input.content === 'string' ? input.content.trim() : '';
   if (!content) return null;
@@ -591,6 +611,19 @@ function resultFromToolInput(
   let fixes = normalizeFixes(input.fixes);
   let phase = normalizePhase(input.phase, mode, fixes);
   const interviewFocus = normalizeInterviewFocus(input.interviewFocus);
+
+  // User opted out of Q&A — never fall back to interview this turn.
+  if (mode === 'help' && skipInterview) {
+    phase = 'fixes';
+    fixes = fixes.filter((f) => !hasRewritePlaceholder(f.suggestedContent));
+    return {
+      outOfScope: false,
+      content,
+      highlights: normalizeHighlights(input.highlights),
+      fixes,
+      phase,
+    };
+  }
 
   if (mode === 'help' && phase === 'interview') {
     fixes = [];
@@ -711,6 +744,7 @@ function finalizeDeniseResult(
 function parseDeniseJsonFallback(
   raw: string,
   mode: DeniseMode,
+  skipInterview = false,
 ): DeniseResult | null {
   let text = raw.trim();
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -722,7 +756,7 @@ function parseDeniseJsonFallback(
 
   try {
     const parsed = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
-    return resultFromToolInput(parsed, mode);
+    return resultFromToolInput(parsed, mode, skipInterview);
   } catch {
     return null;
   }
@@ -737,7 +771,14 @@ function parseDeniseJsonFallback(
 export async function askDenise(
   request: DeniseRequest,
 ): Promise<DeniseResult> {
-  const { mode, canvasSnapshot, messages, approvedElements } = request;
+  const {
+    mode,
+    canvasSnapshot,
+    messages,
+    approvedElements,
+    skipInterview = false,
+  } = request;
+  const directFixes = mode === 'help' && skipInterview;
 
   if (!messages.length) {
     throw new Error('askDenise requires at least one message.');
@@ -752,7 +793,12 @@ export async function askDenise(
     model: CLAUDE_MODEL,
     max_tokens: DENISE_MAX_TOKENS[mode],
     temperature: 1,
-    system: buildDeniseSystemPrompt(mode, canvasSnapshot, approvedElements),
+    system: buildDeniseSystemPrompt(
+      mode,
+      canvasSnapshot,
+      approvedElements,
+      directFixes,
+    ),
     messages: anthropicMessages,
     tools: [DENISE_REVIEW_TOOL],
     tool_choice: { type: 'tool', name: DENISE_TOOL_NAME },
@@ -763,6 +809,7 @@ export async function askDenise(
       const parsed = resultFromToolInput(
         block.input as Record<string, unknown>,
         mode,
+        directFixes,
       );
       if (parsed) return finalizeDeniseResult(parsed, mode, approvedElements);
     }
@@ -784,7 +831,7 @@ export async function askDenise(
     };
   }
 
-  const fromJson = parseDeniseJsonFallback(responseText, mode);
+  const fromJson = parseDeniseJsonFallback(responseText, mode, directFixes);
   if (fromJson) return finalizeDeniseResult(fromJson, mode, approvedElements);
 
   // Never surface raw JSON blobs in the chat panel
@@ -797,7 +844,7 @@ export async function askDenise(
         : responseText,
       highlights: [],
       fixes: [],
-      phase: mode === 'help' ? 'interview' : 'fixes',
+      phase: mode === 'help' && !directFixes ? 'interview' : 'fixes',
     },
     mode,
     approvedElements,
@@ -850,7 +897,14 @@ export async function askDeniseStream(
   request: DeniseRequest,
   handlers: DeniseStreamHandlers = {},
 ): Promise<DeniseResult> {
-  const { mode, canvasSnapshot, messages, approvedElements } = request;
+  const {
+    mode,
+    canvasSnapshot,
+    messages,
+    approvedElements,
+    skipInterview = false,
+  } = request;
+  const directFixes = mode === 'help' && skipInterview;
 
   if (!messages.length) {
     throw new Error('askDeniseStream requires at least one message.');
@@ -865,7 +919,12 @@ export async function askDeniseStream(
     model: CLAUDE_MODEL,
     max_tokens: DENISE_MAX_TOKENS[mode],
     temperature: 1,
-    system: buildDeniseSystemPrompt(mode, canvasSnapshot, approvedElements),
+    system: buildDeniseSystemPrompt(
+      mode,
+      canvasSnapshot,
+      approvedElements,
+      directFixes,
+    ),
     messages: anthropicMessages,
     tools: [DENISE_REVIEW_TOOL],
     tool_choice: { type: 'tool', name: DENISE_TOOL_NAME },
@@ -896,6 +955,7 @@ export async function askDeniseStream(
       const parsed = resultFromToolInput(
         block.input as Record<string, unknown>,
         mode,
+        directFixes,
       );
       if (parsed) {
         const finalized = finalizeDeniseResult(parsed, mode, approvedElements);
@@ -925,7 +985,7 @@ export async function askDeniseStream(
     return result;
   }
 
-  const fromJson = parseDeniseJsonFallback(responseText, mode);
+  const fromJson = parseDeniseJsonFallback(responseText, mode, directFixes);
   if (fromJson) {
     const finalized = finalizeDeniseResult(fromJson, mode, approvedElements);
     handlers.onContent?.(finalized.content);
@@ -941,7 +1001,7 @@ export async function askDeniseStream(
         : responseText || lastContent || 'I reviewed your resume, but my notes got scrambled. Try again.',
       highlights: [],
       fixes: [],
-      phase: mode === 'help' ? 'interview' : 'fixes',
+      phase: mode === 'help' && !directFixes ? 'interview' : 'fixes',
     },
     mode,
     approvedElements,

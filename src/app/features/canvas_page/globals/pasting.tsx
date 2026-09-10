@@ -118,10 +118,10 @@ export function ClipboardProvider({ children }: { children: ReactNode }) {
         // Don't preventDefault — allow system clipboard copy too
       }
 
-      if (e.key === 'v' && !isEditing) {
-        e.preventDefault();
-        paste();
-      }
+      // Ctrl/Cmd+V: do NOT preventDefault here. Blocking keydown stops the
+      // browser `paste` event, which is required for OS clipboard images
+      // (Google Images, screenshots, etc.). In-app element paste is handled
+      // from the canvas `paste` listener when there is no OS image/text.
 
       // Ctrl+D = duplicate in place (copy + paste immediately)
       if (e.key === 'd') {
@@ -144,7 +144,7 @@ export function ClipboardProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [copy, paste]);
+  }, [copy]);
 
   return (
     <ClipboardContext.Provider value={{ clipboard, register, unregister, copy, paste }}>

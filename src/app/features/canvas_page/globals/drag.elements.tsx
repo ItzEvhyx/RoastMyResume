@@ -35,6 +35,10 @@ import {
   nextListType,
   ListType,
 } from '../tool_sidebar/texts/bulletpoint';
+import {
+  indentLinesInRange,
+  outdentLinesInRange,
+} from '../tool_sidebar/texts/indent.text';
 import { getNextTextAlign } from '../tool_sidebar/texts/alignment';
 import {
   applyExecCommand,
@@ -47,6 +51,7 @@ import {
   serializeEditorHtml,
   setPlainSelection,
 } from '../utils/rich.text';
+import { isRasterImageUrl } from '../utils/paste.image';
 import { useRulerSnapping } from './ruler.snapping';
 import { useLayerElementAnimation } from './layer.order';
 
@@ -708,6 +713,34 @@ export function DraggableText({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const root = editorRef.current;
+      if (!root) return;
+      const range = selectionInside(root);
+      if (!range) return;
+      const offsets = rangeToPlainOffsets(root, range);
+      if (!offsets) return;
+      const value = htmlToPlain(serializeEditorHtml(root));
+      const result = e.shiftKey
+        ? outdentLinesInRange(value, offsets.start, offsets.end)
+        : indentLinesInRange(value, offsets.start, offsets.end);
+      if (result.content === value) return;
+      skipNextContentSync.current = true;
+      onUpdate({ content: result.content });
+      requestAnimationFrame(() => {
+        if (!editorRef.current) return;
+        editorRef.current.innerHTML = contentToHtml(result.content);
+        setPlainSelection(
+          editorRef.current,
+          result.selectionStart,
+          result.selectionEnd,
+        );
+        growEditor();
+      });
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       const root = editorRef.current;
       if (!root) return;
@@ -1717,7 +1750,7 @@ export function DraggableIcon({
           isDragOver={isFrameDragOver}
           onUploadClick={() => frameFileInputRef.current?.click()}
         />
-      ) : (element.svgUrl.startsWith('data:image/png') || element.svgUrl.startsWith('data:image/jpeg') || element.svgUrl.startsWith('data:image/jpg')) ? (
+      ) : isRasterImageUrl(element.svgUrl) ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={element.svgUrl}

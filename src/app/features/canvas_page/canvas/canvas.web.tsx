@@ -23,6 +23,11 @@ import type { PenStroke } from '../context/PenContext';
 import { useDeniseAnalysis } from '../context/DeniseAnalysisContext';
 import ScanAnimation from '../assist_panel/animations/scan.animation';
 import DeniseHighlightsOverlay from '../assist_panel/animations/denise.highlights';
+import { isTypingIntoField } from '../utils/keyboard';
+import {
+  getClipboardImageFile,
+  placeClipboardImage,
+} from '../utils/paste.image';
 
 /**
  * A4 Resume dimensions:
@@ -58,7 +63,7 @@ export default function CanvasWeb() {
     groupElements, selectedGroupId, setSelectedGroupId,
     deleteGroup, ungroup,
   } = useGroup();
-  const { register, unregister } = useClipboard();
+  const { register, unregister, clipboard, paste } = useClipboard();
   const { setElements: setRulerElements } = useRulerSnapping();
   const { isScanning } = useDeniseAnalysis();
   const [isPanning, setIsPanning] = useState(false);
@@ -394,17 +399,33 @@ export default function CanvasWeb() {
     };
   }, [zoom, setZoom]);
 
-  // Global clipboard paste on canvas
+  // Global clipboard paste on canvas (OS images, in-app elements, then text)
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          activeEl.tagName === 'TEXTAREA' ||
-          (activeEl as HTMLElement).isContentEditable)
-      ) {
-        return; // Let textarea handle it normally
+      if (isTypingIntoField()) return;
+
+      const imageFile = getClipboardImageFile(e.clipboardData);
+      if (imageFile) {
+        e.preventDefault();
+        const selectedIcon = iconElements.find((el) => el.id === selectedIconId);
+        const selectedFrameId =
+          selectedIcon?.isFrame ? selectedIcon.id : null;
+        void placeClipboardImage(imageFile, {
+          selectedFrameId,
+          updateFrameImage: (id, dataUrl) =>
+            updateIcon(id, { frameImage: dataUrl }),
+          addImage: (el) => addFullIconElement(el),
+        }).catch((err) => {
+          console.error('[canvas] Failed to paste image:', err);
+        });
+        return;
+      }
+
+      // Prefer in-app element clipboard when the user copied a canvas item
+      if (clipboard) {
+        e.preventDefault();
+        paste();
+        return;
       }
 
       const text = e.clipboardData?.getData('text');
@@ -413,7 +434,7 @@ export default function CanvasWeb() {
       e.preventDefault();
 
       const lines = text.split('\n');
-      const maxLen = Math.max(...lines.map(l => l.length));
+      const maxLen = Math.max(...lines.map((l) => l.length));
       const estimatedWidth = Math.min(650, Math.max(200, Math.round(maxLen * 14)));
 
       if (selectedId) {
@@ -426,14 +447,24 @@ export default function CanvasWeb() {
           PAGE_WIDTH / 2 - Math.min(estimatedWidth, 400) / 2,
           PAGE_HEIGHT / 3,
           text,
-          estimatedWidth
+          estimatedWidth,
         );
       }
     };
 
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
-  }, [selectedId, updateElement, addTextElement]);
+  }, [
+    selectedId,
+    selectedIconId,
+    iconElements,
+    clipboard,
+    paste,
+    updateElement,
+    addTextElement,
+    updateIcon,
+    addFullIconElement,
+  ]);
 
   // Deselect all element types when clicking empty space
   const deselectAll = () => {

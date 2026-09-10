@@ -345,6 +345,8 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
   // Apply only after Help-me interview finishes and concrete fixes land.
   const showActionButtons =
     mode === 'help' && phase === 'fixes' && fixes.length > 0 && !isLoading;
+  /** Shortcut to skip Q&A — hidden once Apply / Abandon controls take that slot. */
+  const showJustFixButton = mode === 'help' && !showActionButtons;
   const waitingForDenise = isLoading || isScanning || isAnalyzing;
   const lastMessage = messages[messages.length - 1];
   const showThinkingStatus =
@@ -389,24 +391,33 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
     responseEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading, isScanning, isAnalyzing, mode, thinkingKind]);
 
-  const handleSend = useCallback(async (overrideText?: string) => {
+  const handleSend = useCallback(async (
+    overrideText?: string,
+    options?: { skipInterview?: boolean },
+  ) => {
     const trimmed = (typeof overrideText === 'string' ? overrideText : inputValue).trim();
     if (!trimmed || isLoading) return;
 
+    const skipInterview = options?.skipInterview === true && mode === 'help';
     stopDeniseVoice();
 
     const userMessage: ConversationMessage = { role: 'user', content: trimmed };
     const updatedMessages = [...messages, userMessage];
     // Follow-up answers in Help me: Denise already scanned — don't rescan the canvas.
     const isHelpFollowUp =
-      mode === 'help' && messages.some((m) => m.role === 'assistant');
+      mode === 'help' &&
+      !skipInterview &&
+      messages.some((m) => m.role === 'assistant');
 
     setThreads((prev) => ({ ...prev, [mode]: updatedMessages }));
     setInputValue('');
     setIsLoading(true);
     setIsAnalyzing(true);
 
-    if (isHelpFollowUp) {
+    if (skipInterview) {
+      setThinkingKind('scan');
+      beginScan({ clearFixes: true });
+    } else if (isHelpFollowUp) {
       setThinkingKind('notes');
     } else if (mode === 'roast') {
       setThinkingKind('roast');
@@ -427,6 +438,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
           canvasSnapshot,
           messages: updatedMessages,
           approvedElements: bulletproofById,
+          ...(skipInterview ? { skipInterview: true } : {}),
         }),
       });
 
@@ -924,6 +936,28 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             </button>{' '}
             mode.
           </p>
+        )}
+        {showJustFixButton && (
+          <button
+            type="button"
+            onClick={() =>
+              handleSend(
+                'Just fix my resume now — skip the clarifying questions and rewrite the weak lines based on what’s already on my canvas and anything I’ve already told you.',
+                { skipInterview: true },
+              )
+            }
+            disabled={waitingForDenise}
+            className={`${actionBtnBase} mb-2 disabled:opacity-50 disabled:pointer-events-none`}
+            style={{
+              background: '#ffffff',
+              fontFamily: 'var(--font-poppins)',
+              fontWeight: 700,
+              fontSize: '0.8125rem',
+              color: '#000',
+            }}
+          >
+            Just fix my resume
+          </button>
         )}
         {voiceError && (
           <p

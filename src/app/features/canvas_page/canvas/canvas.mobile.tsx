@@ -16,6 +16,11 @@ import type { DividerElement } from '../context/DividerContext';
 import type { IconElement } from '../context/IconContext';
 import type { PenStroke } from '../context/PenContext';
 import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, clampPenStrokeToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import { isTypingIntoField } from '../utils/keyboard';
+import {
+  getClipboardImageFile,
+  placeClipboardImage,
+} from '../utils/paste.image';
 
 /**
  * Mobile version: pinch-to-zoom and drag-to-pan
@@ -65,7 +70,7 @@ export default function CanvasMobile() {
   } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
   const { strokes, selectedStrokeId, setSelectedStrokeId, addFullStroke, updateStroke, removeStroke, isPenActive } = usePen();
-  const { clipboard, register, unregister, copy } = useClipboard();
+  const { clipboard, register, unregister, copy, paste } = useClipboard();
   const { setElements: setRulerElements } = useRulerSnapping();
 
   const [pasteTarget, setPasteTarget] = useState<PasteTarget | null>(null);
@@ -404,24 +409,46 @@ export default function CanvasMobile() {
   }, [clipboard, pasteTarget, addFullTextElement, addDividerElement, updateDivider, addFullIconElement, addFullStroke]);
 
   // ---------------------------------------------------------------------------
-  // Global clipboard paste (system paste event fallback)
+  // Global clipboard paste (OS images, in-app elements, then text)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          activeEl.tagName === 'TEXTAREA' ||
-          (activeEl as HTMLElement).isContentEditable)
-      ) {
+      if (isTypingIntoField()) return;
+
+      const imageFile = getClipboardImageFile(e.clipboardData);
+      if (imageFile) {
+        e.preventDefault();
+        const selectedIcon = iconElements.find((el) => el.id === selectedIconId);
+        const selectedFrameId =
+          selectedIcon?.isFrame ? selectedIcon.id : null;
+        const anchorX = pasteTarget?.canvasX;
+        const anchorY = pasteTarget?.canvasY;
+        void placeClipboardImage(imageFile, {
+          selectedFrameId,
+          updateFrameImage: (id, dataUrl) =>
+            updateIcon(id, { frameImage: dataUrl }),
+          addImage: (el) => addFullIconElement(el),
+          anchorX,
+          anchorY,
+        })
+          .then(() => setPasteTarget(null))
+          .catch((err) => {
+            console.error('[canvas] Failed to paste image:', err);
+          });
         return;
       }
+
+      if (clipboard) {
+        e.preventDefault();
+        paste();
+        return;
+      }
+
       const text = e.clipboardData?.getData('text');
       if (!text || text.trim() === '') return;
       e.preventDefault();
       const lines = text.split('\n');
-      const maxLen = Math.max(...lines.map(l => l.length));
+      const maxLen = Math.max(...lines.map((l) => l.length));
       const estimatedWidth = Math.min(650, Math.max(200, Math.round(maxLen * 14)));
       if (selectedId) {
         updateElement(selectedId, { content: text, width: Math.max(150, estimatedWidth) });
@@ -439,7 +466,18 @@ export default function CanvasMobile() {
     };
     window.addEventListener('paste', handleGlobalPaste);
     return () => window.removeEventListener('paste', handleGlobalPaste);
-  }, [selectedId, updateElement, addFullTextElement]);
+  }, [
+    selectedId,
+    selectedIconId,
+    iconElements,
+    clipboard,
+    paste,
+    pasteTarget,
+    updateElement,
+    addFullTextElement,
+    updateIcon,
+    addFullIconElement,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Touch pan + pinch-zoom

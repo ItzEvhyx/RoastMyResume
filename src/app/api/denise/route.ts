@@ -15,6 +15,7 @@ interface DeniseBody {
   canvasSnapshot?: unknown;
   messages?: unknown;
   approvedElements?: unknown;
+  skipInterview?: unknown;
 }
 
 function isValidMessage(value: unknown): value is ConversationMessage {
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
   }
 
   const approvedElements = parseApprovedElements(body.approvedElements);
+  const skipInterview = body.skipInterview === true;
 
   try {
     const result = await askDenise({
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
       canvasSnapshot,
       messages: body.messages as ConversationMessage[],
       approvedElements,
+      skipInterview,
     });
     return Response.json(result);
   } catch (err) {
