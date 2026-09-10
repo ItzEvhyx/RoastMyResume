@@ -69,7 +69,7 @@ export function ShapeBorderPicker({ borderWidth, onSelect }: ShapeBorderPickerPr
       {open && (
         <div
           className="absolute"
-          style={{ top: 'calc(100% + 12px)', left: '50%', transform: 'translateX(-50%)', zIndex: 110 }}
+          style={{ top: 'calc(100% + 12px)', left: '50%', transform: 'translateX(-50%)', zIndex: 200030 }}
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div style={{ ...glassPanel, width: 176, padding: '8px 0' }}>

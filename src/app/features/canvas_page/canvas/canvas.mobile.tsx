@@ -98,6 +98,13 @@ export default function CanvasMobile() {
     if (warningTimer.current) clearTimeout(warningTimer.current);
   }, []);
 
+  // Hide the safe-zone pill when nothing is selected.
+  useEffect(() => {
+    if (!selectedId && !selectedDividerId && !selectedIconId && !selectedStrokeId) {
+      clearEdgeWarning();
+    }
+  }, [selectedId, selectedDividerId, selectedIconId, selectedStrokeId, clearEdgeWarning]);
+
   useEffect(() => {
     setRulerElements([
       ...textElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: getTextHeight(element) })),
@@ -313,6 +320,7 @@ export default function CanvasMobile() {
       setSelectedDividerId(null);
       setSelectedIconId(null);
       setSelectedStrokeId(null);
+      clearEdgeWarning();
       return;
     }
 
@@ -329,7 +337,8 @@ export default function CanvasMobile() {
     setSelectedDividerId(null);
     setSelectedIconId(null);
     setSelectedStrokeId(null);
-  }, [clipboard, screenToCanvas, setSelectedId, setSelectedDividerId, setSelectedIconId, setSelectedStrokeId]);
+    clearEdgeWarning();
+  }, [clipboard, screenToCanvas, setSelectedId, setSelectedDividerId, setSelectedIconId, setSelectedStrokeId, clearEdgeWarning]);
 
   // Paste the element at the tapped location
   const executePaste = useCallback(() => {
@@ -564,7 +573,6 @@ export default function CanvasMobile() {
           }}
           onTouchEnd={handleCanvasTap}
         >
-          {edgeWarning && <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />}
           <PenCanvas />
           <RulerGuides />
           {textElements.map(element => (
@@ -637,6 +645,14 @@ export default function CanvasMobile() {
               onDelete={() => removeStroke(stroke.id)}
             />
           ))}
+          {edgeWarning && (
+            <div
+              data-no-export="true"
+              style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 250000 }}
+            >
+              <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />
+            </div>
+          )}
         </div>
       </div>
 

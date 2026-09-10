@@ -3,8 +3,16 @@
  * Used for voice input — works in Brave/Chromium/Firefox where Web Speech fails.
  */
 
+/** Copy into a real ArrayBuffer so fetch BodyInit types accept it on Vercel/Node. */
+function toArrayBuffer(audio: ArrayBuffer | Uint8Array | Buffer): ArrayBuffer {
+  if (audio instanceof ArrayBuffer) return audio;
+  const copy = new Uint8Array(audio.byteLength);
+  copy.set(audio);
+  return copy.buffer;
+}
+
 export async function transcribeAudio(
-  audio: ArrayBuffer | Buffer,
+  audio: ArrayBuffer | Uint8Array | Buffer,
   contentType: string,
 ): Promise<string> {
   const apiKey = process.env.DEEPGRAM_API_KEY;
@@ -20,18 +28,13 @@ export async function transcribeAudio(
   url.searchParams.set('punctuate', 'true');
   url.searchParams.set('language', 'en');
 
-  const body =
-    audio instanceof Buffer
-      ? audio
-      : Buffer.from(audio instanceof ArrayBuffer ? new Uint8Array(audio) : audio);
-
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Token ${apiKey}`,
       'Content-Type': contentType || 'audio/webm',
     },
-    body,
+    body: toArrayBuffer(audio),
   });
 
   if (!res.ok) {

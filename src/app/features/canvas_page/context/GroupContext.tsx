@@ -70,7 +70,7 @@ interface GroupContextType {
   addGroup: (bbox: { x: number; y: number; width: number; height: number }, members: GroupMembers) => string;
   /** Replace all groups (persistence). Does not record undo. */
   hydrateGroupElements: (elements: GroupElement[]) => void;
-  updateGroup: (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex' | 'isLocked'>>) => void;
+  updateGroup: (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'originWidth' | 'originHeight' | 'zIndex' | 'isLocked'>>) => void;
   startUpdateBatch: () => void;
   endUpdateBatch: () => void;
   deleteGroup: (id: string) => void;
@@ -178,7 +178,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateGroup = useCallback(
-    (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'zIndex' | 'isLocked'>>) => {
+    (id: string, updates: Partial<Pick<GroupElement, 'x' | 'y' | 'width' | 'height' | 'originWidth' | 'originHeight' | 'zIndex' | 'isLocked'>>) => {
       setGroupElements(prev =>
         prev.map(g => (g.id === id ? { ...g, ...updates } : g)),
       );

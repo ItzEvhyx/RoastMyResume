@@ -92,7 +92,7 @@ export function PenThicknessPicker({ thickness, onSelect }: PenThicknessPickerPr
             top: '50%',
             left: 'calc(100% + 12px)',
             transform: 'translateY(-50%)',
-            zIndex: 110,
+            zIndex: 200030,
           }}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}

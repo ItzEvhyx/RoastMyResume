@@ -92,7 +92,7 @@ export function ShapeToolbar({
         left: centerX,
         top: topY,
         transform: 'translateX(-50%)',
-        zIndex: 50,
+        zIndex: 200020,
         whiteSpace: 'nowrap',
         userSelect: 'none',
       }}

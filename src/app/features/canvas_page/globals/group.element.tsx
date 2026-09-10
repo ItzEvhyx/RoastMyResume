@@ -21,11 +21,13 @@
  * inline lightweight equivalents here — same logic, zero duplication of state.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Poppins } from 'next/font/google';
+import { isTypingIntoField } from '../utils/keyboard';
 import { useCanvas } from '../context/CanvasContext';
 import { useGroup, type GroupElement } from '../context/GroupContext';
-import { clampGroupToSafeArea } from '../canvas/safe.area';
+import { clampGroupToSafeArea, estimateTextHeight } from '../canvas/safe.area';
+import { contentToHtml } from '../utils/rich.text';
 import { IconColorOverlay } from '../tool_sidebar/icons_set/color.overlay';
 import { flipToTransform, type FlipState } from './flip.element';
 import { useLayerElementAnimation } from './layer.order';
@@ -218,6 +220,61 @@ export function DraggableGroup({
     () => { flush(); endUpdateBatch(); onTransformEnd?.(); },
   );
 
+  // Expand wrapper when member text wraps taller than the stored group height
+  // (legacy groups were sized with newline-only height estimates).
+  const previewRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = previewRef.current;
+    if (!root || isDragging) return;
+
+    let maxBottom = 0;
+    for (let i = 0; i < root.children.length; i++) {
+      const child = root.children[i] as HTMLElement;
+      maxBottom = Math.max(maxBottom, child.offsetTop + child.offsetHeight);
+    }
+
+    const scaleX = group.width / group.originWidth || 1;
+    const scaleY = group.height / group.originHeight || 1;
+    for (const text of group.members.texts) {
+      const localTop = (text.y - group.originY) * scaleY;
+      const localH = estimateTextHeight({
+        content: text.content,
+        fontSize: text.fontSize * Math.min(scaleX, scaleY),
+        width: text.width * scaleX,
+        fontFamily: text.fontFamily,
+        fontWeight: text.fontWeight,
+      });
+      maxBottom = Math.max(maxBottom, localTop + localH);
+    }
+
+    if (maxBottom <= group.height + 2) return;
+
+    const nextHeight = Math.ceil(maxBottom);
+    const nextOriginHeight = nextHeight / scaleY;
+    if (
+      Math.abs(nextHeight - group.height) < 1 &&
+      Math.abs(nextOriginHeight - group.originHeight) < 1
+    ) {
+      return;
+    }
+
+    updateGroup(group.id, {
+      height: nextHeight,
+      // Preserve current scale so members don't jump when the box grows
+      originHeight: nextOriginHeight,
+    });
+  }, [
+    group.id,
+    group.height,
+    group.originHeight,
+    group.originWidth,
+    group.originY,
+    group.width,
+    group.members,
+    isDragging,
+    updateGroup,
+  ]);
+
   // ── Resize ────────────────────────────────────────────────────────────────
   const { start: startResize } = useResize(
     zoom,
@@ -246,6 +303,7 @@ export function DraggableGroup({
   useEffect(() => {
     if (!isSelected) return;
     const handler = (e: KeyboardEvent) => {
+      if (isTypingIntoField(e)) return;
       if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); onDelete(); }
     };
     window.addEventListener('keydown', handler);
@@ -265,7 +323,7 @@ export function DraggableGroup({
         top: group.y,
         width: group.width,
         height: group.height,
-        zIndex: group.zIndex ?? 1,
+        zIndex: isSelected ? 200010 + (group.zIndex ?? 1) : (group.zIndex ?? 1),
         cursor: isDragging ? 'grabbing' : 'grab',
         pointerEvents: 'auto',
         touchAction: 'none',
@@ -284,7 +342,7 @@ export function DraggableGroup({
       {/* The originals are removed from their element contexts when grouped.
           Keep a visual copy here so the group behaves like a real compound
           object instead of collapsing to an empty rectangle. */}
-      <GroupPreview group={group} />
+      <GroupPreview group={group} previewRef={previewRef} />
 
       {/* Transparent selection boundary; it must not obscure the group preview. */}
       <div
@@ -349,12 +407,19 @@ export function DraggableGroup({
   );
 }
 
-function GroupPreview({ group }: { group: GroupElement }) {
+function GroupPreview({
+  group,
+  previewRef,
+}: {
+  group: GroupElement;
+  previewRef?: React.RefObject<HTMLDivElement | null>;
+}) {
   const scaleX = group.width / group.originWidth;
   const scaleY = group.height / group.originHeight;
 
   return (
     <div
+      ref={previewRef}
       aria-hidden
       style={{
         position: 'absolute',
@@ -383,9 +448,8 @@ function GroupPreview({ group }: { group: GroupElement }) {
             overflowWrap: 'break-word',
             wordBreak: 'break-word',
           }}
-        >
-          {text.content || 'Add text'}
-        </div>
+          dangerouslySetInnerHTML={{ __html: contentToHtml(text.content || 'Add text') }}
+        />
       ))}
 
       {group.members.dividers.map(divider => (
@@ -498,7 +562,7 @@ function UngroupToolbar({
         left: '50%',
         top: -(TOOLBAR_H + GAP),
         transform: 'translateX(-50%)',
-        zIndex: 50,
+        zIndex: 200020,
         whiteSpace: 'nowrap',
         userSelect: 'none',
       }}

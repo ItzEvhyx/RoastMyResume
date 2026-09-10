@@ -178,7 +178,7 @@ export function ColorPicker({
             left: popupPlacement === 'right' ? 'calc(100% + 12px)' : '50%',
             transform: popupPlacement === 'right' ? 'translateY(-50%)' : 'translateX(-50%) scale(1.2)',
             transformOrigin: popupPlacement === 'right' ? 'left center' : 'top center',
-            zIndex: 110 
+            zIndex: 200030, 
           }}
           onMouseEnter={openOnHover ? openPicker : undefined}
           onMouseLeave={openOnHover ? closePicker : undefined}

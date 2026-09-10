@@ -83,7 +83,7 @@ export function TextToolbar({
         left: `${centerX}px`,
         top: `${topY}px`,
         transform: 'translateX(-50%)',
-        zIndex: 50,
+        zIndex: 200020,
         whiteSpace: 'nowrap',
         userSelect: 'none',
       }}

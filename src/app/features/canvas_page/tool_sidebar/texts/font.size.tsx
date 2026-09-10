@@ -106,7 +106,7 @@ export function FontSizePicker({ onSelect, activeCategory }: FontSizePickerProps
       {open && (
         <div
           className="absolute"
-          style={{ top: 'calc(100% + 10px)', left: 0, zIndex: 100 }}
+          style={{ top: 'calc(100% + 10px)', left: 0, zIndex: 200030 }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           {/* Category list */}

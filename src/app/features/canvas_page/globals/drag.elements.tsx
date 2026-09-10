@@ -16,19 +16,42 @@
  *   3. Build its render wrapper — drag/resize events are already handled
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Poppins } from 'next/font/google';
 import { useCanvas } from '@/app/features/canvas_page/context/CanvasContext';
 import { useText } from '@/app/features/canvas_page/context/TextContext';
 import { useIcon } from '@/app/features/canvas_page/context/IconContext';
 import { useDivider } from '@/app/features/canvas_page/context/DividerContext';
+import { isTypingIntoField } from '../utils/keyboard';
+import { estimateTextHeight } from '../canvas/safe.area';
 import { TextToolbar } from '../tool_sidebar/texts/text.tools';
 import { DividerToolbar } from '../tool_sidebar/divider/divider.tools';
 import { CATEGORIES } from '../tool_sidebar/texts/font.size';
-import { convertListContent, ListType } from '../tool_sidebar/texts/bulletpoint';
-import { getNextTextAlign, TextAlign } from '../tool_sidebar/texts/alignment';
+import {
+  convertListContent,
+  convertListContentInRange,
+  detectListType,
+  expandToLineBounds,
+  nextListType,
+  ListType,
+} from '../tool_sidebar/texts/bulletpoint';
+import { getNextTextAlign } from '../tool_sidebar/texts/alignment';
+import {
+  applyExecCommand,
+  contentToHtml,
+  hasNonCollapsedSelection,
+  htmlToPlain,
+  looksLikeHtml,
+  rangeToPlainOffsets,
+  selectionInside,
+  serializeEditorHtml,
+  setPlainSelection,
+} from '../utils/rich.text';
 import { useRulerSnapping } from './ruler.snapping';
 import { useLayerElementAnimation } from './layer.order';
+
+/** Selected chrome (toolbar + dropdowns) must sit above Denise highlights (150000). */
+const SELECTED_CHROME_Z = 200010;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Re-export element types so importers only need this one file
@@ -461,12 +484,50 @@ export function DraggableText({
   onLongPress,
 }: DraggableTextProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const skipNextContentSync = useRef(false);
   const lastTapRef = useRef<number>(0);
   const { zoom } = useCanvas();
   const { startUpdateBatch, endUpdateBatch } = useText();
   const { snap: snapToGuides, endDrag: endGuideDrag } = useRulerSnapping();
-  const textHeight = Math.max(element.fontSize + 8, Math.max(1, element.content.split('\n').length) * element.fontSize * 1.2);
+  const plainContent = htmlToPlain(element.content || '');
+  // Canva-style: frame height tracks wrapped content, not a stale estimate.
+  const [frameHeight, setFrameHeight] = useState(() => estimateTextHeight(element));
+  const textHeight = frameHeight;
+
+  const measureFrameHeight = useCallback(() => {
+    const node = isEditing ? editorRef.current : contentRef.current;
+    let measured = 0;
+    if (node) {
+      const prevHeight = node.style.height;
+      node.style.height = 'auto';
+      measured = Math.max(node.scrollHeight, node.offsetHeight);
+      node.style.height = prevHeight;
+    }
+    if (measured <= 0) {
+      measured = estimateTextHeight(element);
+    }
+    const next = Math.max(element.fontSize + 8, Math.ceil(measured));
+    setFrameHeight((prev) => (Math.abs(prev - next) < 1 ? prev : next));
+  }, [
+    isEditing,
+    element.content,
+    element.width,
+    element.fontSize,
+    element.fontFamily,
+    element.fontWeight,
+  ]);
+
+  // Keep the control frame locked to live content (width reflow → height grows/shrinks).
+  useLayoutEffect(() => {
+    measureFrameHeight();
+    const node = isEditing ? editorRef.current : contentRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => measureFrameHeight());
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [measureFrameHeight, isEditing]);
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const { isDragging, startMouse: startDragMouse, startTouch: startDragTouch } = useDrag({
@@ -518,7 +579,10 @@ export function DraggableText({
       zoom, 
       applyResize: applyTextResize,
       onStart: startUpdateBatch,
-      onEnd: endUpdateBatch,
+      onEnd: () => {
+        endUpdateBatch();
+        onDragEnd?.();
+      },
     });
 
   // ── Long-press ────────────────────────────────────────────────────────────
@@ -527,6 +591,7 @@ export function DraggableText({
   // ── Keyboard delete ───────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isTypingIntoField(e)) return;
       if (isSelected && !isEditing && (e.key === 'Backspace' || e.key === 'Delete')) {
         e.preventDefault();
         onDelete();
@@ -536,26 +601,54 @@ export function DraggableText({
     return () => window.removeEventListener('keydown', handler);
   }, [isSelected, isEditing, onDelete]);
 
-  // ── Auto-grow textarea ────────────────────────────────────────────────────
+  // ── Enter edit mode: seed contentEditable once ────────────────────────────
   useEffect(() => {
-    if (!isEditing || !inputRef.current) return;
-    inputRef.current.focus();
-    if (element.content === 'Add text') {
-      inputRef.current.select();
+    if (!isEditing || !editorRef.current) return;
+    const el = editorRef.current;
+    el.innerHTML = contentToHtml(element.content || '');
+    el.focus();
+    const plain = htmlToPlain(element.content || '');
+    if (plain === 'Add text') {
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
     } else {
-      const len = inputRef.current.value.length;
-      inputRef.current.selectionStart = len;
-      inputRef.current.selectionEnd = len;
+      setPlainSelection(el, plain.length, plain.length);
     }
-    inputRef.current.style.height = 'auto';
-    inputRef.current.style.height = `${Math.max(element.fontSize + 8, inputRef.current.scrollHeight)}px`;
-  }, [isEditing, element.content, element.fontSize, element.width]);
+    // Let natural content height drive the frame (Canva auto-height).
+    el.style.height = 'auto';
+    measureFrameHeight();
+    // Only run when entering edit mode — not on every content keystroke
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
+
+  // External content updates while editing (e.g. toolbar list rewrite)
+  useEffect(() => {
+    if (!isEditing || !editorRef.current) return;
+    if (skipNextContentSync.current) {
+      skipNextContentSync.current = false;
+      return;
+    }
+    if (document.activeElement === editorRef.current) return;
+    editorRef.current.innerHTML = contentToHtml(element.content || '');
+    editorRef.current.style.height = 'auto';
+    measureFrameHeight();
+  }, [isEditing, element.content, measureFrameHeight]);
+
+  // Remeasure after width / typography changes (side-handle reflow like Canva).
+  useLayoutEffect(() => {
+    measureFrameHeight();
+  }, [element.width, element.fontSize, element.fontFamily, element.fontWeight, element.content, measureFrameHeight]);
 
   // ── Mouse handlers ────────────────────────────────────────────────────────
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault();
     if (isEditing || element.isLocked) return;
+    e.preventDefault();
     onSelect();
     startDragMouse(e, element.x, element.y);
   };
@@ -583,33 +676,50 @@ export function DraggableText({
   };
 
   // ── Text editing handlers ─────────────────────────────────────────────────
-  const growTextarea = () => {
-    if (!inputRef.current) return;
-    inputRef.current.style.height = 'auto';
-    inputRef.current.style.height = `${Math.max(element.fontSize + 8, inputRef.current.scrollHeight)}px`;
+  const growEditor = () => {
+    if (editorRef.current) editorRef.current.style.height = 'auto';
+    measureFrameHeight();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onUpdate({ content: e.target.value });
-    growTextarea();
+  const commitEditor = () => {
+    if (!editorRef.current) return;
+    skipNextContentSync.current = true;
+    onUpdate({ content: serializeEditorHtml(editorRef.current) });
+    growEditor();
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const pasted = e.clipboardData.getData('text');
-    if (pasted) {
-      const maxLen = Math.max(...pasted.split('\n').map(l => l.length));
-      if (element.width <= 200 && maxLen > 15) {
-        onUpdate({ width: Math.min(650, Math.max(element.width, Math.round(maxLen * element.fontSize * 0.55))) });
-      }
+  const handleEditorInput = () => {
+    commitEditor();
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text/plain');
+    if (!pasted) return;
+    applyExecCommand('insertText', pasted);
+    commitEditor();
+    const maxLen = Math.max(...pasted.split('\n').map((l) => l.length));
+    if (element.width <= 200 && maxLen > 15) {
+      onUpdate({
+        width: Math.min(650, Math.max(element.width, Math.round(maxLen * element.fontSize * 0.55))),
+      });
     }
-    requestAnimationFrame(growTextarea);
+    requestAnimationFrame(growEditor);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      const ta = inputRef.current;
-      if (!ta) return;
-      const { selectionStart, selectionEnd, value } = ta;
+      const root = editorRef.current;
+      if (!root) return;
+      const range = selectionInside(root);
+      if (!range) return;
+      const offsets = rangeToPlainOffsets(root, range);
+      if (!offsets) return;
+      const value = htmlToPlain(serializeEditorHtml(root));
+      const { selectionStart, selectionEnd } = {
+        selectionStart: offsets.start,
+        selectionEnd: offsets.end,
+      };
       const before = value.substring(0, selectionStart);
       const after = value.substring(selectionEnd);
       const lastNl = before.lastIndexOf('\n');
@@ -618,52 +728,58 @@ export function DraggableText({
       const bulletMatch = line.match(/^(\s*)•\s*(.*)$/);
       const numberMatch = line.match(/^(\s*)(\d+)\.\s*(.*)$/);
 
-      const insertAt = (text: string) => {
-        const next = before + text + after;
-        onUpdate({ content: next });
-        requestAnimationFrame(() => {
-          if (!inputRef.current) return;
-          inputRef.current.selectionStart = selectionStart + text.length;
-          inputRef.current.selectionEnd = selectionStart + text.length;
+      const applyPlain = (next: string, caret: number) => {
+        e.preventDefault();
+        skipNextContentSync.current = true;
+        onUpdate({
+          content: next,
+          listType: next.trim() === '' ? 'none' : element.listType,
         });
-      };
-      const removeLine = () => {
-        const sol = lastNl === -1 ? 0 : lastNl + 1;
-        const next = value.substring(0, sol) + after;
-        onUpdate({ content: next, listType: next.trim() === '' ? 'none' : element.listType });
         requestAnimationFrame(() => {
-          if (!inputRef.current) return;
-          inputRef.current.selectionStart = sol;
-          inputRef.current.selectionEnd = sol;
+          if (!editorRef.current) return;
+          editorRef.current.innerHTML = contentToHtml(next);
+          setPlainSelection(editorRef.current, caret, caret);
+          growEditor();
         });
       };
 
+      const insertAt = (text: string) => {
+        applyPlain(before + text + after, selectionStart + text.length);
+      };
+      const removeLine = () => {
+        const sol = lastNl === -1 ? 0 : lastNl + 1;
+        applyPlain(value.substring(0, sol) + after, sol);
+      };
+
       if (bulletMatch) {
-        e.preventDefault();
         bulletMatch[2].trim() === '' ? removeLine() : insertAt(`\n${bulletMatch[1]}• `);
         return;
       }
       if (numberMatch) {
-        e.preventDefault();
-        numberMatch[3].trim() === '' ? removeLine() : insertAt(`\n${numberMatch[1]}${parseInt(numberMatch[2]) + 1}. `);
+        numberMatch[3].trim() === ''
+          ? removeLine()
+          : insertAt(`\n${numberMatch[1]}${parseInt(numberMatch[2], 10) + 1}. `);
         return;
       }
       if (element.listType === 'bullet') {
-        e.preventDefault();
         insertAt('\n• ');
         return;
       }
       if (element.listType === 'number') {
-        e.preventDefault();
         insertAt(`\n${before.split('\n').length + 1}. `);
         return;
       }
     }
 
     if (e.key === 'Backspace') {
-      const ta = inputRef.current;
-      if (!ta || ta.selectionStart !== ta.selectionEnd) return;
-      const { selectionStart, value } = ta;
+      const root = editorRef.current;
+      if (!root) return;
+      const range = selectionInside(root);
+      if (!range || !range.collapsed) return;
+      const offsets = rangeToPlainOffsets(root, range);
+      if (!offsets) return;
+      const value = htmlToPlain(serializeEditorHtml(root));
+      const { selectionStart } = { selectionStart: offsets.start };
       const before = value.substring(0, selectionStart);
       const lastNl = before.lastIndexOf('\n');
       const line = lastNl === -1 ? before : before.substring(lastNl + 1);
@@ -671,38 +787,127 @@ export function DraggableText({
         e.preventDefault();
         const sol = lastNl === -1 ? 0 : lastNl + 1;
         const next = value.substring(0, sol) + value.substring(selectionStart);
+        skipNextContentSync.current = true;
         onUpdate({ content: next, listType: next.trim() === '' ? 'none' : element.listType });
         requestAnimationFrame(() => {
-          if (!inputRef.current) return;
-          inputRef.current.selectionStart = sol;
-          inputRef.current.selectionEnd = sol;
+          if (!editorRef.current) return;
+          editorRef.current.innerHTML = contentToHtml(next);
+          setPlainSelection(editorRef.current, sol, sol);
+          growEditor();
         });
       }
     }
   };
 
+  const syncFromEditor = () => {
+    if (!editorRef.current) return;
+    skipNextContentSync.current = true;
+    onUpdate({ content: serializeEditorHtml(editorRef.current) });
+  };
+
+  /** When editing with a caret/selection, format that range; otherwise whole element. */
   const handleListToggle = () => {
+    if (isEditing && editorRef.current) {
+      const root = editorRef.current;
+      const range = selectionInside(root);
+      const plain = htmlToPlain(serializeEditorHtml(root));
+      let selStart = 0;
+      let selEnd = plain.length;
+      if (range) {
+        const offsets = rangeToPlainOffsets(root, range);
+        if (offsets) {
+          selStart = offsets.start;
+          selEnd = offsets.end;
+        }
+      }
+      const lineBounds = expandToLineBounds(plain, selStart, selEnd);
+      const linePlain = plain.slice(lineBounds.start, lineBounds.end);
+      const nextType = nextListType(detectListType(linePlain));
+      const result = convertListContentInRange(plain, selStart, selEnd, nextType);
+      skipNextContentSync.current = true;
+      onUpdate({
+        content: result.content,
+        listType: detectListType(result.content),
+      });
+      requestAnimationFrame(() => {
+        if (!editorRef.current) return;
+        editorRef.current.innerHTML = contentToHtml(result.content);
+        setPlainSelection(editorRef.current, result.selectionStart, result.selectionEnd);
+        growEditor();
+      });
+      return;
+    }
+
     const cur: ListType = element.listType || 'none';
-    const next: ListType = cur === 'bullet' ? 'number' : cur === 'number' ? 'none' : 'bullet';
-    onUpdate({ listType: next, content: convertListContent(element.content || '', next) });
+    const next = nextListType(cur);
+    onUpdate({ listType: next, content: convertListContent(plainContent, next) });
   };
 
   const handleAlignToggle = () => {
+    if (isEditing && editorRef.current) {
+      const next = getNextTextAlign(element.textAlign || 'none');
+      const cmd =
+        next === 'center'
+          ? 'justifyCenter'
+          : next === 'right'
+            ? 'justifyRight'
+            : next === 'justify'
+              ? 'justifyFull'
+              : 'justifyLeft';
+      editorRef.current.focus();
+      applyExecCommand(cmd);
+      syncFromEditor();
+      onUpdate({ textAlign: next });
+      return;
+    }
     onUpdate({ textAlign: getNextTextAlign(element.textAlign || 'none') });
   };
 
-  const handleBlur = () => {
-    setIsEditing(false);
-    if (!element.content?.trim()) onDelete();
+  const handleInlineToggle = (
+    command: 'bold' | 'italic' | 'underline',
+    wholeElementUpdate: () => void,
+  ) => {
+    if (isEditing && editorRef.current) {
+      editorRef.current.focus();
+      applyExecCommand(command);
+      syncFromEditor();
+      return;
+    }
+    wholeElementUpdate();
   };
 
+  const handleColorChange = (color: string) => {
+    if (isEditing && editorRef.current && hasNonCollapsedSelection(editorRef.current)) {
+      editorRef.current.focus();
+      applyExecCommand('foreColor', color);
+      syncFromEditor();
+      return;
+    }
+    onUpdate({ color });
+  };
+
+  const handleBlur = () => {
+    if (editorRef.current) {
+      skipNextContentSync.current = true;
+      const next = serializeEditorHtml(editorRef.current);
+      onUpdate({ content: next });
+      setIsEditing(false);
+      if (!htmlToPlain(next).trim()) onDelete();
+      return;
+    }
+    setIsEditing(false);
+    if (!htmlToPlain(element.content || '').trim()) onDelete();
+  };
+
+  const isRich = looksLikeHtml(element.content || '');
   const textStyle: React.CSSProperties = {
     fontSize: `${element.fontSize}px`,
     fontFamily: element.fontFamily || 'var(--font-poppins)',
     color: element.color ?? '#000000',
-    fontWeight: element.fontWeight ?? 400,
-    fontStyle: element.fontStyle || 'normal',
-    textDecoration: element.textDecoration || 'none',
+    // Element-level weight/style/decoration fight inline <b>/<i>/<u> — skip when rich.
+    fontWeight: isRich ? undefined : (element.fontWeight ?? 400),
+    fontStyle: isRich ? undefined : (element.fontStyle || 'normal'),
+    textDecoration: isRich ? undefined : (element.textDecoration || 'none'),
     textAlign: element.textAlign && element.textAlign !== 'none' ? element.textAlign : 'left',
     minHeight: `${element.fontSize + 8}px`,
     lineHeight: '1.2',
@@ -723,11 +928,14 @@ export function DraggableText({
         left: element.x,
         top: element.y,
         width: element.width,
-        zIndex: isSelected ? (element.zIndex ?? 1) + 1000 : (element.zIndex ?? 1),
+        // Explicit height so the selection chrome always matches wrapped text.
+        height: frameHeight,
+        zIndex: isSelected ? SELECTED_CHROME_Z + (element.zIndex ?? 1) : (element.zIndex ?? 1),
         cursor: isDragging ? 'grabbing' : isEditing ? 'text' : 'move',
         fontFamily: element.fontFamily || 'var(--font-poppins)',
         pointerEvents: 'auto',
         touchAction: 'none',
+        boxSizing: 'border-box',
         ...animStyle,
       }}
       onMouseDown={handleMouseDown}
@@ -735,27 +943,31 @@ export function DraggableText({
       onTouchStart={handleTouchStart}
     >
       {isEditing ? (
-        <textarea
-          ref={inputRef}
+        <div
+          ref={editorRef}
           data-text-id={element.id}
-          value={element.content}
-          onChange={handleChange}
+          contentEditable
+          suppressContentEditableWarning
+          role="textbox"
+          aria-multiline
+          onInput={handleEditorInput}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onBlur={handleBlur}
           onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          className="w-full resize-none border-none bg-transparent outline-none overflow-hidden block"
-          style={textStyle}
+          className="w-full border-none bg-transparent outline-none block"
+          style={{ ...textStyle, height: 'auto', overflow: 'visible' }}
         />
       ) : (
         <div
+          ref={contentRef}
           data-text-id={element.id}
           onDoubleClick={(e) => { e.stopPropagation(); if (isSelected && !element.isLocked) setIsEditing(true); }}
-          style={textStyle}
-        >
-          {element.content || 'Add text'}
-        </div>
+          style={{ ...textStyle, height: 'auto', overflow: 'visible' }}
+          dangerouslySetInnerHTML={{ __html: contentToHtml(element.content || 'Add text') }}
+        />
       )}
 
       {isSelected && !isDragging && (
@@ -765,14 +977,28 @@ export function DraggableText({
             elementY={0}
             elementWidth={element.width}
             onFontSizeChange={(fontSize) => onUpdate({ fontSize })}
-            onColorChange={(color) => onUpdate({ color })}
+            onColorChange={handleColorChange}
             color={element.color ?? '#000000'}
             isBold={(element.fontWeight ?? 400) >= 700}
-            onBoldToggle={() => onUpdate({ fontWeight: (element.fontWeight ?? 400) >= 700 ? 400 : 700 })}
+            onBoldToggle={() =>
+              handleInlineToggle('bold', () =>
+                onUpdate({ fontWeight: (element.fontWeight ?? 400) >= 700 ? 400 : 700 }),
+              )
+            }
             isItalic={element.fontStyle === 'italic'}
-            onItalicToggle={() => onUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })}
+            onItalicToggle={() =>
+              handleInlineToggle('italic', () =>
+                onUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' }),
+              )
+            }
             isUnderline={element.textDecoration === 'underline'}
-            onUnderlineToggle={() => onUpdate({ textDecoration: element.textDecoration === 'underline' ? 'none' : 'underline' })}
+            onUnderlineToggle={() =>
+              handleInlineToggle('underline', () =>
+                onUpdate({
+                  textDecoration: element.textDecoration === 'underline' ? 'none' : 'underline',
+                }),
+              )
+            }
             listType={element.listType || 'none'}
             onListToggle={handleListToggle}
             textAlign={element.textAlign || 'none'}
@@ -781,11 +1007,18 @@ export function DraggableText({
             onLockToggle={() => onUpdate({ isLocked: !element.isLocked })}
           />
 
-          {/* Selection border */}
+          {/* Selection border — tied to explicit frame height (Canva-style) */}
           <div
             data-no-export="true"
-            className="pointer-events-none absolute inset-0"
-            style={{ border: '2px solid #000000', marginTop: -2, marginLeft: -2, width: 'calc(100% + 4px)', height: 'calc(100% + 4px)' }}
+            className="pointer-events-none absolute"
+            style={{
+              left: -2,
+              top: -2,
+              width: element.width + 4,
+              height: frameHeight + 4,
+              border: '2px solid #000000',
+              boxSizing: 'border-box',
+            }}
           />
 
           {/* Resize handles - only show when not locked */}
@@ -809,7 +1042,7 @@ export function DraggableText({
                 onTouchStart={(e) => startResizeTouch(e, 'sw', snapBase)} 
                 dataNoExport={true} />
 
-              {/* Side handles */}
+              {/* Side handles (width only — height auto-adjusts on reflow, like Canva) */}
               <ResizeHandleNode cursor="ew-resize" style={{ left: -8, top: '50%', transform: 'translateY(-50%)' }}
                 onMouseDown={(e) => startResizeMouse(e, 'w', snapBase)}
                 onTouchStart={(e) => startResizeTouch(e, 'w', snapBase)} 
@@ -908,7 +1141,10 @@ export function DraggableDivider({
       zoom, 
       applyResize: applyDividerResizeFull,
       onStart: startUpdateBatch,
-      onEnd: endUpdateBatch,
+      onEnd: () => {
+        endUpdateBatch();
+        onDragEnd?.();
+      },
     });
 
   // ── Long-press ────────────────────────────────────────────────────────────
@@ -917,6 +1153,7 @@ export function DraggableDivider({
   // ── Keyboard delete ───────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isTypingIntoField(e)) return;
       if (isSelected && (e.key === 'Backspace' || e.key === 'Delete')) {
         e.preventDefault();
         onDelete();
@@ -959,7 +1196,7 @@ export function DraggableDivider({
         top: element.y - HIT_PADDING,
         width: element.width,
         height: HIT_PADDING * 2 + thickness,
-        zIndex: isSelected ? (element.zIndex ?? 1) + 1000 : (element.zIndex ?? 1),
+        zIndex: isSelected ? SELECTED_CHROME_Z + (element.zIndex ?? 1) : (element.zIndex ?? 1),
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',
@@ -1312,6 +1549,7 @@ export function DraggableIcon({
       onEnd: () => {
         flushPendingUpdate();
         endUpdateBatch();
+        onDragEnd?.();
       },
     });
 
@@ -1321,6 +1559,7 @@ export function DraggableIcon({
   // ── Keyboard delete ───────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isTypingIntoField(e)) return;
       if (isSelected && (e.key === 'Backspace' || e.key === 'Delete')) {
         e.preventDefault();
         onDelete();
@@ -1443,9 +1682,8 @@ export function DraggableIcon({
         top: element.y,
         width: elementWidth,
         height: elementHeight,
-        // The pen drawing SVG occupies the canvas, so icon and shape hit areas
-        // must have their own layer instead of relying on DOM paint order.
-        zIndex: isSelected ? (element.zIndex ?? 1) + 1000 : (element.zIndex ?? 1),
+        // Selected chrome (toolbars / color pickers) must sit above Denise highlights.
+        zIndex: isSelected ? SELECTED_CHROME_Z + (element.zIndex ?? 1) : (element.zIndex ?? 1),
         cursor: isDragging ? 'grabbing' : 'move',
         pointerEvents: 'auto',
         touchAction: 'none',

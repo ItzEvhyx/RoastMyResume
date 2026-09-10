@@ -21,6 +21,7 @@ import type { DividerElement } from '../context/DividerContext';
 import type { IconElement } from '../context/IconContext';
 import type { PenStroke } from '../context/PenContext';
 import type { GroupElement } from '../context/GroupContext';
+import { htmlToPlain } from './rich.text';
 
 // ─── Snapshot types ───────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@ function serializeText(el: TextElement): string {
   const decoration = el.textDecoration === 'underline' ? ' Underlined' : '';
   const category = el.textCategory ? ` [${el.textCategory}]` : '';
   const align = el.textAlign && el.textAlign !== 'none' ? ` align:${el.textAlign}` : '';
-  const body = truncate(el.content).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const body = truncate(htmlToPlain(el.content)).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
   return `[Text${category}] id:${el.id} (x:${Math.round(el.x)}, y:${Math.round(el.y)}, ${font} ${family}${weight}${style}${decoration}${align}) "${body}"`;
 }

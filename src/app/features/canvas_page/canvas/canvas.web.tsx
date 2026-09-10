@@ -80,6 +80,13 @@ export default function CanvasWeb() {
     if (warningTimer.current) clearTimeout(warningTimer.current);
   }, []);
 
+  // Hide the safe-zone pill whenever nothing is selected (or selection changes).
+  useEffect(() => {
+    if (!selectedId && !selectedDividerId && !selectedIconId && !selectedStrokeId && !selectedGroupId) {
+      clearEdgeWarning();
+    }
+  }, [selectedId, selectedDividerId, selectedIconId, selectedStrokeId, selectedGroupId, clearEdgeWarning]);
+
   useEffect(() => {
     setRulerElements([
       ...textElements.map(element => ({ id: element.id, x: element.x, y: element.y, width: element.width, height: getTextHeight(element) })),
@@ -435,6 +442,7 @@ export default function CanvasWeb() {
     setSelectedIconId(null);
     setSelectedGroupId(null);
     setSelectedStrokeId(null);
+    clearEdgeWarning();
   };
 
   return (
@@ -532,12 +540,6 @@ export default function CanvasWeb() {
               <div data-no-export="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                 <RulerGuides />
               </div>
-              
-              {edgeWarning && (
-                <div data-no-export="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                  <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />
-                </div>
-              )}
 
               {/* Render text elements */}
               {textElements.map(element => (
@@ -662,6 +664,16 @@ export default function CanvasWeb() {
               {/* Denise analysis overlays — above content, below selection chrome */}
               <DeniseHighlightsOverlay />
               <ScanAnimation active={isScanning} />
+
+              {/* Safe-area warning — above highlights so the pill stays readable */}
+              {edgeWarning && (
+                <div
+                  data-no-export="true"
+                  style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 250000 }}
+                >
+                  <SafeAreaWarning x={edgeWarning.x} y={edgeWarning.y} height={edgeWarning.height} />
+                </div>
+              )}
             </div>
           </div>
         </div>

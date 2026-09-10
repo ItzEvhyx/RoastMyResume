@@ -98,7 +98,7 @@ export function ThicknessPicker({ thickness, onSelect }: ThicknessPickerProps) {
             {open && (
                 <div
                     className="absolute"
-                    style={{ top: 'calc(100% + 10px)', left: 0, zIndex: 100 }}
+                    style={{ top: 'calc(100% + 10px)', left: 0, zIndex: 200030 }}
                     onMouseDown={(e) => e.stopPropagation()}
                 >
                     <div style={{ ...glassPanel, padding: '8px 0', minWidth: 150 }}>

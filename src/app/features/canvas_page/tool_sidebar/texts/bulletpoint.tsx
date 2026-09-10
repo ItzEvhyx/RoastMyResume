@@ -110,3 +110,58 @@ export function convertListContent(content: string, targetType: ListType): strin
 
   return content;
 }
+
+/** Detect list style of a plain-text block (all non-empty lines must match). */
+export function detectListType(content: string): ListType {
+  const lines = content.split('\n').filter((l) => l.trim().length > 0);
+  if (!lines.length) return 'none';
+  if (lines.every((l) => /^\s*•\s/.test(l))) return 'bullet';
+  if (lines.every((l) => /^\s*\d+[\.\)]\s/.test(l))) return 'number';
+  return 'none';
+}
+
+export function nextListType(current: ListType): ListType {
+  if (current === 'bullet') return 'number';
+  if (current === 'number') return 'none';
+  return 'bullet';
+}
+
+/** Expand a caret/selection to whole-line bounds (plain text with `\n`). */
+export function expandToLineBounds(
+  content: string,
+  selStart: number,
+  selEnd: number,
+): { start: number; end: number } {
+  const start = content.lastIndexOf('\n', Math.max(0, selStart - 1)) + 1;
+  let end = content.indexOf('\n', selEnd);
+  if (end === -1) end = content.length;
+  // If the selection ends exactly on a newline, keep that line out of the range
+  if (selEnd > selStart && content[selEnd - 1] === '\n') {
+    end = selEnd - 1;
+    const lineStart = content.lastIndexOf('\n', Math.max(0, end - 1)) + 1;
+    return { start, end: Math.max(end, lineStart) };
+  }
+  return { start, end };
+}
+
+/**
+ * Convert only the lines covered by a plain-text selection (GDocs-style).
+ * Collapsed caret still converts the current line.
+ */
+export function convertListContentInRange(
+  content: string,
+  selStart: number,
+  selEnd: number,
+  targetType: ListType,
+): { content: string; selectionStart: number; selectionEnd: number } {
+  const { start, end } = expandToLineBounds(content, selStart, selEnd);
+  const before = content.slice(0, start);
+  const selected = content.slice(start, end);
+  const after = content.slice(end);
+  const converted = convertListContent(selected, targetType);
+  return {
+    content: before + converted + after,
+    selectionStart: start,
+    selectionEnd: start + converted.length,
+  };
+}

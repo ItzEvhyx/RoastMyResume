@@ -6,6 +6,7 @@ import { useCanvas } from '../context/CanvasContext';
 import { usePen } from '../context/PenContext';
 import { useRulerSnapping } from './ruler.snapping';
 import { useLayerElementAnimation } from './layer.order';
+import { isTypingIntoField } from '../utils/keyboard';
 
 const HANDLE_SIZE = 14;
 const MIN_SCALE = 0.15;
@@ -104,6 +105,7 @@ export function DraggablePenStroke({ stroke, isSelected, onSelect, onUpdate, onD
 
   useEffect(() => {
     const removeOnKey = (event: KeyboardEvent) => {
+      if (isTypingIntoField(event)) return;
       if (isSelected && (event.key === 'Backspace' || event.key === 'Delete')) {
         event.preventDefault();
         onDelete();
