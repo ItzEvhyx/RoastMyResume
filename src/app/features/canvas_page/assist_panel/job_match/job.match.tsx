@@ -5,11 +5,13 @@ import Image from 'next/image';
 import { Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Lottie } from 'lottie-react';
 import JobMatchAnimation from './job.match.animation';
 import JobMatchResults from './job.match.results';
 import { useCanvasSnapshot } from '../../hooks/use.canvas.snapshot';
 import { useDeniseAnalysis } from '../../context/DeniseAnalysisContext';
 import type { ImageMediaType, JobMatchResult } from '@/app/core/services/claude';
+import scanningJobMatchAnimation from '../../../../../../public/assets/videos/lottie_animations/scanning_jobmatch.json';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -390,13 +392,28 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
         )}
 
         {phase === 'analyzing' && (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-2">
+          <motion.div
+            className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-2"
+            initial={{ opacity: 0, y: '-15%' }}
+            animate={{ opacity: 1, y: '-15%' }}
+            exit={{ opacity: 0, y: '-15%' }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="flex w-[95%] items-center justify-center">
+              <Lottie
+                src={scanningJobMatchAnimation}
+                loop
+                autoplay
+                className="h-auto w-full"
+                aria-hidden
+              />
+            </div>
             <AnimatePresence mode="wait">
               <motion.p
                 key={STATUS_LINES[statusIndex]}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
+                exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.35 }}
                 className="job-match-shimmer text-center text-sm leading-relaxed text-white/80"
                 style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}
@@ -404,19 +421,7 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
                 {STATUS_LINES[statusIndex]}
               </motion.p>
             </AnimatePresence>
-            <div
-              className="h-1.5 w-40 overflow-hidden rounded-full"
-              style={{ background: 'rgba(255,255,255,0.1)' }}
-            >
-              <motion.div
-                className="h-full rounded-full bg-white/70"
-                initial={{ x: '-100%' }}
-                animate={{ x: '100%' }}
-                transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ width: '40%' }}
-              />
-            </div>
-          </div>
+          </motion.div>
         )}
 
         {phase === 'results' && result && (

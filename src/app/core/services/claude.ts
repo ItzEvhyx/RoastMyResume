@@ -1309,3 +1309,218 @@ export async function runJobMatch(request: {
     canvasSnapshot: request.canvasSnapshot,
   });
 }
+
+// ─── ATS Check ────────────────────────────────────────────────────────────────
+
+export const ATS_FACTOR_IDS = [
+  'column_layout',
+  'tables_graphics',
+  'fonts_embedded_text',
+  'file_format',
+  'contact_info',
+] as const;
+
+export type AtsFactorId = (typeof ATS_FACTOR_IDS)[number];
+
+export interface AtsFactorResult {
+  id: AtsFactorId;
+  score: number;
+  /** Why this factor is / isn't ATS-friendly. */
+  reason: string;
+  /** Actionable tip(s) to improve this factor. */
+  tip: string;
+}
+
+export interface AtsCheckResult {
+  overallScore: number;
+  /** Short final judgment for the sticky footer. */
+  judgment: string;
+  factors: AtsFactorResult[];
+}
+
+const ATS_CHECK_TOOL_NAME = 'ats_check_report';
+
+const ATS_CHECK_TOOL: Anthropic.Tool = {
+  name: ATS_CHECK_TOOL_NAME,
+  description:
+    'Report ATS compatibility scores for five resume factors plus an overall score and judgment.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      overallScore: {
+        type: 'number',
+        description: 'Overall ATS friendliness 0–100.',
+      },
+      judgment: {
+        type: 'string',
+        description:
+          'One short sentence final judgment (e.g. "Mostly ATS-ready — fix a few layout risks.").',
+      },
+      factors: {
+        type: 'array',
+        description: 'Exactly 5 factor objects, one per id below.',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              enum: [...ATS_FACTOR_IDS],
+              description: 'Factor id.',
+            },
+            score: {
+              type: 'number',
+              description: 'Factor score 0–100.',
+            },
+            reason: {
+              type: 'string',
+              description:
+                '1–2 sentences explaining ATS risk / strength for this factor.',
+            },
+            tip: {
+              type: 'string',
+              description: '1–2 concrete tips to improve this factor.',
+            },
+          },
+          required: ['id', 'score', 'reason', 'tip'],
+        },
+      },
+    },
+    required: ['overallScore', 'judgment', 'factors'],
+  },
+};
+
+function clampPct(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function parseAtsCheckToolInput(input: Record<string, unknown>): AtsCheckResult {
+  const rawFactors = Array.isArray(input.factors) ? input.factors : [];
+  const byId = new Map<string, AtsFactorResult>();
+
+  for (const item of rawFactors) {
+    if (typeof item !== 'object' || item === null) continue;
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === 'string' ? row.id : '';
+    if (!(ATS_FACTOR_IDS as readonly string[]).includes(id)) continue;
+    byId.set(id, {
+      id: id as AtsFactorId,
+      score: clampPct(row.score),
+      reason:
+        typeof row.reason === 'string' && row.reason.trim()
+          ? row.reason.trim()
+          : 'No details returned for this factor.',
+      tip:
+        typeof row.tip === 'string' && row.tip.trim()
+          ? row.tip.trim()
+          : 'Keep this section simple and text-based for ATS parsers.',
+    });
+  }
+
+  const factors: AtsFactorResult[] = ATS_FACTOR_IDS.map((id) => {
+    const existing = byId.get(id);
+    if (existing) return existing;
+    return {
+      id,
+      score: 50,
+      reason: 'Could not fully evaluate this factor from the canvas.',
+      tip: 'Simplify this area and re-run the ATS check.',
+    };
+  });
+
+  const overallFromFactors = Math.round(
+    factors.reduce((sum, f) => sum + f.score, 0) / factors.length,
+  );
+  const overallScore =
+    input.overallScore !== undefined && input.overallScore !== null
+      ? clampPct(input.overallScore)
+      : overallFromFactors;
+
+  const judgment =
+    typeof input.judgment === 'string' && input.judgment.trim()
+      ? input.judgment.trim()
+      : overallScore >= 75
+        ? 'Strong ATS readiness — minor polish left.'
+        : overallScore >= 45
+          ? 'Partial ATS readiness — fix the weak factors.'
+          : 'Weak ATS readiness — big parsing risks.';
+
+  return { overallScore, judgment, factors };
+}
+
+/**
+ * Score how ATS-friendly the resume canvas is across five formatting factors.
+ */
+export async function analyzeAtsCheck(request: {
+  canvasSnapshot: string;
+}): Promise<AtsCheckResult> {
+  const resume =
+    request.canvasSnapshot.trim() ||
+    '(empty canvas — no resume content yet)';
+
+  const system = `You are Denise's ATS Check analyst for RoastMyResume.
+Evaluate how applicant-tracking-system (ATS) friendly a resume canvas is.
+
+Product context:
+- The user builds a resume on a freeform canvas (text boxes, dividers, icons/shapes, images, pen strokes, groups).
+- Export is typically PDF from the canvas. Judge file-format risk for that PDF/export path and how layout will parse, not DOCX-specific quirks unless relevant.
+
+Score EXACTLY these five factors (use these ids):
+1) column_layout — multi-column / sidebars / reading-order chaos vs clean single-column flow
+2) tables_graphics — tables, icons, shapes, images, decorative strokes that parsers skip or scramble
+3) fonts_embedded_text — unusual fonts, text-in-images, tiny/decorative type that may not extract cleanly
+4) file_format — PDF/export friendliness given the canvas structure (text as real text vs graphics-heavy)
+5) contact_info — email, phone, location, links present as plain text and easy to parse (not buried in graphics)
+
+Rules:
+- Use the canvas snapshot coordinates/types: Text, Divider, Icon, Shape, PenStroke, Group.
+- Be specific to what you see; do not invent elements.
+- Each factor: score 0–100, reason (what's wrong or good), tip (how to improve).
+- overallScore: 0–100 holistic ATS readiness (weighted toward layout + text extractability).
+- judgment: one short punchy sentence for the UI footer.
+- Empty canvas → low scores with clear reasons.
+- Always call ${ATS_CHECK_TOOL_NAME} with all 5 factors.`;
+
+  const response = await getClient().messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 1600,
+    temperature: 0.3,
+    system,
+    tools: [ATS_CHECK_TOOL],
+    tool_choice: { type: 'tool', name: ATS_CHECK_TOOL_NAME },
+    messages: [
+      {
+        role: 'user',
+        content: `RESUME CANVAS TO AUDIT FOR ATS:\n${resume}`,
+      },
+    ],
+  });
+
+  for (const block of response.content) {
+    if (block.type === 'tool_use' && block.name === ATS_CHECK_TOOL_NAME) {
+      return parseAtsCheckToolInput(block.input as Record<string, unknown>);
+    }
+  }
+
+  const responseText = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+  const start = responseText.indexOf('{');
+  const end = responseText.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      const parsed = JSON.parse(responseText.slice(start, end + 1)) as Record<
+        string,
+        unknown
+      >;
+      return parseAtsCheckToolInput(parsed);
+    } catch {
+      // fall through
+    }
+  }
+
+  throw new Error('ATS check failed to return a structured result.');
+}

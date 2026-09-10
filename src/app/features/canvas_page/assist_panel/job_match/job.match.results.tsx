@@ -195,7 +195,7 @@ export default function JobMatchResults({
               {result.matchedKeywords.map((kw) => (
                 <span
                   key={`mk-${kw}`}
-                  className="whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs text-black"
+                  className="w-fit justify-self-start whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs text-black"
                   style={{ fontFamily: 'var(--font-poppins)', fontWeight: 600 }}
                 >
                   {kw}
@@ -204,7 +204,7 @@ export default function JobMatchResults({
               {result.unmatchedKeywords.map((kw) => (
                 <span
                   key={`uk-${kw}`}
-                  className="whitespace-nowrap px-1 py-1 text-xs text-white/35"
+                  className="w-fit justify-self-start whitespace-nowrap px-1 py-1 text-xs text-white/35"
                   style={{ fontFamily: 'var(--font-poppins)', fontWeight: 500 }}
                 >
                   {kw}
