@@ -28,15 +28,11 @@ const FAQS = [
   },
   {
     q: 'What does the AI feedback actually do?',
-    a: 'After you build or upload a resume, the AI reads it like a recruiter would. It flags weak bullet points, vague language, missing metrics, and sections that are likely to get skipped — then tells you exactly what to fix.',
+    a: 'After you build a resume, the AI reads it like a recruiter would. It flags weak bullet points, vague language, missing metrics, and sections that are likely to get skipped — then tells you exactly what to fix.',
   },
   {
     q: 'Is my resume data stored on your servers?',
     a: 'No. Everything you build stays in your browser. Nothing is sent to or stored on our servers unless you explicitly save it to an account.',
-  },
-  {
-    q: 'Can I upload my existing resume instead of starting from scratch?',
-    a: 'Yes. Use the "Upload Yours" option to bring in a PDF or document. The AI will review it and give you feedback without requiring you to rebuild anything.',
   },
   {
     q: 'How is this different from other resume builders?',

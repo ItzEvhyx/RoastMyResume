@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Poppins } from 'next/font/google';
-import Image from 'next/image';
 import SpecularButton from '@/components/specular_button';
 import {
   TEMPLATE_CATEGORIES,
@@ -149,27 +148,13 @@ export default function TemplatesAreaWeb() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-3 px-4 pb-5 sm:px-8 lg:px-16">
+      <div className="px-4 pb-5 sm:px-8 lg:px-16">
         <span
           className="text-sm font-semibold text-white"
           style={{ fontFamily: 'var(--font-poppins)' }}
         >
           Browse Templates
         </span>
-        <button
-          className="flex shrink-0 items-center gap-2 text-sm text-white/60 transition-colors duration-200 hover:text-white"
-          style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
-        >
-          <Image
-            src="/assets/icons/folder_icon.svg"
-            alt="folder"
-            width={16}
-            height={16}
-            draggable={false}
-            className="pointer-events-none select-none opacity-50"
-          />
-          Upload yours
-        </button>
       </div>
 
       <div

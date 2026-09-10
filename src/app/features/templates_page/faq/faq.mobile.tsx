@@ -35,10 +35,6 @@ const FAQS = [
     a: 'No. Everything stays in your browser unless you explicitly save it to an account.',
   },
   {
-    q: 'Can I upload my existing resume?',
-    a: 'Yes. Use "Upload Yours" to bring in a PDF or document. The AI will review it without requiring you to rebuild anything.',
-  },
-  {
     q: 'Can I export my resume as a PDF?',
     a: 'Yes — clean PDF export with no watermarks or forced branding.',
   },
