@@ -11,6 +11,7 @@ import GooeyTooltip from '@/app/features/canvas_page/components/GooeyTooltip';
 import { useRulerSnapping } from '@/app/features/canvas_page/globals/ruler.snapping';
 import { useDocumentMode } from '@/app/features/canvas_page/document_panel/use.document.mode';
 import { useAuthUser, signOutUser } from '@/app/core/session/session';
+import { truncateEmail } from '@/lib/truncate';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -26,7 +27,6 @@ const glassStyle: React.CSSProperties = {
   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 16px rgba(0,0,0,0.35)',
 };
 
-// Each button pops in with a staggered scale+fade.
 function popStyle(visible: boolean, delay: number): React.CSSProperties {
   return {
     opacity: visible ? 1 : 0,
@@ -48,6 +48,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
   const visible = stage >= 2;
   const [resumeTitle, setResumeTitle] = useState('Untitled Resume');
   const [isEditing, setIsEditing] = useState(false);
+  const [exportState, setExportState] = useState<'idle' | 'exporting' | 'done'>('idle');
   const { isGrabMode, setIsGrabMode } = useCanvas();
   const { enabled: smartGuidesEnabled, toggle: toggleSmartGuides } = useRulerSnapping();
   const { isDocumentMode, toggleDocumentMode } = useDocumentMode();
@@ -74,59 +75,51 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
   }, []);
 
   const handleExportPdf = async () => {
-    const button = document.activeElement as HTMLButtonElement;
-    const originalText = button?.textContent;
-    
+    if (exportState === 'exporting') return;
+    setExportState('exporting');
     try {
-      // Show loading state immediately
-      if (button) {
-        button.disabled = true;
-        const textSpan = button.querySelector('span');
-        if (textSpan) textSpan.textContent = 'Exporting...';
-      }
-      
       const fileName = `${resumeTitle.trim() || 'Untitled Resume'}.pdf`;
       await exportCanvasToPdf(fileName);
-      
-      // Show success briefly
-      if (button) {
-        const textSpan = button.querySelector('span');
-        if (textSpan) textSpan.textContent = 'Exported!';
-        setTimeout(() => {
-          if (textSpan && originalText) textSpan.textContent = originalText;
-          button.disabled = false;
-        }, 1500);
-      }
+      setExportState('done');
+      setTimeout(() => setExportState('idle'), 1500);
     } catch (error) {
       console.error('PDF export failed:', error);
-      if (button) {
-        button.disabled = false;
-        const textSpan = button.querySelector('span');
-        if (textSpan && originalText) textSpan.textContent = originalText;
-      }
+      setExportState('idle');
     }
   };
 
-  return (
-    <div className={`pointer-events-none fixed left-0 right-0 top-0 z-[70] flex items-start justify-between px-6 pt-5 ${poppins.variable}`}>
+  const exportLabel =
+    exportState === 'exporting' ? 'Exporting...' : exportState === 'done' ? 'Exported!' : 'Export PDF';
 
-      {/* Left — Back + Resume Title */}
-      <div className="flex items-center gap-3">
-        <div style={popStyle(visible, 0)}>
+  return (
+    <div
+      className={`pointer-events-none fixed left-0 right-0 top-0 z-[70] flex min-w-0 items-start justify-between gap-2 px-3 pt-4 sm:gap-3 sm:px-4 sm:pt-5 lg:px-6 ${poppins.variable}`}
+    >
+      {/* Left — Back + Resume Title + tools */}
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2 lg:gap-3">
+        <div className="shrink-0" style={popStyle(visible, 0)}>
           <button
             onClick={() => (onBackClick ? onBackClick() : router.back())}
-            className="pointer-events-auto flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+            className="pointer-events-auto flex items-center gap-2.5 rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95 xl:px-4 xl:py-2.5"
             style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
+            aria-label="Back"
           >
-            <Image src="/assets/icons/back_icon.svg" alt="Back" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
-            <span className="text-sm font-medium text-white/80">Back</span>
+            <Image
+              src="/assets/icons/back_icon.svg"
+              alt=""
+              width={18}
+              height={18}
+              draggable={false}
+              className="pointer-events-none select-none opacity-80"
+            />
+            <span className="hidden text-sm font-medium text-white/80 xl:inline">Back</span>
           </button>
         </div>
 
         {/* Resume Title pill */}
-        <div style={popStyle(visible, 60)}>
+        <div className="min-w-0 max-w-[min(100%,11rem)] sm:max-w-[14rem] lg:max-w-[16rem] xl:max-w-[22rem]" style={popStyle(visible, 60)}>
           <div
-            className="pointer-events-auto group flex items-center gap-2 rounded-full px-4 py-2.5 transition-all duration-150"
+            className="pointer-events-auto group flex min-w-0 items-center gap-2 rounded-full px-3 py-2.5 transition-all duration-150 sm:px-4"
             style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
           >
             {isEditing ? (
@@ -148,23 +141,23 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                 }}
                 maxLength={25}
                 autoFocus
-                className="bg-transparent text-sm font-semibold text-white outline-none"
-                style={{ width: '200px', fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
+                className="min-w-0 w-full max-w-[12rem] bg-transparent text-sm font-semibold text-white outline-none"
+                style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
               />
             ) : (
               <span
-                className="cursor-text text-sm font-semibold text-white transition-colors duration-150 group-hover:text-blue-300"
+                className="min-w-0 cursor-text truncate text-sm font-semibold text-white transition-colors duration-150 group-hover:text-blue-300"
                 onClick={() => setIsEditing(true)}
-                title={resumeTitle.length > 25 ? resumeTitle : undefined}
+                title={resumeTitle}
               >
-                {resumeTitle.length > 25 ? `${resumeTitle.slice(0, 25)}...` : resumeTitle}
+                {resumeTitle}
               </span>
             )}
-            <span className="text-sm text-white/50">— Tech / IT Template</span>
+            <span className="hidden shrink-0 text-sm text-white/50 xl:inline">— Tech / IT Template</span>
           </div>
         </div>
 
-        <div style={popStyle(visible, 90)}>
+        <div className="shrink-0" style={popStyle(visible, 90)}>
           <GooeyTooltip label={smartGuidesEnabled ? 'Smart guides on' : 'Smart guides off'} position="bottom">
             <button
               onClick={toggleSmartGuides}
@@ -178,12 +171,19 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                   : glassStyle.boxShadow,
               }}
             >
-              <Image src="/assets/tools_icons/grid_icon.png" alt="Toggle smart guides" width={20} height={20} draggable={false} className={`pointer-events-none select-none ${smartGuidesEnabled ? 'opacity-100' : 'opacity-50'}`} />
+              <Image
+                src="/assets/tools_icons/grid_icon.png"
+                alt="Toggle smart guides"
+                width={20}
+                height={20}
+                draggable={false}
+                className={`pointer-events-none select-none ${smartGuidesEnabled ? 'opacity-100' : 'opacity-50'}`}
+              />
             </button>
           </GooeyTooltip>
         </div>
 
-        <div style={popStyle(visible, 120)}>
+        <div className="hidden shrink-0 sm:block" style={popStyle(visible, 120)}>
           <GooeyTooltip
             label={isDocumentMode ? 'Convert back to editable canvas' : 'Convert to text document'}
             position="bottom"
@@ -191,7 +191,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
             <button
               onClick={toggleDocumentMode}
               aria-pressed={isDocumentMode}
-              className="pointer-events-auto flex items-center gap-2 rounded-full px-3.5 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+              className="pointer-events-auto flex items-center gap-2 rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95 xl:px-3.5 xl:py-2.5"
               style={{
                 ...glassStyle,
                 fontFamily: 'var(--font-poppins)',
@@ -208,7 +208,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"
-                className={isDocumentMode ? 'text-white' : 'text-white/75'}
+                className={`shrink-0 ${isDocumentMode ? 'text-white' : 'text-white/75'}`}
                 aria-hidden
               >
                 {isDocumentMode ? (
@@ -225,7 +225,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                   </>
                 )}
               </svg>
-              <span className={`text-sm font-medium ${isDocumentMode ? 'text-white' : 'text-white/80'}`}>
+              <span className={`hidden text-sm font-medium xl:inline ${isDocumentMode ? 'text-white' : 'text-white/80'}`}>
                 {isDocumentMode ? 'Editable canvas' : 'Text document'}
               </span>
             </button>
@@ -233,52 +233,77 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
         </div>
       </div>
 
-      {/* Right — staggered: Mode Toggle, Export PDF, then Sign in */}
-      <div className="pointer-events-auto flex items-center gap-3">
-        {/* Mode Toggle */}
+      {/* Right — Mode, Export PDF, Sign in */}
+      <div className="pointer-events-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3">
         <div style={popStyle(visible, 40)}>
-          <GooeyTooltip label={isGrabMode ? "Grab Mode" : "Cursor Mode"} position="bottom">
+          <GooeyTooltip label={isGrabMode ? 'Grab Mode' : 'Cursor Mode'} position="bottom">
             <button
               onClick={() => setIsGrabMode(!isGrabMode)}
               className="flex items-center justify-center rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
               style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
             >
               {isGrabMode ? (
-                <Image src="/assets/icons/grab_icon.svg" alt="Grab mode" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
+                <Image
+                  src="/assets/icons/grab_icon.svg"
+                  alt="Grab mode"
+                  width={18}
+                  height={18}
+                  draggable={false}
+                  className="pointer-events-none select-none opacity-80"
+                />
               ) : (
-                <Image src="/assets/icons/cursor_icon.svg" alt="Cursor mode" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
+                <Image
+                  src="/assets/icons/cursor_icon.svg"
+                  alt="Cursor mode"
+                  width={18}
+                  height={18}
+                  draggable={false}
+                  className="pointer-events-none select-none opacity-80"
+                />
               )}
             </button>
           </GooeyTooltip>
         </div>
 
         <div style={popStyle(visible, 80)}>
-          <button
-            onClick={handleExportPdf}
-            className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
-            style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
-          >
-            <Image src="/assets/icons/pdf_icon.svg" alt="Export PDF" width={18} height={18} draggable={false} className="opacity-80 select-none pointer-events-none" />
-            <span className="text-sm font-medium text-white/80">Export PDF</span>
-          </button>
+          <GooeyTooltip label={exportLabel} position="bottom">
+            <button
+              onClick={handleExportPdf}
+              disabled={exportState === 'exporting'}
+              aria-label={exportLabel}
+              className="flex items-center gap-2.5 rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-70 xl:px-4 xl:py-2.5"
+              style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
+            >
+              <Image
+                src="/assets/icons/pdf_icon.svg"
+                alt=""
+                width={18}
+                height={18}
+                draggable={false}
+                className="pointer-events-none select-none opacity-80"
+              />
+              <span className="hidden text-sm font-medium text-white/80 xl:inline">{exportLabel}</span>
+            </button>
+          </GooeyTooltip>
         </div>
 
         <div style={popStyle(visible, 140)}>
           {!user ? (
             <button
               onClick={onSignInClick}
-              className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95 cursor-pointer"
+              className="flex cursor-pointer items-center gap-2.5 rounded-full p-2.5 transition-all duration-200 hover:brightness-110 active:scale-95 xl:px-4 xl:py-2.5"
               style={{ ...glassStyle, fontFamily: 'var(--font-poppins)' }}
+              aria-label="Sign in"
             >
               <Image
                 src="/assets/icons/profile_icon.svg"
-                alt="Sign in"
+                alt=""
                 width={18}
                 height={18}
                 draggable={false}
-                className="opacity-80 select-none pointer-events-none"
+                className="pointer-events-none select-none opacity-80"
               />
-              <span className="text-sm font-medium text-white/80">Sign in</span>
+              <span className="hidden text-sm font-medium text-white/80 xl:inline">Sign in</span>
             </button>
           ) : (
             <div
@@ -286,17 +311,16 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
-              {/* User Profile Pill Button */}
               <div
-                className="flex items-center gap-2.5 h-[42px] px-4 rounded-full cursor-pointer transition-all duration-200 shadow-md border border-white/20 hover:border-white/50 select-none"
+                className="flex h-[42px] cursor-pointer select-none items-center gap-2 rounded-full border border-white/20 px-3 shadow-md transition-all duration-200 hover:border-white/50 sm:gap-2.5 sm:px-4"
                 style={{
                   ...glassStyle,
                   fontFamily: 'var(--font-poppins)',
                 }}
                 onClick={() => setIsDropdownOpen((prev) => !prev)}
+                title={user.email}
               >
-                {/* profile_icon.svg on the left */}
-                <div className="relative w-[18px] h-[18px] shrink-0 flex items-center justify-center">
+                <div className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center">
                   <Image
                     src="/assets/icons/profile_icon.svg"
                     alt="Profile"
@@ -306,17 +330,15 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                   />
                 </div>
 
-                {/* User Email */}
                 <span
-                  className="text-sm font-semibold text-[#f5f5f5] max-w-[180px] truncate"
+                  className="text-sm font-semibold text-[#f5f5f5]"
                   style={{ fontFamily: 'var(--font-poppins)' }}
                 >
-                  {user.email}
+                  {truncateEmail(user.email)}
                 </span>
 
-                {/* Dropdown Chevron */}
                 <svg
-                  className={`w-3.5 h-3.5 ml-0.5 text-white/70 transition-transform duration-200 ${
+                  className={`ml-0.5 h-3.5 w-3.5 text-white/70 transition-transform duration-200 ${
                     isDropdownOpen ? 'rotate-180 text-white' : ''
                   }`}
                   fill="none"
@@ -328,7 +350,6 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                 </svg>
               </div>
 
-              {/* Dropdown Container */}
               <AnimatePresence>
                 {isDropdownOpen && (
                   <motion.div
@@ -336,7 +357,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.97 }}
                     transition={{ duration: 0.16, ease: 'easeOut' }}
-                    className="absolute right-0 top-full mt-2 w-60 rounded-2xl border-2 border-white p-3 shadow-2xl z-[100]"
+                    className="absolute right-0 top-full z-[100] mt-2 w-60 rounded-2xl border-2 border-white p-3 shadow-2xl"
                     style={{
                       backgroundColor: '#17171a',
                       fontFamily: 'var(--font-poppins)',
@@ -344,20 +365,21 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                   >
                     <div className="px-3 py-2">
                       <p
-                        className="text-xs text-white/50 uppercase tracking-wider font-normal"
+                        className="text-xs font-normal uppercase tracking-wider text-white/50"
                         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
                       >
                         Signed in as
                       </p>
                       <p
-                        className="text-sm text-white truncate font-bold mt-0.5"
+                        className="mt-0.5 truncate text-sm font-bold text-white"
                         style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
+                        title={user.email}
                       >
                         {user.email}
                       </p>
                     </div>
 
-                    <div className="h-[1px] bg-white/10 my-2" />
+                    <div className="my-2 h-[1px] bg-white/10" />
 
                     <button
                       type="button"
@@ -366,11 +388,11 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                         setIsDropdownOpen(false);
                         if (onSignOutClick) onSignOutClick();
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-white/10 active:scale-[0.98] transition-all text-left cursor-pointer"
+                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-[0.98]"
                       style={{ fontFamily: 'var(--font-poppins)', fontWeight: 700 }}
                     >
                       <svg
-                        className="w-4 h-4 text-red-400 shrink-0"
+                        className="h-4 w-4 shrink-0 text-red-400"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -382,9 +404,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                           d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                         />
                       </svg>
-                      <span className="text-white hover:text-red-300 transition-colors">
-                        Sign - out
-                      </span>
+                      <span className="text-white transition-colors hover:text-red-300">Sign - out</span>
                     </button>
                   </motion.div>
                 )}

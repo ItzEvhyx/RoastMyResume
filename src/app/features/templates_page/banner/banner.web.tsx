@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SpecularButton from '@/components/specular_button';
 import { useAuthUser, signOutUser } from '@/app/core/session/session';
 import { FORCE_LANDING_KEY } from '@/app/core/session/force.landing';
+import { truncateEmail } from '@/lib/truncate';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -127,12 +128,13 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
                 />
               </div>
 
-              {/* User Email */}
+              {/* User Email — compact 6-char truncate; full address in dropdown */}
               <span
-                className="text-sm font-semibold text-[#f5f5f5] max-w-[200px] truncate"
+                className="text-sm font-semibold text-[#f5f5f5]"
                 style={{ fontFamily: 'var(--font-poppins)' }}
+                title={user.email}
               >
-                {user.email}
+                {truncateEmail(user.email)}
               </span>
 
               {/* Dropdown Chevron */}

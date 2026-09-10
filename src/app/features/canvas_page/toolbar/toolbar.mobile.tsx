@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Poppins } from 'next/font/google';
 import { exportCanvasToPdf } from '@/app/features/canvas_page/utils/exportToPdf';
 import { useAuthUser, signOutUser } from '@/app/core/session/session';
+import { truncateEmail } from '@/lib/truncate';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -178,8 +179,12 @@ export default function ToolbarMobile({ stage, onAssistToggle, onSignInClick, on
                 style={glassStyle}
               >
                 <Image src="/assets/icons/profile_icon.svg" alt="Profile" width={16} height={16} className="object-contain" />
-                <span className="max-w-[90px] truncate text-xs font-medium text-white/90" style={{ fontFamily: 'var(--font-poppins)' }}>
-                  {user.email}
+                <span
+                  className="text-xs font-medium text-white/90"
+                  style={{ fontFamily: 'var(--font-poppins)' }}
+                  title={user.email}
+                >
+                  {truncateEmail(user.email)}
                 </span>
                 <svg
                   className={`h-3 w-3 text-white/70 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-white' : ''}`}

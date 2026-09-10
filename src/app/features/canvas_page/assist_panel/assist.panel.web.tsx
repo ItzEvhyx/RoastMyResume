@@ -73,8 +73,19 @@ export default function AssistPanelWeb({
 
   const visible = stage >= 3;
 
-  const minWidth = 320;
+  const minWidth = 280;
   const maxWidth = 800;
+
+  // Keep panel inside the viewport on resize so it never forces horizontal scroll.
+  useEffect(() => {
+    const clampToViewport = () => {
+      const room = Math.max(280, window.innerWidth - 48);
+      setWidth((w) => Math.min(w, room));
+    };
+    clampToViewport();
+    window.addEventListener('resize', clampToViewport);
+    return () => window.removeEventListener('resize', clampToViewport);
+  }, []);
 
   // Refs for spotlight positions
   const spotlightX = useRef(0);
@@ -166,8 +177,9 @@ export default function AssistPanelWeb({
 
       const panelRect = panelRef.current.getBoundingClientRect();
       const newWidth = panelRect.right - e.clientX;
+      const viewportCap = Math.max(minWidth, window.innerWidth - 48);
 
-      const clampedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      const clampedWidth = Math.max(minWidth, Math.min(maxWidth, viewportCap, newWidth));
       setWidth(clampedWidth);
     };
 
@@ -195,7 +207,7 @@ export default function AssistPanelWeb({
   return (
     <div
       ref={panelRef}
-      className={`fixed right-6 top-20 flex flex-col items-end gap-4 ${poppins.variable}`}
+      className={`fixed right-3 top-16 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-4 sm:right-4 lg:right-6 lg:top-20 ${poppins.variable}`}
       style={{
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateX(0)' : 'translateX(40px)',

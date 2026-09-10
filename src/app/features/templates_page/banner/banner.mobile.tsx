@@ -8,6 +8,7 @@ import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthUser, signOutUser } from '@/app/core/session/session';
 import { FORCE_LANDING_KEY } from '@/app/core/session/force.landing';
+import { truncateEmail } from '@/lib/truncate';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -91,7 +92,9 @@ export default function BannerMobile({ onSignInClick, onSignOutClick }: BannerMo
                   className="object-contain"
                 />
               </div>
-              <span className="max-w-[100px] truncate">{user.email}</span>
+              <span className="text-xs font-semibold" title={user.email}>
+                {truncateEmail(user.email)}
+              </span>
             </button>
 
             <AnimatePresence>

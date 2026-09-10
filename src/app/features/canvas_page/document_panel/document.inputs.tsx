@@ -446,7 +446,7 @@ export default function DocumentInputs() {
 
   return (
     <aside
-      className={`${futuraDisplay.variable} ${poppins.variable} fixed bottom-6 left-6 top-20 z-[60] w-[460px] flex-col overflow-hidden rounded-2xl transition-all duration-300 ease-out ${
+      className={`${futuraDisplay.variable} ${poppins.variable} fixed bottom-4 left-3 top-16 z-[60] w-[min(460px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl transition-all duration-300 ease-out sm:bottom-6 sm:left-4 lg:left-6 lg:top-20 ${
         isDocumentMode
           ? 'pointer-events-auto flex translate-x-0 opacity-100'
           : 'pointer-events-none hidden'

@@ -130,7 +130,7 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
   };
 
   return (
-    <div className="pointer-events-none fixed left-6 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-4"
+    <div className="pointer-events-none fixed left-3 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-4 lg:left-6"
       style={{ ...sidebarPopStyle, marginTop: '40px' }} // Push down 40px
     >
       {/* Main tools pill */}

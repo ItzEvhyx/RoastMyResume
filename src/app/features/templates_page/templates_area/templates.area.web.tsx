@@ -124,8 +124,8 @@ export default function TemplatesAreaWeb() {
       : TEMPLATE_META.filter((t) => t.category === active);
 
   return (
-    <section className={`relative z-10 w-full ${poppins.variable}`}>
-      <div className="flex flex-wrap items-center gap-3 px-16 py-6">
+    <section className={`relative z-10 w-full min-w-0 overflow-x-hidden ${poppins.variable}`}>
+      <div className="flex flex-wrap items-center gap-2 px-4 py-6 sm:gap-3 sm:px-8 lg:px-16">
         {TEMPLATE_CATEGORIES.map((cat) => (
           <SpecularButton
             key={cat}
@@ -139,7 +139,7 @@ export default function TemplatesAreaWeb() {
             style={{
               fontFamily: 'var(--font-poppins)',
               fontWeight: 600,
-              minWidth: 140,
+              minWidth: 120,
               outline:
                 cat === active ? '1.5px solid rgba(255,255,255,0.5)' : 'none',
             }}
@@ -149,7 +149,7 @@ export default function TemplatesAreaWeb() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between px-16 pb-5">
+      <div className="flex items-center justify-between gap-3 px-4 pb-5 sm:px-8 lg:px-16">
         <span
           className="text-sm font-semibold text-white"
           style={{ fontFamily: 'var(--font-poppins)' }}
@@ -157,7 +157,7 @@ export default function TemplatesAreaWeb() {
           Browse Templates
         </span>
         <button
-          className="flex items-center gap-2 text-sm text-white/60 transition-colors duration-200 hover:text-white"
+          className="flex shrink-0 items-center gap-2 text-sm text-white/60 transition-colors duration-200 hover:text-white"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
         >
           <Image
@@ -173,14 +173,14 @@ export default function TemplatesAreaWeb() {
       </div>
 
       <div
-        className="grid gap-x-6 gap-y-12 px-16 pb-20"
-        style={{ gridTemplateColumns: 'repeat(4, 1fr)', overflow: 'visible' }}
+        className="grid grid-cols-2 gap-x-4 gap-y-10 px-4 pb-20 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-12 sm:px-8 lg:grid-cols-4 lg:px-16"
+        style={{ overflow: 'visible' }}
       >
         {filtered.map((template, i) => (
           <TemplateCard
             key={template.id}
             template={template}
-            colIndex={i % 4}
+            colIndex={i}
           />
         ))}
       </div>
