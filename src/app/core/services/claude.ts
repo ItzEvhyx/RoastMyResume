@@ -949,3 +949,363 @@ export async function askDeniseStream(
   handlers.onContent?.(finalized.content);
   return finalized;
 }
+
+// ─── Job Match ───────────────────────────────────────────────────────────────
+
+export interface JobMatchImage {
+  data: string;
+  mediaType: ImageMediaType;
+}
+
+export interface JobMatchResult {
+  matchPercent: number;
+  matchedQualifications: string[];
+  missingQualifications: string[];
+  matchedKeywords: string[];
+  unmatchedKeywords: string[];
+  /** Full listing text after OCR / paste merge. */
+  jobListingText: string;
+}
+
+const JOB_MATCH_TOOL_NAME = 'job_match_report';
+
+const JOB_MATCH_TOOL: Anthropic.Tool = {
+  name: JOB_MATCH_TOOL_NAME,
+  description:
+    'Report how well the candidate resume matches a job listing on technical and soft skills only: score, matched/missing skill qualifications, and skill keywords.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      matchPercent: {
+        type: 'number',
+        description:
+          'Overall skill-fit score from 0 to 100 based only on technical/soft skills, experience, tools, and education — ignore logistics.',
+      },
+      matchedQualifications: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Technical or soft-skill requirements the resume clearly satisfies (short phrases). Never logistics/willingness items.',
+      },
+      missingQualifications: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Technical or soft-skill requirements from the listing that the resume lacks. Never logistics/willingness items.',
+      },
+      matchedKeywords: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Important technical/soft-skill tokens present in both listing and resume (e.g. React, leadership).',
+      },
+      unmatchedKeywords: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Important technical/soft-skill tokens from the listing missing on the resume.',
+      },
+    },
+    required: [
+      'matchPercent',
+      'matchedQualifications',
+      'missingQualifications',
+      'matchedKeywords',
+      'unmatchedKeywords',
+    ],
+  },
+};
+
+function asStringArray(value: unknown, max = 12): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, max);
+}
+
+function parseJobMatchToolInput(
+  input: Record<string, unknown>,
+  jobListingText: string,
+): JobMatchResult {
+  const raw = Number(input.matchPercent);
+  const matchPercent = Number.isFinite(raw)
+    ? Math.max(0, Math.min(100, Math.round(raw)))
+    : 0;
+
+  return {
+    matchPercent,
+    matchedQualifications: asStringArray(input.matchedQualifications, 10),
+    missingQualifications: asStringArray(input.missingQualifications, 10),
+    matchedKeywords: asStringArray(input.matchedKeywords, 16),
+    unmatchedKeywords: asStringArray(input.unmatchedKeywords, 16),
+    jobListingText,
+  };
+}
+
+/**
+ * OCR step: use Claude vision to extract plain job-listing text from screenshots.
+ */
+export async function extractJobListingText(
+  images: JobMatchImage[],
+): Promise<string> {
+  if (!images.length) return '';
+
+  const content: Anthropic.ContentBlockParam[] = [
+    {
+      type: 'text',
+      text: `Extract ALL readable text from these job-listing screenshot(s).
+Return ONLY the job posting text in reading order — title, company, requirements, responsibilities, skills, etc.
+No commentary, no markdown fences, no preamble.`,
+    },
+    ...images.map(
+      (image): Anthropic.ImageBlockParam => ({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: image.mediaType,
+          data: image.data,
+        },
+      }),
+    ),
+  ];
+
+  const response = await getClient().messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 2000,
+    temperature: 0,
+    messages: [{ role: 'user', content }],
+  });
+
+  return response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+}
+
+export class JobMatchValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'JobMatchValidationError';
+  }
+}
+
+const JOB_LISTING_GATE_TOOL_NAME = 'job_listing_gate';
+
+const JOB_LISTING_GATE_TOOL: Anthropic.Tool = {
+  name: JOB_LISTING_GATE_TOOL_NAME,
+  description:
+    'Decide whether the user input is a real job posting (or screenshot OCR of one) suitable for resume matching.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      isJobListing: {
+        type: 'boolean',
+        description:
+          'True only if the text is clearly a job posting / role description to match a resume against.',
+      },
+      reason: {
+        type: 'string',
+        description:
+          'If isJobListing is false, a short user-facing explanation (1 sentence). Empty string if true.',
+      },
+    },
+    required: ['isJobListing', 'reason'],
+  },
+};
+
+const DEFAULT_INVALID_LISTING_MESSAGE =
+  "That doesn't look like a job listing. Paste a real job posting (or screenshots of one) so I can match it to your resume.";
+
+/**
+ * Reject chat prompts, code requests, resumes, random text, etc. before analysis runs.
+ */
+export async function assertIsJobListing(text: string): Promise<void> {
+  const listing = text.trim();
+  if (!listing) {
+    throw new JobMatchValidationError(
+      'Paste a job listing or attach up to 3 screenshots.',
+    );
+  }
+
+  // Obvious non-listings: very short chat / command style prompts
+  const lower = listing.toLowerCase();
+  const looksLikeChatCommand =
+    listing.length < 120 &&
+    /^(generate|write|create|make|give|help|explain|code|fix|debug|refactor|translate|summarize|tell me|how (do|to)|what is|who is)\b/i.test(
+      listing.trim(),
+    ) &&
+    !/\b(responsibilities|requirements|qualifications|we are hiring|job description|about the role|years? of experience)\b/i.test(
+      lower,
+    );
+
+  if (looksLikeChatCommand) {
+    throw new JobMatchValidationError(DEFAULT_INVALID_LISTING_MESSAGE);
+  }
+
+  const response = await getClient().messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 200,
+    temperature: 0,
+    system: `You gate Job Match for RoastMyResume.
+Accept ONLY real job postings / role descriptions (including OCR from screenshots): job title, company, responsibilities, requirements, skills, qualifications, etc.
+
+Reject (isJobListing=false) anything else, including:
+- Chat prompts or commands to an AI (e.g. "generate me python code", "write a cover letter")
+- Coding / homework / general Q&A
+- A resume or CV (candidate profile), not an open role
+- Random notes, greetings, or unrelated text
+- Marketing copy that is not hiring for a role
+
+Be strict. When unsure and the text lacks clear hiring/role signals, reject.
+Always call ${JOB_LISTING_GATE_TOOL_NAME}.`,
+    tools: [JOB_LISTING_GATE_TOOL],
+    tool_choice: { type: 'tool', name: JOB_LISTING_GATE_TOOL_NAME },
+    messages: [
+      {
+        role: 'user',
+        content: `USER INPUT:\n${listing}`,
+      },
+    ],
+  });
+
+  for (const block of response.content) {
+    if (block.type === 'tool_use' && block.name === JOB_LISTING_GATE_TOOL_NAME) {
+      const input = block.input as Record<string, unknown>;
+      const isJobListing = input.isJobListing === true;
+      if (isJobListing) return;
+      const reason =
+        typeof input.reason === 'string' && input.reason.trim()
+          ? input.reason.trim()
+          : DEFAULT_INVALID_LISTING_MESSAGE;
+      throw new JobMatchValidationError(reason);
+    }
+  }
+
+  throw new JobMatchValidationError(DEFAULT_INVALID_LISTING_MESSAGE);
+}
+
+/**
+ * Compare a job listing against the resume canvas snapshot and return a structured match report.
+ * Caller must already validate the listing with assertIsJobListing.
+ */
+export async function analyzeJobMatch(request: {
+  jobListingText: string;
+  canvasSnapshot: string;
+}): Promise<JobMatchResult> {
+  const listing = request.jobListingText.trim();
+  if (!listing) {
+    throw new Error('A job listing is required (paste text or attach screenshots).');
+  }
+
+  const resume = request.canvasSnapshot.trim() || '(empty canvas — no resume content yet)';
+
+  const system = `You are Denise's Job Match analyst for RoastMyResume.
+Compare a job listing against the candidate's resume canvas.
+The input has already been validated as a job listing — do not answer unrelated requests; only produce a match report.
+
+Scope — skills only:
+- Assess ONLY technical skills, soft skills, tools/technologies, relevant experience, role responsibilities, and education/credentials that resumes normally show.
+- Completely IGNORE logistics and hiring boilerplate that people rarely put on resumes. Do NOT list these as matched or missing, and do NOT let them lower (or raise) matchPercent. Examples to ignore:
+  - Willingness to work in a city/office/hybrid/onsite (e.g. "willingness to work in Makati")
+  - Schedule confirmations (e.g. Monday–Saturday, weekends, night shift, overtime)
+  - Commute, relocation, travel-willingness, or "must be local"
+  - "Confirmation of…" / "must be willing to…" / availability checkboxes
+  - Salary expectations, benefits, application instructions
+  - Generic HR process text (background checks, drug tests, equal opportunity statements) unless it is a real skill or license
+
+Rules:
+- Be fair and specific. Prefer concrete skills, tools, years, degrees, and responsibilities.
+- matchPercent is 0–100 reflecting skill/experience fit only (not logistics).
+- matchedQualifications / missingQualifications: short skill-oriented phrases only.
+- matchedKeywords / unmatchedKeywords: concise skill tokens (e.g. React, CI/CD, communication).
+- Do not invent resume experience that is not in the canvas snapshot.
+- Always call the ${JOB_MATCH_TOOL_NAME} tool.`;
+
+  const response = await getClient().messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 1200,
+    temperature: 0.3,
+    system,
+    tools: [JOB_MATCH_TOOL],
+    tool_choice: { type: 'tool', name: JOB_MATCH_TOOL_NAME },
+    messages: [
+      {
+        role: 'user',
+        content: `JOB LISTING:\n${listing}\n\nCANDIDATE RESUME CANVAS:\n${resume}`,
+      },
+    ],
+  });
+
+  for (const block of response.content) {
+    if (block.type === 'tool_use' && block.name === JOB_MATCH_TOOL_NAME) {
+      return parseJobMatchToolInput(
+        block.input as Record<string, unknown>,
+        listing,
+      );
+    }
+  }
+
+  // Fallback: try JSON in text
+  const responseText = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+  const start = responseText.indexOf('{');
+  const end = responseText.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try {
+      const parsed = JSON.parse(responseText.slice(start, end + 1)) as Record<
+        string,
+        unknown
+      >;
+      return parseJobMatchToolInput(parsed, listing);
+    } catch {
+      // fall through
+    }
+  }
+
+  throw new Error('Job match analysis failed to return a structured result.');
+}
+
+/**
+ * Full Job Match pipeline: OCR images (if any) → merge → validate listing → analyze.
+ */
+export async function runJobMatch(request: {
+  text?: string;
+  images?: JobMatchImage[];
+  canvasSnapshot: string;
+}): Promise<JobMatchResult> {
+  const pasted = (request.text ?? '').trim();
+  const images = request.images ?? [];
+
+  // Text-only: gate before any expensive work (no OCR needed).
+  if (!images.length) {
+    await assertIsJobListing(pasted);
+  }
+
+  let extracted = '';
+  if (images.length) {
+    extracted = await extractJobListingText(images);
+  }
+
+  const jobListingText = [pasted, extracted].filter(Boolean).join('\n\n').trim();
+  if (!jobListingText) {
+    throw new JobMatchValidationError(
+      'Paste a job listing or attach up to 3 screenshots.',
+    );
+  }
+
+  // With screenshots: gate on merged OCR + paste so fake screenshots don't analyze.
+  if (images.length) {
+    await assertIsJobListing(jobListingText);
+  }
+
+  return analyzeJobMatch({
+    jobListingText,
+    canvasSnapshot: request.canvasSnapshot,
+  });
+}
