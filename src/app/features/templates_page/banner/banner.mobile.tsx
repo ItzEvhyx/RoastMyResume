@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +26,7 @@ interface BannerMobileProps {
 }
 
 export default function BannerMobile({ onSignInClick, onSignOutClick }: BannerMobileProps = {}) {
+  const router = useRouter();
   const user = useAuthUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -34,6 +36,25 @@ export default function BannerMobile({ onSignInClick, onSignOutClick }: BannerMo
       className={`relative z-10 w-screen overflow-hidden bg-white ${poppins.variable} ${futuraDisplay.variable}`}
       style={{ borderRadius: '0 0 1.75rem 1.75rem', minHeight: 148 }}
     >
+      {/* Top-Left: Back — same control as canvas toolbar */}
+      <div className="absolute left-4 top-3 z-20">
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b0d12] shadow-sm transition-all duration-200 active:scale-95"
+          aria-label="Back"
+        >
+          <Image
+            src="/assets/icons/back_icon.svg"
+            alt="Back"
+            width={16}
+            height={16}
+            draggable={false}
+            className="pointer-events-none select-none opacity-80"
+          />
+        </button>
+      </div>
+
       {/* Top right mobile auth button / profile */}
       <div className="absolute right-4 top-3 z-20">
         {!user ? (

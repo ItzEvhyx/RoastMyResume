@@ -272,8 +272,8 @@ function DocumentModeChrome({
   return (
     <>
       {/* Tool chrome — hidden (not overlapping) while document panel is active */}
-      {isMobile === undefined ? null : isMobile ? (
-        <ToolSidebarMobile stage={stage} />
+      {isMobile ? (
+        mobileAssistOpen ? null : <ToolSidebarMobile stage={stage} />
       ) : (
         <div
           className={
@@ -287,7 +287,7 @@ function DocumentModeChrome({
         </div>
       )}
 
-      {isMobile && !isDocumentMode && <MobilePanelDismissal />}
+      {isMobile && !isDocumentMode && !mobileAssistOpen && <MobilePanelDismissal />}
 
       {!isMobile && (
         <div
@@ -297,10 +297,15 @@ function DocumentModeChrome({
           <FontSelector />
         </div>
       )}
+      {isMobile && !mobileAssistOpen && <FontSelector />}
 
       <div
-        className={toolsHidden ? 'pointer-events-none hidden' : 'contents'}
-        aria-hidden={toolsHidden}
+        className={
+          toolsHidden || (isMobile && mobileAssistOpen)
+            ? 'pointer-events-none hidden'
+            : 'contents'
+        }
+        aria-hidden={toolsHidden || Boolean(isMobile && mobileAssistOpen)}
       >
         <IconPicker />
         <ShapesTools />
@@ -355,7 +360,7 @@ function MobilePanelDismissal() {
   const { activeTool, setActiveTool } = useText();
 
   useEffect(() => {
-    if (activeTool !== 'iconset' && activeTool !== 'shapes') return;
+    if (activeTool !== 'iconset' && activeTool !== 'shapes' && activeTool !== 'image' && activeTool !== 'layers' && activeTool !== 'pen' && activeTool !== 'fontstyle') return;
 
     const dismissOnOutsideTouch = (event: PointerEvent) => {
       const target = event.target;

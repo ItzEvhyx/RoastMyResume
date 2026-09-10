@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import localFont from 'next/font/local';
 import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +27,7 @@ interface BannerWebProps {
 }
 
 export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebProps = {}) {
+  const router = useRouter();
   const user = useAuthUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -53,6 +55,31 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
       className={`relative z-10 w-screen overflow-hidden bg-white ${poppins.variable} ${futuraDisplay.variable}`}
       style={{ borderRadius: '0 0 2.5rem 2.5rem', minHeight: 300 }}
     >
+      {/* Top-Left: Back — same control as canvas toolbar */}
+      <div className="absolute left-8 top-6 z-20">
+        <button
+          type="button"
+          onClick={() => router.push('/')}
+          className="flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-all duration-200 hover:brightness-110 active:scale-95"
+          style={{
+            fontFamily: 'var(--font-poppins)',
+            backgroundColor: '#0b0d12',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          }}
+          aria-label="Back"
+        >
+          <Image
+            src="/assets/icons/back_icon.svg"
+            alt="Back"
+            width={18}
+            height={18}
+            draggable={false}
+            className="pointer-events-none select-none opacity-80"
+          />
+          <span className="text-sm font-medium text-white/80">Back</span>
+        </button>
+      </div>
+
       {/* Top-Right: Sign in button or User Profile pill with dropdown */}
       <div
         className="absolute right-8 top-6 z-20"
@@ -223,7 +250,7 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
                 className="text-2xl leading-none text-black"
                 style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
               >
-                5
+                7
               </span>
               <span
                 className="text-xs uppercase tracking-widest text-black/40"

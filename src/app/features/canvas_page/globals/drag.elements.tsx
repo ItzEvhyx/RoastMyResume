@@ -649,6 +649,35 @@ export function DraggableText({
     measureFrameHeight();
   }, [element.width, element.fontSize, element.fontFamily, element.fontWeight, element.content, measureFrameHeight]);
 
+  const applyIndent = (outdent: boolean) => {
+    const root = isEditing ? editorRef.current : null;
+    if (root) {
+      const range = selectionInside(root);
+      const offsets = range ? rangeToPlainOffsets(root, range) : null;
+      const value = htmlToPlain(serializeEditorHtml(root));
+      const start = offsets?.start ?? 0;
+      const end = offsets?.end ?? value.length;
+      const result = outdent
+        ? outdentLinesInRange(value, start, end)
+        : indentLinesInRange(value, start, end);
+      if (result.content === value) return;
+      skipNextContentSync.current = true;
+      onUpdate({ content: result.content });
+      requestAnimationFrame(() => {
+        if (!editorRef.current) return;
+        editorRef.current.innerHTML = contentToHtml(result.content);
+        setPlainSelection(editorRef.current, result.selectionStart, result.selectionEnd);
+        growEditor();
+      });
+      return;
+    }
+    const value = htmlToPlain(element.content || '');
+    const result = outdent
+      ? outdentLinesInRange(value, 0, value.length)
+      : indentLinesInRange(value, 0, value.length);
+    if (result.content !== value) onUpdate({ content: result.content });
+  };
+
   // ── Mouse handlers ────────────────────────────────────────────────────────
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1046,6 +1075,8 @@ export function DraggableText({
             onAlignToggle={handleAlignToggle}
             isLocked={element.isLocked}
             onLockToggle={() => onUpdate({ isLocked: !element.isLocked })}
+            onIndent={() => applyIndent(false)}
+            onOutdent={() => applyIndent(true)}
           />
           )}
 

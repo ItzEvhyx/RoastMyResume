@@ -10,12 +10,19 @@ import { useClipboard, ClipboardEntry } from '../globals/pasting';
 import { DraggableText, DraggableDivider, DraggableIcon } from '../globals/drag.elements';
 import { DraggablePenStroke } from '../globals/pen.stroke';
 import { PenCanvas } from '../tool_sidebar/pen/pen.canvas';
+import { LassoCanvas } from '../tool_sidebar/container/container.tools';
+import { SelectionBoundary } from '../tool_sidebar/container/container.group';
+import { DraggableGroup } from '../globals/group.element';
+import { useGroup } from '../context/GroupContext';
 import { RulerGuides, useRulerSnapping } from '../globals/ruler.snapping';
 import type { TextElement } from '../context/TextContext';
 import type { DividerElement } from '../context/DividerContext';
 import type { IconElement } from '../context/IconContext';
 import type { PenStroke } from '../context/PenContext';
 import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, clampPenStrokeToSafeArea, getTextHeight, SafeAreaWarning } from './safe.area';
+import { useDeniseAnalysis } from '../context/DeniseAnalysisContext';
+import ScanAnimation from '../assist_panel/animations/scan.animation';
+import DeniseHighlightsOverlay from '../assist_panel/animations/denise.highlights';
 import { isTypingIntoField } from '../utils/keyboard';
 import {
   getClipboardImageFile,
@@ -70,8 +77,13 @@ export default function CanvasMobile() {
   } = useDivider();
   const { iconElements, selectedIconId, setSelectedIconId, updateIcon, deleteIcon, addFullIconElement } = useIcon();
   const { strokes, selectedStrokeId, setSelectedStrokeId, addFullStroke, updateStroke, removeStroke, isPenActive } = usePen();
+  const {
+    groupElements, selectedGroupId, setSelectedGroupId,
+    deleteGroup, ungroup,
+  } = useGroup();
   const { clipboard, register, unregister, copy, paste } = useClipboard();
   const { setElements: setRulerElements } = useRulerSnapping();
+  const { isScanning } = useDeniseAnalysis();
 
   const [pasteTarget, setPasteTarget] = useState<PasteTarget | null>(null);
   const [edgeWarning, setEdgeWarning] = useState<EdgeWarning | null>(null);
@@ -608,11 +620,34 @@ export default function CanvasMobile() {
               setSelectedDividerId(null);
               setSelectedIconId(null);
               setSelectedStrokeId(null);
+              setSelectedGroupId(null);
             }
           }}
           onTouchEnd={handleCanvasTap}
         >
           <PenCanvas />
+
+          <div data-no-export="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+            <LassoCanvas />
+          </div>
+
+          <svg
+            data-no-export="true"
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: PAGE_WIDTH,
+              height: PAGE_HEIGHT,
+              overflow: 'visible',
+              pointerEvents: 'none',
+              zIndex: 200001,
+            }}
+          >
+            <SelectionBoundary />
+          </svg>
+
           <RulerGuides />
           {textElements.map(element => (
             <DraggableText
@@ -623,6 +658,7 @@ export default function CanvasMobile() {
                 setSelectedDividerId(null);
                 setSelectedIconId(null);
                 setSelectedStrokeId(null);
+                setSelectedGroupId(null);
                 setSelectedId(element.id);
                 setPasteTarget(null);
               }}
@@ -641,6 +677,7 @@ export default function CanvasMobile() {
                 setSelectedId(null);
                 setSelectedIconId(null);
                 setSelectedStrokeId(null);
+                setSelectedGroupId(null);
                 setSelectedDividerId(element.id);
                 setPasteTarget(null);
               }}
@@ -659,6 +696,7 @@ export default function CanvasMobile() {
                 setSelectedId(null);
                 setSelectedDividerId(null);
                 setSelectedStrokeId(null);
+                setSelectedGroupId(null);
                 setSelectedIconId(element.id);
                 setPasteTarget(null);
               }}
@@ -677,6 +715,7 @@ export default function CanvasMobile() {
                 setSelectedId(null);
                 setSelectedDividerId(null);
                 setSelectedIconId(null);
+                setSelectedGroupId(null);
                 setSelectedStrokeId(stroke.id);
                 setPasteTarget(null);
               }}
@@ -684,6 +723,59 @@ export default function CanvasMobile() {
               onDelete={() => removeStroke(stroke.id)}
             />
           ))}
+          {groupElements.map(group => (
+            <DraggableGroup
+              key={group.id}
+              group={group}
+              isSelected={selectedGroupId === group.id}
+              onSelect={() => {
+                setSelectedId(null);
+                setSelectedDividerId(null);
+                setSelectedIconId(null);
+                setSelectedStrokeId(null);
+                setSelectedGroupId(group.id);
+                setPasteTarget(null);
+              }}
+              onUngroup={() => {
+                const members = ungroup(group.id);
+                if (!members) return;
+                members.texts.forEach(t => addFullTextElement({
+                  content: t.content,
+                  x: t.x, y: t.y, width: t.width, fontSize: t.fontSize,
+                  fontFamily: t.fontFamily, color: t.color,
+                  fontWeight: t.fontWeight, fontStyle: t.fontStyle,
+                  textDecoration: t.textDecoration, listType: t.listType,
+                  textAlign: t.textAlign, textCategory: t.textCategory,
+                  docField: t.docField,
+                }));
+                members.dividers.forEach(d => {
+                  const id = addDividerElement(d.x, d.y, d.width);
+                  updateDivider(id, { thickness: d.thickness, color: d.color });
+                });
+                members.icons.forEach(ic => addFullIconElement({
+                  x: ic.x, y: ic.y, size: ic.size, width: ic.width, height: ic.height,
+                  svgUrl: ic.svgUrl, color: ic.color, isShape: ic.isShape,
+                  shapeKind: ic.shapeKind, cornerRadius: ic.cornerRadius,
+                  isFrame: ic.isFrame, frameImage: ic.frameImage,
+                  borderWidth: ic.borderWidth, borderColor: ic.borderColor,
+                  flip: ic.flip,
+                }));
+                members.strokes.forEach(stroke => addFullStroke({
+                  x: stroke.x, y: stroke.y, width: stroke.width, height: stroke.height,
+                  baseWidth: stroke.baseWidth, baseHeight: stroke.baseHeight,
+                  points: stroke.points, color: stroke.color, thickness: stroke.thickness,
+                }));
+              }}
+              onDelete={() => deleteGroup(group.id)}
+              onSafeAreaClamp={(bounds) => showEdgeWarning({ x: bounds.x, y: bounds.y, height: bounds.height })}
+              onSafeAreaClear={clearEdgeWarning}
+              onTransformEnd={clearEdgeWarning}
+            />
+          ))}
+
+          <DeniseHighlightsOverlay />
+          <ScanAnimation active={isScanning} />
+
           {edgeWarning && (
             <div
               data-no-export="true"

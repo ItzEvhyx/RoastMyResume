@@ -5,6 +5,10 @@ import { Poppins } from 'next/font/google';
 import { animate } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import DeniseSignInMsgMobile from './denise_signin/signin.msg.mobile';
+import AskDenise from './denise_tab/ask.denise';
+import JobMatch from './job_match/job.match';
+import ATSCheck from './ats_check/ats.check';
+import Layouts from './layout_tab/layouts';
 import { useAuthUser } from '@/app/core/session/session';
 
 const poppins = Poppins({
@@ -39,24 +43,17 @@ export default function AssistPanelMobile({
   const navRef = useRef<HTMLDivElement>(null);
   const user = useAuthUser();
 
-  // Use externally controlled sign-in state if provided, otherwise fallback to session user or internal state
   const isSignedIn = externalSignedIn !== undefined ? externalSignedIn : (!!user || internalSignedIn);
 
   const handleSignUp = () => {
-    if (onSignUp) {
-      onSignUp();
-    } else {
-      setInternalSignedIn(true);
-    }
+    if (onSignUp) onSignUp();
+    else setInternalSignedIn(true);
   };
 
   const visible = stage >= 2;
-
-  // Refs for spotlight positions
   const spotlightX = useRef(0);
   const ambienceX = useRef(0);
 
-  // Glass morphism style
   const glassStyle = {
     background: 'rgba(255, 255, 255, 0.03)',
     backdropFilter: 'blur(12px)',
@@ -64,7 +61,6 @@ export default function AssistPanelMobile({
     border: '1px solid rgba(255, 255, 255, 0.08)',
   };
 
-  // Spotlight mouse/touch tracking
   useEffect(() => {
     if (!navRef.current) return;
     const nav = navRef.current;
@@ -89,7 +85,6 @@ export default function AssistPanelMobile({
         const navRect = nav.getBoundingClientRect();
         const itemRect = activeItem.getBoundingClientRect();
         const targetX = itemRect.left - navRect.left + itemRect.width / 2;
-
         animate(spotlightX.current, targetX, {
           type: 'spring',
           stiffness: 200,
@@ -97,7 +92,7 @@ export default function AssistPanelMobile({
           onUpdate: (v) => {
             spotlightX.current = v;
             nav.style.setProperty('--spotlight-x', `${v}px`);
-          }
+          },
         });
       }
     };
@@ -115,17 +110,14 @@ export default function AssistPanelMobile({
     };
   }, [activeTab]);
 
-  // Active tab ambience movement
   useEffect(() => {
     if (!navRef.current) return;
     const nav = navRef.current;
     const activeItem = nav.querySelector(`[data-index="${activeTab}"]`);
-
     if (activeItem) {
       const navRect = nav.getBoundingClientRect();
       const itemRect = activeItem.getBoundingClientRect();
       const targetX = itemRect.left - navRect.left + itemRect.width / 2;
-
       animate(ambienceX.current, targetX, {
         type: 'spring',
         stiffness: 200,
@@ -145,12 +137,12 @@ export default function AssistPanelMobile({
       className={`fixed left-0 right-0 overflow-hidden ${poppins.variable}`}
       style={{
         top: `${topOffset}px`,
-        height: isOpen ? `calc(100vh - ${topOffset}px)` : '0',
+        height: isOpen ? `calc(100dvh - ${topOffset}px)` : '0',
         opacity: visible ? 1 : 0,
         transition: 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out',
         pointerEvents: isOpen ? 'auto' : 'none',
         background: 'rgba(14, 16, 21, 0.98)',
-        zIndex: 39,
+        zIndex: 55,
       }}
     >
       <div
@@ -160,7 +152,6 @@ export default function AssistPanelMobile({
           transition: 'opacity 0.3s ease-out',
         }}
       >
-        {/* Content Nav with spotlight effect */}
         <div
           ref={navRef}
           className={`relative overflow-hidden rounded-full ${poppins.variable}`}
@@ -170,18 +161,15 @@ export default function AssistPanelMobile({
             fontFamily: 'var(--font-poppins)',
           }}
         >
-          {/* Nav items */}
-          <ul className="relative flex items-center justify-between h-full px-2 z-10">
+          <ul className="relative z-10 flex h-full items-center justify-between px-2">
             {navItems.map((item, idx) => (
-              <li key={idx} className="relative h-full flex items-center justify-center flex-1">
+              <li key={item.id} className="relative flex h-full flex-1 items-center justify-center">
                 <button
                   data-index={idx}
                   onClick={() => setActiveTab(idx)}
                   className={cn(
-                    'px-2 py-2 text-xs font-bold transition-colors duration-200 rounded-full whitespace-nowrap w-full',
-                    activeTab === idx
-                      ? 'text-white'
-                      : 'text-white/50 active:text-white/80'
+                    'w-full whitespace-nowrap rounded-full px-2 py-2 text-xs font-bold transition-colors duration-200',
+                    activeTab === idx ? 'text-white' : 'text-white/50 active:text-white/80',
                   )}
                 >
                   {item.label}
@@ -190,55 +178,35 @@ export default function AssistPanelMobile({
             ))}
           </ul>
 
-          {/* Spotlight effect */}
           <div
-            className="pointer-events-none absolute bottom-0 left-0 w-full h-full z-[1] transition-opacity duration-300"
+            className="pointer-events-none absolute bottom-0 left-0 z-[1] h-full w-full transition-opacity duration-300"
             style={{
               opacity: hoverX !== null ? 1 : 0,
-              background: `radial-gradient(100px circle at var(--spotlight-x) 100%, rgba(255,255,255,0.15) 0%, transparent 50%)`
+              background: `radial-gradient(100px circle at var(--spotlight-x) 100%, rgba(255,255,255,0.15) 0%, transparent 50%)`,
             }}
           />
-
-          {/* Active tab ambience */}
           <div
-            className="pointer-events-none absolute bottom-0 left-0 w-full h-[2px] z-[2]"
+            className="pointer-events-none absolute bottom-0 left-0 z-[2] h-[2px] w-full"
             style={{
-              background: `radial-gradient(50px circle at var(--ambience-x) 0%, rgba(255,255,255,1) 0%, transparent 100%)`
+              background: `radial-gradient(50px circle at var(--ambience-x) 0%, rgba(255,255,255,1) 0%, transparent 100%)`,
             }}
           />
         </div>
 
-        {/* Content Panel */}
-        <div
-          className="flex-1 overflow-hidden rounded-3xl"
-          style={glassStyle}
-        >
-          <div className="h-full w-full">
-            {activeTab === 0 ? (
-              !isSignedIn ? (
-                <DeniseSignInMsgMobile onSignUp={handleSignUp} />
-              ) : (
-                /* Actual Ask Denise content when signed in */
-                <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                  <span className="text-base font-semibold text-white/90 mb-1">Ask Denise</span>
-                  <span className="text-sm text-white/50 max-w-xs mb-4">
-                    You're signed in! Ask Denise for personalized resume feedback and reviews.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setInternalSignedIn(false)}
-                    className="text-xs text-white/40 hover:text-white/70 transition-colors underline cursor-pointer"
-                  >
-                    (Reset to Sign In view)
-                  </button>
-                </div>
-              )
+        <div className="min-h-0 flex-1 overflow-hidden rounded-3xl" style={glassStyle}>
+          <div className="h-full w-full overflow-hidden">
+            {!isSignedIn ? (
+              <DeniseSignInMsgMobile onSignUp={handleSignUp} />
             ) : (
-              <div className="flex h-full items-center justify-center p-6">
-                <span className="text-sm font-medium text-white/60">
-                  {navItems[activeTab].label} Content
-                </span>
-              </div>
+              <>
+                {/* Keep Ask Denise mounted so chat state survives tab switches */}
+                <div className={activeTab === 0 ? 'h-full' : 'hidden'}>
+                  <AskDenise />
+                </div>
+                {activeTab === 1 && <JobMatch />}
+                {activeTab === 2 && <ATSCheck />}
+                {activeTab === 3 && <Layouts />}
+              </>
             )}
           </div>
         </div>

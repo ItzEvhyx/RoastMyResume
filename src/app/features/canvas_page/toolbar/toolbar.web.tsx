@@ -195,9 +195,9 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
               style={{
                 ...glassStyle,
                 fontFamily: 'var(--font-poppins)',
-                background: isDocumentMode ? 'rgba(56, 189, 248, 0.18)' : glassStyle.background,
+                background: isDocumentMode ? 'rgba(255,255,255,0.14)' : glassStyle.background,
                 boxShadow: isDocumentMode
-                  ? 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 1px rgba(56,189,248,0.35), 0 4px 16px rgba(0,0,0,0.35)'
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 0 1px rgba(255,255,255,0.16), 0 4px 16px rgba(0,0,0,0.35)'
                   : glassStyle.boxShadow,
               }}
             >
@@ -208,7 +208,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.8"
-                className={isDocumentMode ? 'text-sky-300' : 'text-white/75'}
+                className={isDocumentMode ? 'text-white' : 'text-white/75'}
                 aria-hidden
               >
                 {isDocumentMode ? (
@@ -225,7 +225,7 @@ export default function ToolbarWeb({ stage, onSignInClick, onSignOutClick, onBac
                   </>
                 )}
               </svg>
-              <span className={`text-sm font-medium ${isDocumentMode ? 'text-sky-200' : 'text-white/80'}`}>
+              <span className={`text-sm font-medium ${isDocumentMode ? 'text-white' : 'text-white/80'}`}>
                 {isDocumentMode ? 'Editable canvas' : 'Text document'}
               </span>
             </button>

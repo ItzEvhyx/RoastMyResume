@@ -6,6 +6,7 @@ import { useText } from '../context/TextContext';
 import { useDivider } from '../context/DividerContext';
 import { useIcon } from '../context/IconContext';
 import { usePen } from '../context/PenContext';
+import { useContainer } from '../context/ContainerContext';
 
 const glassStyle: React.CSSProperties = {
   background: 'rgba(30, 32, 38, 0.55)',
@@ -26,8 +27,6 @@ const TOOLS = [
   { id: 'layers',    label: 'Layers',    src: '/assets/tools_icons/layer_icon.svg'       },
 ];
 
-// A4 canvas dimensions — text element is placed at the horizontal center,
-// roughly one-quarter down the page so it's visible at default zoom.
 const CANVAS_WIDTH = 794;
 const CANVAS_HEIGHT = 1123;
 
@@ -43,6 +42,7 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
   const { addDividerElement, setSelectedDividerId } = useDivider();
   const { setSelectedIconId } = useIcon();
   const { setIsPenActive } = usePen();
+  const { setIsLassoActive, clearLasso } = useContainer();
 
   useEffect(() => {
     setToolbarExpanded(stage >= 3);
@@ -60,7 +60,6 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
     setActiveTool(nextTool);
 
     if (toolId === 'fontstyle') {
-      // Place new text element at canvas center, slightly above vertical midpoint
       setSelectedDividerId(null);
       setSelectedIconId(null);
       addTextElement(CANVAS_WIDTH / 2 - 75, CANVAS_HEIGHT / 4);
@@ -70,6 +69,16 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
       setSelectedId(null);
       setSelectedIconId(null);
       addDividerElement(CANVAS_WIDTH / 2 - 150, CANVAS_HEIGHT / 4);
+    }
+
+    if (nextTool === 'container') {
+      setIsLassoActive(true);
+      setSelectedId(null);
+      setSelectedDividerId(null);
+      setSelectedIconId(null);
+    } else if (activeTool === 'container' || toolId === 'container') {
+      setIsLassoActive(false);
+      clearLasso();
     }
 
     setIsPenActive(nextTool === 'pen');
@@ -93,7 +102,7 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
           maxWidth: 'calc(100vw - 32px)',
         }}
       >
-        {TOOLS.map(tool => (
+        {TOOLS.map((tool) => (
           <button
             key={tool.id}
             title={tool.label}
@@ -107,7 +116,7 @@ export default function ToolSidebarMobile({ stage }: { stage: number }) {
               width={36}
               height={36}
               draggable={false}
-              className="select-none pointer-events-none"
+              className="pointer-events-none select-none"
             />
           </button>
         ))}

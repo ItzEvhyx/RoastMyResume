@@ -108,38 +108,25 @@ export function LassoCanvas() {
     const canvas = document.querySelector('[data-canvas-area]') as HTMLElement | null;
     if (!canvas) return;
 
-    const handleMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      e.stopPropagation();
-      // Deselect any individually-selected element
+    const begin = (clientX: number, clientY: number) => {
       setSelectedId(null);
       setSelectedDividerId(null);
       setSelectedIconId(null);
       setSelectedStrokeId(null);
-      const { x, y } = toCanvasCoords(e.clientX, e.clientY);
+      const { x, y } = toCanvasCoords(clientX, clientY);
       isDrawingRef.current = true;
       startLasso(x, y);
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const move = (clientX: number, clientY: number) => {
       if (!isDrawingRef.current) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const { x, y } = toCanvasCoords(e.clientX, e.clientY);
+      const { x, y } = toCanvasCoords(clientX, clientY);
       updateLasso(x, y);
     };
 
-    const handleMouseUp = (e: MouseEvent) => {
+    const end = () => {
       if (!isDrawingRef.current) return;
       isDrawingRef.current = false;
-      e.preventDefault();
-      e.stopPropagation();
-      // Need the current rect from context — read via the ref in the closure
-      // We rely on the lassoRect state already being set via updateLasso.
-      // commitLasso receives the hit-tested ids; lassoRect is read from context.
-      // Re-derive rect from anchor saved in context update chain.
-      // Simplest approach: the SVG rect element is the ground truth — read its attributes.
       const rectEl = svgRef.current?.querySelector('[data-lasso-rect]');
       if (!rectEl) {
         commitLasso({ textIds: [], dividerIds: [], iconIds: [], strokeIds: [] });
@@ -150,7 +137,6 @@ export function LassoCanvas() {
       const rw = parseFloat(rectEl.getAttribute('width') ?? '0');
       const rh = parseFloat(rectEl.getAttribute('height') ?? '0');
 
-      // Minimum drag size to count as intentional
       if (rw < 4 && rh < 4) {
         commitLasso({ textIds: [], dividerIds: [], iconIds: [], strokeIds: [] });
         return;
@@ -160,7 +146,61 @@ export function LassoCanvas() {
       commitLasso(sel);
     };
 
-    // Keyboard escape cancels
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      begin(e.clientX, e.clientY);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDrawingRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      move(e.clientX, e.clientY);
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!isDrawingRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      end();
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      // Touch / pen — mouse already handled above to avoid double-start
+      if (e.pointerType === 'mouse') return;
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      begin(e.clientX, e.clientY);
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return;
+      if (!isDrawingRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      move(e.clientX, e.clientY);
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return;
+      if (!isDrawingRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      end();
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         isDrawingRef.current = false;
@@ -171,12 +211,18 @@ export function LassoCanvas() {
     canvas.addEventListener('mousedown', handleMouseDown, { capture: true });
     canvas.addEventListener('mousemove', handleMouseMove, { capture: true });
     window.addEventListener('mouseup', handleMouseUp, { capture: true });
+    canvas.addEventListener('pointerdown', handlePointerDown, { capture: true });
+    canvas.addEventListener('pointermove', handlePointerMove, { capture: true });
+    window.addEventListener('pointerup', handlePointerUp, { capture: true });
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       canvas.removeEventListener('mousedown', handleMouseDown, { capture: true });
       canvas.removeEventListener('mousemove', handleMouseMove, { capture: true });
       window.removeEventListener('mouseup', handleMouseUp, { capture: true });
+      canvas.removeEventListener('pointerdown', handlePointerDown, { capture: true });
+      canvas.removeEventListener('pointermove', handlePointerMove, { capture: true });
+      window.removeEventListener('pointerup', handlePointerUp, { capture: true });
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [

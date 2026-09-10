@@ -17,7 +17,8 @@ import {
 import { useSpeechToText } from '../../hooks/use.speech.to.text';
 import { useDeniseVoice } from '../../hooks/use.denise.voice';
 import VoiceTranscribeModal from './voice.transcribe.modal';
-import { VolumeX, Trash2 } from 'lucide-react';
+import { VolumeX } from 'lucide-react';
+import { useMediaQuery } from '@/lib/use_media_query';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -283,6 +284,7 @@ const actionBtnBase =
   'w-full flex items-center justify-center gap-2 px-5 py-2 rounded-full transition-all duration-200 hover:brightness-110 active:scale-[0.98]';
 
 export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const initial = useRef(loadInitialChat()).current;
   const [mode, setMode] = useState<DeniseChatMode>(initial.mode);
   const [inputValue, setInputValue] = useState('');
@@ -705,8 +707,14 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
       />
 
       {/* Header: larger Denise + text, toggles under HR */}
-      <div className="relative flex flex-shrink-0 items-end gap-3 px-5 pt-3 pb-3">
-        <div className="relative flex-shrink-0" style={{ width: 150, height: 175 }}>
+      <div className={`relative flex flex-shrink-0 items-end gap-3 px-5 ${isMobile ? 'pb-2 pt-2' : 'pb-3 pt-3'}`}>
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            width: isMobile ? 96 : 150,
+            height: isMobile ? 112 : 175,
+          }}
+        >
           <Image
             src="/assets/images/ask_denise.png"
             alt="Ask Denise"
@@ -735,13 +743,13 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             style={{
               fontFamily: 'var(--font-futura-display), sans-serif',
               fontWeight: 800,
-              fontSize: 'clamp(1.85rem, 3.2vw, 2.55rem)',
+              fontSize: isMobile ? '1.55rem' : 'clamp(1.85rem, 3.2vw, 2.55rem)',
             }}
           >
             Ask Denise
           </h2>
           <p
-            className="mb-1 text-[13px] leading-snug text-white/75"
+            className={`mb-1 leading-snug text-white/75 ${isMobile ? 'text-[12px]' : 'text-[13px]'}`}
             style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
           >
             Always here to guide your resume to the right direction
@@ -756,26 +764,18 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
           {/* Mode toggle + clear chat */}
           <div className="flex items-center gap-2 self-start">
             <div
-              className="relative inline-flex w-fit items-center rounded-full p-1"
+              className="inline-flex w-fit items-center gap-0.5 rounded-full p-1"
               style={{
                 background: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             >
-              <div
-                className="absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  left: mode === 'roast' ? '4px' : 'calc(50% - 4px)',
-                  width: 'calc(50% - 4px)',
-                }}
-              />
               <button
                 type="button"
                 onClick={() => handleModeChange('roast')}
                 disabled={waitingForDenise}
-                className={`relative z-10 rounded-full px-6 py-1 transition-colors duration-200 ${
-                  mode === 'roast' ? 'text-white' : 'text-white/50'
+                className={`whitespace-nowrap rounded-full px-3.5 py-1.5 transition-colors duration-200 sm:px-6 ${
+                  mode === 'roast' ? 'bg-white/15 text-white' : 'text-white/50'
                 }`}
                 style={{
                   fontFamily: 'var(--font-poppins)',
@@ -789,8 +789,8 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
                 type="button"
                 onClick={() => handleModeChange('help')}
                 disabled={waitingForDenise}
-                className={`relative z-10 rounded-full px-6 py-1 transition-colors duration-200 ${
-                  mode === 'help' ? 'text-white' : 'text-white/50'
+                className={`whitespace-nowrap rounded-full px-3.5 py-1.5 transition-colors duration-200 sm:px-6 ${
+                  mode === 'help' ? 'bg-white/15 text-white' : 'text-white/50'
                 }`}
                 style={{
                   fontFamily: 'var(--font-poppins)',
@@ -811,9 +811,11 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
               }
               title="Clear chat with Denise"
               aria-label="Clear chat with Denise"
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[#ef4444] transition-all duration-200 hover:bg-red-500/15 hover:text-[#f87171] active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-red-400 transition-all duration-200 hover:bg-red-500/15 hover:text-red-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
             >
-              <Trash2 size={17} fill="currentColor" strokeWidth={0} />
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </div>
         </div>
@@ -919,7 +921,7 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
       )}
 
       {/* Chat input — above voice modal so live transcript stays visible */}
-      <div className="relative z-20 w-full min-w-0 flex-shrink-0 px-5 pb-4 pt-1">
+      <div className={`relative z-20 w-full min-w-0 flex-shrink-0 px-5 pt-1 ${isMobile ? 'pb-5' : 'pb-4'}`}>
         {mode === 'roast' && (
           <p
             className="mb-2 px-1 text-[11px] leading-snug text-white/45"

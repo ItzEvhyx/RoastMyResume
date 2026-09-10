@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Poppins } from 'next/font/google';
 import { useText } from '../../context/TextContext';
+import { useMediaQuery } from '@/lib/use_media_query';
 
 // Fonts
 const poppins = Poppins({
@@ -56,6 +57,7 @@ const glassStyle: React.CSSProperties = {
 
 export default function FontSelector() {
   const { selectedId, textElements, updateElement, toolbarExpanded, activeTool } = useText();
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
 
@@ -138,7 +140,8 @@ export default function FontSelector() {
         }
       `}</style>
       <div
-        className="fixed left-[110px] z-40 flex flex-col rounded-3xl transition-all duration-400 ease-out"
+        className="fixed z-40 flex flex-col rounded-3xl transition-all duration-400 ease-out"
+        data-mobile-tool-panel={isMobile ? true : undefined}
         onMouseDown={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
@@ -148,12 +151,18 @@ export default function FontSelector() {
         }}
         style={{
           ...glassStyle,
-          width: '200px',
-          height: 'calc(100vh - 280px)',
-          maxHeight: '550px',
-          top: 'calc(50% - (100vh - 280px) / 2 + 40px)',
+          left: isMobile ? 16 : 110,
+          right: isMobile ? 16 : undefined,
+          top: isMobile ? undefined : 'calc(50% - (100vh - 280px) / 2 + 40px)',
+          bottom: isMobile ? 150 : undefined,
+          width: isMobile ? 'auto' : '200px',
+          height: isMobile ? 'min(420px, calc(100dvh - 220px))' : 'calc(100vh - 280px)',
+          maxHeight: isMobile ? 'calc(100dvh - 220px)' : '550px',
           opacity: shouldShow ? 1 : 0,
-          transform: shouldShow ? 'scale(1) translateX(0)' : 'scale(0.85) translateX(-12px)',
+          transform: shouldShow
+            ? (isMobile ? 'scale(1) translateY(0)' : 'scale(1) translateX(0)')
+            : (isMobile ? 'scale(0.92) translateY(16px)' : 'scale(0.85) translateX(-12px)'),
+          transformOrigin: isMobile ? 'bottom center' : 'left center',
           pointerEvents: shouldShow ? 'auto' : 'none',
         }}
       >

@@ -89,7 +89,7 @@ export default function Layouts() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={selectedCategory || 'categories'}

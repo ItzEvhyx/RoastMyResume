@@ -6,7 +6,6 @@ import { businessPanelSeed } from './business.panel';
 import { techSidebarSeed } from './tech.sidebar';
 import { techSplitSeed } from './tech.split';
 import { genericMinimalSeed } from './generic.minimal';
-import { genericBannerSeed } from './generic.banner';
 
 export const TEMPLATE_META: ResumeTemplateMeta[] = [
   {
@@ -65,13 +64,6 @@ export const TEMPLATE_META: ResumeTemplateMeta[] = [
     category: 'Generic',
     accent: '#64748b',
   },
-  {
-    id: 'generic-banner',
-    name: 'Bold Banner',
-    tag: 'Accent header',
-    category: 'Generic',
-    accent: '#7c3aed',
-  },
 ];
 
 export const TEMPLATE_SEEDS: Record<string, TemplateSeedElements> = {
@@ -82,7 +74,6 @@ export const TEMPLATE_SEEDS: Record<string, TemplateSeedElements> = {
   'tech-sidebar': techSidebarSeed,
   'tech-split': techSplitSeed,
   'generic-minimal': genericMinimalSeed,
-  'generic-banner': genericBannerSeed,
 };
 
 export function getLocalSeed(templateId: string): TemplateSeedElements | null {

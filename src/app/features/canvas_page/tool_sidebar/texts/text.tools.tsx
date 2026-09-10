@@ -30,6 +30,8 @@ interface TextToolbarProps {
   onAlignToggle: () => void;
   isLocked?: boolean;
   onLockToggle: () => void;
+  onIndent?: () => void;
+  onOutdent?: () => void;
 }
 
 const TOOLBAR_HEIGHT = 60;
@@ -54,6 +56,8 @@ export function TextToolbar({
   onAlignToggle,
   isLocked = false,
   onLockToggle,
+  onIndent,
+  onOutdent,
 }: TextToolbarProps) {
   const isMobile = useMediaQuery('(max-width: 767px)');
   const centerX = elementX + elementWidth / 2;
@@ -145,6 +149,46 @@ export function TextToolbar({
 
         {/* Alignment */}
         <AlignmentToggle textAlign={textAlign} onToggle={onAlignToggle} />
+
+        {(onIndent || onOutdent) && (
+          <>
+            <Divider />
+            {onOutdent && (
+              <button
+                type="button"
+                title="Decrease indent"
+                aria-label="Decrease indent"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOutdent();
+                }}
+                className="flex items-center justify-center rounded-lg transition-colors hover:bg-white/10 active:bg-white/20"
+                style={{ width: 40, height: 40, flexShrink: 0 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/85">
+                  <path d="M3 6h18M3 12h10M3 18h18M21 9l-4 3 4 3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+            {onIndent && (
+              <button
+                type="button"
+                title="Increase indent"
+                aria-label="Increase indent"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onIndent();
+                }}
+                className="flex items-center justify-center rounded-lg transition-colors hover:bg-white/10 active:bg-white/20"
+                style={{ width: 40, height: 40, flexShrink: 0 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/85">
+                  <path d="M3 6h18M3 12h10M3 18h18M15 9l4 3-4 3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+          </>
+        )}
 
         <Divider />
 
