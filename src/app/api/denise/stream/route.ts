@@ -7,6 +7,7 @@ import {
 import {
   buildSpeechScript,
   flushRemainingSpeech,
+  isCartesiaConfigured,
   pullCompleteSpeechChunks,
   synthesizeSpeechPcm,
   type DeniseSpeakMode,
@@ -103,9 +104,7 @@ export async function POST(request: Request) {
   const approvedElements = parseApprovedElements(body.approvedElements);
   const skipInterview = body.skipInterview === true;
   const speakMode = mode as DeniseSpeakMode;
-  const voiceEnabled = Boolean(
-    process.env.CARTESIA_API_KEY && process.env.CARTESIA_VOICE_ID,
-  );
+  const voiceEnabled = isCartesiaConfigured();
 
   const email = resolveRequestEmail(request, body);
   if (!email) {

@@ -1,4 +1,5 @@
 import {
+  isCartesiaConfigured,
   synthesizeSpeech,
   type DeniseSpeakMode,
 } from '@/app/core/services/cartesia';
@@ -12,11 +13,11 @@ interface SpeakBody {
 }
 
 export async function POST(request: Request) {
-  if (!process.env.CARTESIA_API_KEY || !process.env.CARTESIA_VOICE_ID) {
+  if (!isCartesiaConfigured()) {
     return Response.json(
       {
         error:
-          'Denise’s voice isn’t configured. Add CARTESIA_API_KEY and CARTESIA_VOICE_ID to .env.local.',
+          'Denise’s voice isn’t configured. Add CARTESIA_API_KEY … CARTESIA_API_KEY5 and CARTESIA_VOICE_ID to .env.local.',
       },
       { status: 503 },
     );

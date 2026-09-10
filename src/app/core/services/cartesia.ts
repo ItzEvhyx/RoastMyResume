@@ -191,44 +191,164 @@ export function flushRemainingSpeech(
   return rest.length >= 2 ? rest : null;
 }
 
+/** Round-robin index across warm server instances (resets on cold start — fine for demo). */
+let cartesiaKeyCursor = 0;
+
+function maskCartesiaKey(key: string): string {
+  if (key.length <= 10) return '***';
+  return `${key.slice(0, 10)}…${key.slice(-4)}`;
+}
+
+const CARTESIA_KEY_ENV_NAMES = [
+  'CARTESIA_API_KEY',
+  'CARTESIA_API_KEY1',
+  'CARTESIA_API_KEY2',
+  'CARTESIA_API_KEY3',
+  'CARTESIA_API_KEY4',
+  'CARTESIA_API_KEY5',
+] as const;
+
+type CartesiaKeyEntry = { envName: string; key: string };
+
+/**
+ * Collect keys from CARTESIA_API_KEY … CARTESIA_API_KEY5 (skip empties).
+ * Also accepts legacy comma-separated CARTESIA_API_KEYS if present.
+ */
+export function getCartesiaApiKeyEntries(): CartesiaKeyEntry[] {
+  const fromNamed = CARTESIA_KEY_ENV_NAMES.map((envName) => {
+    const key = process.env[envName]?.trim();
+    return key ? { envName, key } : null;
+  }).filter((entry): entry is CartesiaKeyEntry => entry !== null);
+
+  if (fromNamed.length > 0) return fromNamed;
+
+  return (process.env.CARTESIA_API_KEYS ?? '')
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean)
+    .map((key, i) => ({
+      envName: i === 0 ? 'CARTESIA_API_KEY' : `CARTESIA_API_KEY${i}`,
+      key,
+    }));
+}
+
+export function getCartesiaApiKeys(): string[] {
+  return getCartesiaApiKeyEntries().map((e) => e.key);
+}
+
+export function isCartesiaConfigured(): boolean {
+  return (
+    getCartesiaApiKeyEntries().length > 0 &&
+    Boolean(process.env.CARTESIA_VOICE_ID?.trim())
+  );
+}
+
+function peekCartesiaApiKey(): CartesiaKeyEntry & { index: number } {
+  const entries = getCartesiaApiKeyEntries();
+  if (entries.length === 0) {
+    throw new Error(
+      'No Cartesia API key set. Add CARTESIA_API_KEY … CARTESIA_API_KEY5 to .env.local.',
+    );
+  }
+  const index = cartesiaKeyCursor % entries.length;
+  return { ...entries[index]!, index };
+}
+
+/** Advance to the next key after a TTS attempt (wraps to start). */
+function rotateCartesiaApiKey(): void {
+  const entries = getCartesiaApiKeyEntries();
+  const prevIndex = cartesiaKeyCursor % Math.max(entries.length, 1);
+  if (entries.length <= 1) {
+    cartesiaKeyCursor = 0;
+    console.log(
+      `[Cartesia] key pool size 1 — staying on ${entries[0]?.envName ?? 'CARTESIA_API_KEY'} (${maskCartesiaKey(entries[0]?.key ?? '')})`,
+    );
+    return;
+  }
+  cartesiaKeyCursor = (cartesiaKeyCursor + 1) % entries.length;
+  const prev = entries[prevIndex]!;
+  const next = entries[cartesiaKeyCursor]!;
+  console.log(
+    `[Cartesia] rotated ${prev.envName} → ${next.envName} (${maskCartesiaKey(next.key)})`,
+  );
+}
+
 async function cartesiaBytes(options: {
   transcript: string;
   generation_config: GenerationConfig;
   output_format: Record<string, unknown>;
 }): Promise<ArrayBuffer> {
-  const apiKey = process.env.CARTESIA_API_KEY;
-  const voiceId = process.env.CARTESIA_VOICE_ID;
-  if (!apiKey) throw new Error('CARTESIA_API_KEY is not set.');
+  const voiceId = process.env.CARTESIA_VOICE_ID?.trim();
   if (!voiceId) throw new Error('CARTESIA_VOICE_ID is not set.');
 
-  const res = await fetch('https://api.cartesia.ai/tts/bytes', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Cartesia-Version': '2025-04-16',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model_id: 'sonic-2',
-      transcript: options.transcript,
-      voice: {
-        mode: 'id',
-        id: voiceId,
-      },
-      language: 'en',
-      output_format: options.output_format,
-      generation_config: options.generation_config,
-    }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
+  const entries = getCartesiaApiKeyEntries();
+  if (entries.length === 0) {
     throw new Error(
-      `Cartesia TTS failed (${res.status})${detail ? `: ${detail.slice(0, 280)}` : ''}`,
+      'No Cartesia API key set. Add CARTESIA_API_KEY … CARTESIA_API_KEY5 to .env.local.',
     );
   }
 
-  return res.arrayBuffer();
+  let lastError: Error | null = null;
+
+  // Use current key, then rotate. On quota/auth failures, try the rest of the pool.
+  for (let attempt = 0; attempt < entries.length; attempt++) {
+    const { key: apiKey, envName, index: keyIndex } = peekCartesiaApiKey();
+    console.log(
+      `[Cartesia] TTS chunk using ${envName} (${keyIndex + 1}/${entries.length}, ${maskCartesiaKey(apiKey)}) — "${options.transcript.slice(0, 48)}${options.transcript.length > 48 ? '…' : ''}"`,
+    );
+
+    try {
+      const res = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Cartesia-Version': '2025-04-16',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model_id: 'sonic-2',
+          transcript: options.transcript,
+          voice: {
+            mode: 'id',
+            id: voiceId,
+          },
+          language: 'en',
+          output_format: options.output_format,
+          generation_config: options.generation_config,
+        }),
+      });
+
+      if (res.ok) {
+        const buffer = await res.arrayBuffer();
+        rotateCartesiaApiKey();
+        return buffer;
+      }
+
+      const detail = await res.text().catch(() => '');
+      lastError = new Error(
+        `Cartesia TTS failed (${res.status})${detail ? `: ${detail.slice(0, 280)}` : ''}`,
+      );
+      console.warn(
+        `[Cartesia] ${envName} failed (${res.status}) — rotating`,
+      );
+
+      rotateCartesiaApiKey();
+
+      // Exhausted / invalid key → try next; other HTTP errors stop immediately.
+      if (res.status === 401 || res.status === 403 || res.status === 429) {
+        continue;
+      }
+      throw lastError;
+    } catch (err) {
+      if (err === lastError) throw err;
+      // Network / unexpected — rotate and surface.
+      console.warn('[Cartesia] TTS request error — rotating', err);
+      rotateCartesiaApiKey();
+      throw err;
+    }
+  }
+
+  throw lastError ?? new Error('Cartesia TTS failed for all API keys.');
 }
 
 export async function synthesizeSpeech(options: {
