@@ -205,28 +205,28 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
       </div>
 
       {/* Two-column layout */}
-      <div className="flex h-full w-full items-center" style={{ minHeight: 300 }}>
+      <div className="flex h-full w-full flex-col items-stretch lg:flex-row lg:items-end" style={{ minHeight: 300 }}>
 
         {/* Left — pill + Denise */}
         <div
-          className="relative shrink-0"
-          style={{ width: 570, height: 170, marginLeft: '8%', marginBottom: 28, overflow: 'visible', alignSelf: 'flex-end' }}
+          className="relative mx-auto mb-4 hidden w-[min(570px,42vw)] shrink-0 self-end overflow-visible lg:mx-0 lg:mb-7 lg:ml-[min(8%,4rem)] lg:block"
+          style={{ height: 'min(170px, 18vh)' }}
         >
           <div className="absolute inset-0 border-2 border-black/30" style={{ borderRadius: 9999 }} />
-          <div className="absolute bottom-0 left-0" style={{ width: 380, pointerEvents: 'none' }}>
+          <div className="absolute bottom-0 left-0 w-[min(380px,100%)] pointer-events-none">
             <Image
               src="/assets/images/denise_hr_laptop.svg"
               alt="Denise at her laptop"
               width={380}
               height={430}
               priority
-              className="block"
+              className="block h-auto w-full max-w-[380px]"
             />
           </div>
         </div>
 
         {/* Right — text + extras */}
-        <div className="flex flex-1 flex-col justify-between self-stretch py-8 pl-12 pr-12">
+        <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch px-6 pb-8 pt-20 md:px-10 md:pt-16 lg:py-8 lg:pl-8 lg:pr-12 xl:pl-12">
 
           {/* Top spacer to push heading toward center */}
           <div />
@@ -235,13 +235,13 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
           <div>
             <h1
               className="leading-none text-black"
-              style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800, fontSize: 'clamp(3.5rem, 6vw, 7rem)' }}
+              style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800, fontSize: 'clamp(2.5rem, 6vw, 7rem)' }}
             >
               Let&rsquo;s get started
             </h1>
             <p
-              className="mt-6 leading-snug text-black/60"
-              style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400, fontSize: 'clamp(1.1rem, 1.6vw, 1.5rem)' }}
+              className="mt-4 leading-snug text-black/60 md:mt-6"
+              style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400, fontSize: 'clamp(1rem, 1.6vw, 1.5rem)' }}
             >
               A good template won&rsquo;t save a bad bullet point.
               <br />
@@ -250,9 +250,9 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
           </div>
 
           {/* Bottom row — stats / badges */}
-          <div className="flex items-center gap-6">
+          <div className="mt-8 flex flex-wrap items-center gap-3 md:gap-6">
             {/* Divider */}
-            <div className="h-px flex-1 bg-black/10" />
+            <div className="hidden h-px flex-1 bg-black/10 sm:block" />
 
             {/* Stat: template count */}
             <div className="flex items-baseline gap-1.5">
@@ -300,8 +300,8 @@ export default function BannerWeb({ onSignInClick, onSignOutClick }: BannerWebPr
     {/* "Templates" stamp — centered, tilted, overlapping the dark bg. */}
     <div className={`relative z-20 flex justify-center ${futuraDisplay.variable}`} style={{ marginTop: 56 }}>
       <span
-        className="inline-block -rotate-2 rounded-md bg-white px-20 py-5 text-black shadow-lg tracking-widest"
-        style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800, fontSize: 'clamp(4rem, 7vw, 7rem)', lineHeight: 1 }}
+        className="inline-block -rotate-2 rounded-md bg-white px-8 py-4 text-black shadow-lg tracking-widest xl:px-20 xl:py-5"
+        style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800, fontSize: 'clamp(2.75rem, 7vw, 7rem)', lineHeight: 1 }}
       >
         Templates
       </span>

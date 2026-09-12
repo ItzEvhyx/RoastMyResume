@@ -69,17 +69,17 @@ export default function LogoBanner({ watchRef }: LogoBannerProps) {
       className={`pointer-events-none fixed left-0 top-0 z-50 hidden w-full transition-opacity duration-300 md:block ${futuraDisplay.variable}`}
       style={{ opacity: heroVisible ? 1 : 0 }}
     >
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-4 px-6 pt-10 pb-5">
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-6 pb-4 pt-6 md:gap-4 md:pb-5 md:pt-8 xl:pt-10">
         <Image
           src="/assets/logos/rmr_logo.png"
           alt="RoastMyResume logo"
           width={64}
           height={64}
           priority
-          className="h-14 w-auto md:h-16"
+          className="h-12 w-auto md:h-14 xl:h-16"
         />
         <span
-          className="select-none text-5xl leading-none tracking-tight text-white md:text-6xl"
+          className="select-none text-4xl leading-none tracking-tight text-white md:text-5xl xl:text-6xl"
           style={{ fontFamily: 'var(--font-futura-display), sans-serif', fontWeight: 800 }}
         >
           Roast<span className="text-white/40">My</span>Resume

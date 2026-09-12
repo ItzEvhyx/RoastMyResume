@@ -29,7 +29,7 @@ export default function Features() {
       className={`relative z-10 mx-auto w-full max-w-7xl px-6 ${poppins.variable} ${futuraDisplay.variable}`}
     >
       <h2
-        className="mb-6 text-center text-5xl leading-none text-white md:text-6xl"
+        className="mb-4 text-center text-4xl leading-none text-white md:mb-6 md:text-5xl xl:text-6xl"
         style={{ fontFamily: futuraStack, fontWeight: 800 }}
       >
         The resume feedback you actually need
@@ -45,7 +45,7 @@ export default function Features() {
         6. right-4     -> col 2, row 4
         Order of the divs below drives this — don't reorder them.
       */}
-      <div className="grid h-[640px] grid-cols-1 grid-rows-[repeat(6,1fr)] gap-4 md:h-[760px] md:grid-cols-2 md:grid-rows-4">
+      <div className="grid h-[min(640px,calc(100vh-8rem))] grid-cols-1 grid-rows-[repeat(6,1fr)] gap-3 md:h-[min(760px,calc(100vh-8rem))] md:grid-cols-2 md:grid-rows-4 md:gap-4">
         {/* left-big — canvas snapshot */}
         <div className="relative row-span-1 overflow-hidden rounded-2xl border border-white/80 bg-white md:row-span-3">
           <Image

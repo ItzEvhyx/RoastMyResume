@@ -64,11 +64,11 @@ const SOCIALS: ElasticStackItem[] = [
 export default function Contacts() {
   return (
     <section
-      className={`relative z-10 mx-auto flex w-full max-w-7xl flex-col px-6 py-24 ${poppins.variable} ${futuraDisplay.variable}`}
+      className={`relative z-10 mx-auto flex w-full max-w-7xl flex-col px-6 py-12 md:py-16 xl:py-24 ${poppins.variable} ${futuraDisplay.variable}`}
     >
       {/* Headline */}
       <h2
-        className="text-5xl leading-[1.02] text-white md:text-6xl lg:text-7xl"
+        className="text-4xl leading-[1.02] text-white md:text-5xl lg:text-6xl xl:text-7xl"
         style={{ fontFamily: futuraStack, fontWeight: 800 }}
       >
         Your resume and your dating

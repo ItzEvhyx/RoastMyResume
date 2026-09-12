@@ -75,7 +75,7 @@ export function PenTools({
       }}
       style={{
         ...glassStyle,
-        left: isMobile ? '50%' : 110,
+        left: isMobile ? '50%' : 'calc(var(--tool-rail, 96px) + 14px)',
         width: '70px',
         padding: '16px 12px',
         bottom: isMobile ? 92 : 180,

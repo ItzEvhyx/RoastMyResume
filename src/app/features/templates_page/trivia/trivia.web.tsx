@@ -40,29 +40,27 @@ export default function TriviaWeb() {
   return (
     <section
       className={`relative z-10 mb-20 overflow-hidden rounded-3xl bg-white ${poppins.variable} ${futuraDisplay.variable}`}
-      style={{ margin: '0 6% 5rem' }}
+      style={{ margin: '0 4% 5rem' }}
     >
-      {/* Row 1: Heading right-of-center + Quote */}
-      <div className="flex items-center gap-12 border-b border-black/10 px-16 py-14">
-        {/* Left — pushed toward center with auto left margin */}
-        <div className="shrink-0" style={{ marginLeft: '8%' }}>
+      {/* Row 1: Heading + Quote — stacks below xl */}
+      <div className="flex flex-col items-stretch gap-8 border-b border-black/10 px-6 py-10 md:px-10 md:py-12 xl:flex-row xl:items-center xl:gap-12 xl:px-16 xl:py-14">
+        <div className="shrink-0 xl:ml-[8%]">
           <h2
             className="leading-tight text-black"
-            style={{ fontFamily: futura, fontWeight: 800, fontSize: 'clamp(2.8rem, 4.5vw, 5rem)' }}
+            style={{ fontFamily: futura, fontWeight: 800, fontSize: 'clamp(2rem, 4.5vw, 5rem)' }}
           >
             What makes a good
           </h2>
           <h2
             className="leading-none text-black"
-            style={{ fontFamily: futura, fontWeight: 800, fontSize: 'clamp(4rem, 7vw, 7.5rem)' }}
+            style={{ fontFamily: futura, fontWeight: 800, fontSize: 'clamp(2.75rem, 7vw, 7.5rem)' }}
           >
             RESUME?
           </h2>
         </div>
 
-        {/* Right — centered quote */}
         <p
-          className="flex-1 text-center leading-relaxed text-black/75"
+          className="min-w-0 flex-1 text-left leading-relaxed text-black/75 xl:text-center"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400, fontSize: 'clamp(1rem, 1.4vw, 1.35rem)' }}
         >
           Recruiters spend about 7 seconds on a first pass. A good resume isn&rsquo;t the one
@@ -72,14 +70,15 @@ export default function TriviaWeb() {
       </div>
 
       {/* Row 2: Three pillars */}
-      <div className="grid grid-cols-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3">
         {PILLARS.map((pillar, i) => (
           <div
             key={pillar.label}
-            className="flex flex-col items-center px-14 py-12"
-            style={{ borderRight: i < 2 ? '1px solid rgba(0,0,0,0.12)' : 'none' }}
+            className={`flex flex-col items-center px-8 py-10 md:px-10 md:py-12 xl:px-14 ${
+              i < 2 ? 'border-b border-black/10 lg:border-b-0 lg:border-r lg:border-black/10' : ''
+            }`}
           >
-            <div className="mb-4 flex h-16 items-center justify-center">
+            <div className="mb-4 flex h-16 items-center justify-center lg:border-b-0">
               <Image src={pillar.icon} alt={pillar.label} width={64} height={64} />
             </div>
             <p

@@ -130,8 +130,14 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
   };
 
   return (
-    <div className="pointer-events-none fixed left-3 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-4 lg:left-6"
-      style={{ ...sidebarPopStyle, marginTop: '40px' }} // Push down 40px
+    <div
+      className="pointer-events-none fixed left-3 top-1/2 z-40 flex max-h-[calc(100vh-7rem)] -translate-y-1/2 flex-col items-center gap-2 overflow-y-auto overflow-x-visible no-scrollbar lg:left-6 lg:gap-4"
+      style={{
+        ...sidebarPopStyle,
+        marginTop: '40px',
+        // Shared offset for floating tool docks (pen / image / shapes).
+        ['--tool-rail' as string]: '96px',
+      }}
     >
       {/* Main tools pill */}
       <div className="pointer-events-auto flex flex-col items-center rounded-full py-3" style={glassStyle}>

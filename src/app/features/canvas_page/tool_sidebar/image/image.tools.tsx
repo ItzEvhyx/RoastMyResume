@@ -288,13 +288,13 @@ export default function ImageTools() {
         aria-label="Photos"
         className={`fixed z-50 flex flex-col overflow-hidden rounded-3xl ${poppins.variable}`}
         style={{
-          left: isMobile ? 16 : 110,
+          left: isMobile ? 16 : 'calc(var(--tool-rail, 96px) + 14px)',
           right: isMobile ? 16 : undefined,
-          top: isMobile ? undefined : 'calc(50% - (100vh - 200px) / 2 + 40px)',
+          top: isMobile ? undefined : 'calc(50% - min(600px, 100vh - 200px) / 2 + 40px)',
           bottom: isMobile ? 92 : undefined,
           width: isMobile ? 'auto' : 360,
-          height: isMobile ? 'min(360px, calc(100dvh - 180px))' : 'calc(100vh - 200px)',
-          maxHeight: isMobile ? 'calc(100dvh - 180px)' : 600,
+          height: isMobile ? 'min(360px, calc(100dvh - 180px))' : 'min(600px, calc(100vh - 200px))',
+          maxHeight: isMobile ? 'calc(100dvh - 180px)' : 'min(600px, calc(100vh - 160px))',
           ...glassStyle,
           opacity: shouldShow ? 1 : 0,
           transform: shouldShow

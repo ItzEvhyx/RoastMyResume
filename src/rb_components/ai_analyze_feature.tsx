@@ -193,11 +193,11 @@ export default function AiAnalyzeFeature({ className = '' }: { className?: strin
           <HiSparkles className="h-6 w-6 md:h-9 md:w-9" />
         </span>
         <div className="flex flex-col gap-1 md:gap-2">
-          <h3 className="text-xl leading-none text-black md:text-4xl" style={{ fontFamily: futuraStack, fontWeight: 800 }}>
+          <h3 className="text-xl leading-none text-black md:text-2xl xl:text-4xl" style={{ fontFamily: futuraStack, fontWeight: 800 }}>
             Let Denise Analyze
           </h3>
           <p
-            className="text-xs leading-snug text-neutral-600 md:text-lg"
+            className="text-xs leading-snug text-neutral-600 md:text-sm xl:text-lg"
             style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
           >
             Get a full breakdown of what&apos;s weak, what&apos;s missing, and

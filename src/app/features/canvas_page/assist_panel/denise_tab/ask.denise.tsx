@@ -775,34 +775,42 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
       />
 
       {/* Header: larger Denise + text, toggles under HR */}
-      <div className={`relative flex flex-shrink-0 items-end gap-3 px-5 ${isMobile ? 'pb-2 pt-2' : 'pb-3 pt-3'}`}>
+      <div className={`relative flex flex-shrink-0 items-end gap-2 px-4 sm:gap-3 sm:px-5 ${isMobile ? 'pb-2 pt-2' : 'pb-2 pt-2 max-[900px]:pb-2 xl:pb-3 xl:pt-3'}`}>
         <div
           className="relative flex-shrink-0"
           style={{
-            width: isMobile ? 96 : 150,
-            height: isMobile ? 112 : 175,
+            width: isMobile ? 96 : undefined,
+            height: isMobile ? 112 : undefined,
           }}
         >
-          <Image
-            src="/assets/images/ask_denise.png"
-            alt="Ask Denise"
-            fill
-            className="object-contain object-bottom"
-            priority
-          />
-          {isDeniseSpeaking && (
-            <button
-              type="button"
-              onClick={stopDeniseVoice}
-              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-black/45 transition-colors hover:bg-black/55"
-              aria-label="Stop Denise’s voice"
-              title="Mute Denise"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white shadow-lg ring-1 ring-white/25">
-                <VolumeX size={22} strokeWidth={2.25} />
-              </span>
-            </button>
-          )}
+          <div
+            className={
+              isMobile
+                ? 'relative h-full w-full'
+                : 'relative h-[min(175px,22vh)] w-[min(150px,18vh)]'
+            }
+          >
+            <Image
+              src="/assets/images/ask_denise.png"
+              alt="Ask Denise"
+              fill
+              className="object-contain object-bottom"
+              priority
+            />
+            {isDeniseSpeaking && (
+              <button
+                type="button"
+                onClick={stopDeniseVoice}
+                className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-black/45 transition-colors hover:bg-black/55"
+                aria-label="Stop Denise’s voice"
+                title="Mute Denise"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white shadow-lg ring-1 ring-white/25">
+                  <VolumeX size={22} strokeWidth={2.25} />
+                </span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col justify-end pb-1">
@@ -811,13 +819,13 @@ export default function AskDenise({ onBack: _onBack }: AskDeniseProps) {
             style={{
               fontFamily: 'var(--font-futura-display), sans-serif',
               fontWeight: 800,
-              fontSize: isMobile ? '1.55rem' : 'clamp(1.85rem, 3.2vw, 2.55rem)',
+              fontSize: isMobile ? '1.55rem' : 'clamp(1.35rem, 2.4vw, 2.55rem)',
             }}
           >
             Ask Denise
           </h2>
           <p
-            className={`mb-1 leading-snug text-white/75 ${isMobile ? 'text-[12px]' : 'text-[13px]'}`}
+            className={`mb-1 leading-snug text-white/75 ${isMobile ? 'text-[12px]' : 'text-[12px] xl:text-[13px]'}`}
             style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
           >
             Always here to guide your resume to the right direction

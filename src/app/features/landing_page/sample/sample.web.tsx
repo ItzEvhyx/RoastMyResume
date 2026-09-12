@@ -324,7 +324,7 @@ export default function Sample() {
 
   return (
     <section
-      className={`relative z-10 mx-auto w-full max-w-7xl px-6 py-24 ${poppins.variable} ${futuraDisplay.variable}`}
+      className={`relative z-10 mx-auto w-full max-w-7xl px-6 py-12 md:py-16 xl:py-24 ${poppins.variable} ${futuraDisplay.variable}`}
     >
       {/* Eyebrow */}
       <p
@@ -336,7 +336,7 @@ export default function Sample() {
 
       {/* Headline */}
       <h2
-        className="mb-6 text-5xl leading-[1.05] text-white md:text-6xl"
+        className="mb-6 text-4xl leading-[1.05] text-white md:text-5xl xl:text-6xl"
         style={{ fontFamily: futuraStack, fontWeight: 800 }}
       >
         Design it your way.
@@ -348,7 +348,7 @@ export default function Sample() {
       <div className="flex flex-col gap-6 md:flex-row md:items-stretch">
 
         {/* ---------------- BUILD CARD (white) ---------------- */}
-        <div className="relative flex-1 rounded-2xl bg-white pt-28">
+        <div className="relative flex-1 rounded-2xl bg-white pt-20 md:pt-24 xl:pt-28">
           {/* Notch pill — inside the container, near the top */}
           <div className="absolute left-1/2 top-6 flex -translate-x-1/2 items-center gap-3 rounded-full bg-black px-6 py-3">
             <span
@@ -367,7 +367,7 @@ export default function Sample() {
 
           {/* Card body — input area (fixed height) */}
           <div
-            className="flex h-[520px] flex-col px-8 pb-8"
+            className="flex h-[min(520px,calc(100vh-12rem))] flex-col px-8 pb-8"
             style={{ fontFamily: 'var(--font-poppins)' }}
           >
             <div className="flex min-h-0 flex-1 flex-col rounded-xl border-2 border-black/10 bg-black/[0.03] p-4 focus-within:border-black/30">
@@ -461,7 +461,7 @@ export default function Sample() {
         </div>
 
         {/* ---------------- REVIEW CARD (dark) ---------------- */}
-        <div className="relative flex-1 rounded-2xl border-[3px] border-white bg-[#171717] pt-28">
+        <div className="relative flex-1 rounded-2xl border-[3px] border-white bg-[#171717] pt-20 md:pt-24 xl:pt-28">
           {/* Notch pill — inside the container, near the top */}
           <div className="absolute left-1/2 top-6 flex -translate-x-1/2 items-center gap-3 rounded-full bg-white px-6 py-3">
             <span
@@ -480,7 +480,7 @@ export default function Sample() {
 
           {/* Card body — review output (fixed height) */}
           <div
-            className="flex h-[520px] flex-col items-center px-8 pb-8"
+            className="flex h-[min(520px,calc(100vh-12rem))] flex-col items-center px-8 pb-8"
             style={{ fontFamily: 'var(--font-poppins)' }}
           >
             {/* Roast / Real talk toggle (animated sliding thumb) */}

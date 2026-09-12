@@ -1,7 +1,7 @@
 // src/app/features/landing_page/hero.tsx
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Poppins, VT323 } from 'next/font/google';
 import localFont from 'next/font/local';
 import ResumeCardStack from '@/rb_components/resume_card_stack';
@@ -41,13 +41,35 @@ const RESUME_TEMPLATES = [
 // Real Futura Display font, loaded locally above.
 const futuraStack = 'var(--font-futura-display), sans-serif';
 
+/** Matches clamp(280px, 28vw, 460px), also capped by viewport height so short laptops fit. */
+function useHeroCardWidth(): number {
+  const [width, setWidth] = useState(460);
+
+  useEffect(() => {
+    const update = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const byWidth = Math.min(460, Math.max(280, vw * 0.28));
+      // A4 height ≈ width * 1.414; leave room for logo banner + padding.
+      const byHeight = Math.max(240, (vh - 200) / 1.414);
+      setWidth(Math.round(Math.min(byWidth, byHeight, 460)));
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  return width;
+}
+
 export default function Hero() {
   const rootRef = useRef<HTMLDivElement>(null);
+  const cardWidth = useHeroCardWidth();
 
   return (
     <div
       ref={rootRef}
-      className={`relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col items-center gap-12 px-6 py-16 md:flex-row md:items-center md:justify-start md:gap-10 ${poppins.variable} ${vt323.variable} ${futuraDisplay.variable}`}
+      className={`relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col items-center gap-8 px-6 pb-12 pt-28 md:flex-row md:items-center md:justify-start md:gap-8 md:pb-16 md:pt-32 xl:gap-10 xl:py-16 xl:pt-36 ${poppins.variable} ${vt323.variable} ${futuraDisplay.variable}`}
     >
       {/* Fixed wordmark, portaled to the viewport. Visible only while this hero
           root is in view — it fades out once the track pans to another section. */}
@@ -55,15 +77,15 @@ export default function Hero() {
 
       {/* Left — stacked resume templates */}
       <div className="flex shrink-0 justify-center md:justify-start">
-        <ResumeCardStack items={RESUME_TEMPLATES} cardWidth={460} />
+        <ResumeCardStack items={RESUME_TEMPLATES} cardWidth={cardWidth} />
       </div>
 
       {/* Right — landing copy */}
-      <div className="flex w-full flex-col items-center text-center md:-ml-12 md:w-auto md:items-start md:text-left">
+      <div className="flex min-w-0 w-full flex-col items-center text-center md:w-auto md:items-start md:text-left xl:-ml-12">
 
         {/* Eyebrow */}
         <p
-          className="mb-3 text-lg italic text-white/60 md:text-xl"
+          className="mb-3 text-base italic text-white/60 md:text-lg xl:text-xl"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
         >
           - Resume Builder + AI Feedback
@@ -71,16 +93,16 @@ export default function Hero() {
 
         {/* Headline */}
         <h1
-          className="mb-5 flex flex-col gap-1 text-6xl leading-[0.95] text-white md:text-8xl"
+          className="mb-5 flex flex-col gap-1 text-5xl leading-[0.95] text-white md:text-6xl lg:text-7xl xl:text-8xl"
           style={{ fontFamily: futuraStack, fontWeight: 800 }}
         >
           <span>Build it clean.</span>
-          <span className="inline-flex flex-wrap items-center gap-4">
+          <span className="inline-flex flex-wrap items-center gap-3 xl:gap-4">
             <span className="italic text-white/70" style={{ fontWeight: 400 }}>
               Get it
             </span>
             <span
-              className="inline-block -rotate-2 rounded-md bg-white px-6 py-1 text-black"
+              className="inline-block -rotate-2 rounded-md bg-white px-4 py-1 text-black md:px-5 xl:px-6"
               style={{ fontFamily: futuraStack, fontWeight: 800 }}
             >
               ROASTED
@@ -90,7 +112,7 @@ export default function Hero() {
 
         {/* Body copy */}
         <p
-          className="mb-10 max-w-xl text-lg leading-relaxed text-white/70 md:text-2xl"
+          className="mb-8 max-w-xl text-base leading-relaxed text-white/70 md:mb-10 md:text-xl xl:text-2xl"
           style={{ fontFamily: 'var(--font-poppins)', fontWeight: 300 }}
         >
           Design your resume on an open canvas, then hand it to the AI. Ask for
@@ -99,7 +121,7 @@ export default function Hero() {
         </p>
 
         {/* Buttons */}
-        <div className="mb-6 flex flex-wrap items-center gap-6">
+        <div className="mb-6 flex flex-wrap items-center gap-4 xl:gap-6">
           <RadialGlowButton
             onClick={openDeniseModal}
             className="!min-h-0 !min-w-0 px-9 py-4 !text-lg transition-transform hover:-translate-y-0.5"
@@ -125,9 +147,9 @@ export default function Hero() {
         </div>
 
         {/* Stat line */}
-        <div className="flex items-baseline gap-4" style={{ fontFamily: 'var(--font-vt323)' }}>
-          <span className="text-5xl text-white md:text-6xl">40,301</span>
-          <span className="text-base uppercase tracking-widest text-white/60 md:text-lg">
+        <div className="flex items-baseline gap-3 xl:gap-4" style={{ fontFamily: 'var(--font-vt323)' }}>
+          <span className="text-4xl text-white md:text-5xl xl:text-6xl">40,301</span>
+          <span className="text-sm uppercase tracking-widest text-white/60 md:text-base xl:text-lg">
             Resumes reviewed and roasted
           </span>
         </div>

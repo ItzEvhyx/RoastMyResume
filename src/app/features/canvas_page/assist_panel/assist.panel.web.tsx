@@ -25,11 +25,21 @@ interface AssistPanelWebProps {
 }
 
 const navItems = [
-  { label: 'Ask Denise', id: 'ask-denise' },
-  { label: 'Job Match', id: 'job-match' },
-  { label: 'ATS Check', id: 'ats-check' },
-  { label: 'Layouts', id: 'layouts' },
+  { label: 'Ask Denise', shortLabel: 'Denise', id: 'ask-denise' },
+  { label: 'Job Match', shortLabel: 'Match', id: 'job-match' },
+  { label: 'ATS Check', shortLabel: 'ATS', id: 'ats-check' },
+  { label: 'Layouts', shortLabel: 'Layouts', id: 'layouts' },
 ];
+
+/** Default width scales down under zoom / narrow CSS viewports; 440 at ≥1570px. */
+function preferredAssistWidth(vw: number): number {
+  return Math.round(Math.min(440, Math.max(280, vw * 0.28)));
+}
+
+/** Leave room for tool rail + a usable slice of canvas. */
+function maxAssistWidth(vw: number): number {
+  return Math.round(Math.min(800, Math.max(280, vw - 420)));
+}
 
 export default function AssistPanelWeb({
   stage,
@@ -74,18 +84,27 @@ export default function AssistPanelWeb({
   const visible = stage >= 3;
 
   const minWidth = 280;
-  const maxWidth = 800;
 
-  // Keep panel inside the viewport on resize so it never forces horizontal scroll.
+  // Keep panel inside the viewport on resize / browser zoom so tabs and body don't clip.
   useEffect(() => {
-    const clampToViewport = () => {
-      const room = Math.max(280, window.innerWidth - 48);
-      setWidth((w) => Math.min(w, room));
+    const apply = () => {
+      const vw = window.innerWidth;
+      const maxW = maxAssistWidth(vw);
+      const preferred = preferredAssistWidth(vw);
+      setWidth((w) => {
+        // Shrink when zoom/viewport can no longer fit current width.
+        if (w > maxW) return maxW;
+        // On first layout at a narrow zoomed viewport, prefer a tighter default.
+        if (w === 440 && preferred < 440) return preferred;
+        return Math.max(w, minWidth);
+      });
     };
-    clampToViewport();
-    window.addEventListener('resize', clampToViewport);
-    return () => window.removeEventListener('resize', clampToViewport);
-  }, []);
+    apply();
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [minWidth]);
+
+  const useShortNav = width < 400;
 
   // Refs for spotlight positions
   const spotlightX = useRef(0);
@@ -177,9 +196,8 @@ export default function AssistPanelWeb({
 
       const panelRect = panelRef.current.getBoundingClientRect();
       const newWidth = panelRect.right - e.clientX;
-      const viewportCap = Math.max(minWidth, window.innerWidth - 48);
-
-      const clampedWidth = Math.max(minWidth, Math.min(maxWidth, viewportCap, newWidth));
+      const viewportCap = maxAssistWidth(window.innerWidth);
+      const clampedWidth = Math.max(minWidth, Math.min(viewportCap, newWidth));
       setWidth(clampedWidth);
     };
 
@@ -207,24 +225,25 @@ export default function AssistPanelWeb({
   return (
     <div
       ref={panelRef}
-      className={`fixed right-3 top-16 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-4 sm:right-4 lg:right-6 lg:top-20 ${poppins.variable}`}
+      className={`fixed right-2 top-14 flex max-h-[calc(100dvh-3.5rem)] max-w-[min(440px,calc(100vw-5.5rem))] flex-col items-end gap-3 overflow-visible sm:right-3 sm:top-16 lg:right-6 lg:top-20 lg:max-h-[calc(100dvh-5.5rem)] ${poppins.variable}`}
       style={{
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateX(0)' : 'translateX(40px)',
         transition: isResizing ? 'none' : 'opacity 0.5s ease-out, transform 0.5s ease-out',
         pointerEvents: visible ? 'auto' : 'none',
         zIndex: 50,
+        width: isOpen ? width : undefined,
       }}
     >
       {/* Content Nav - Horizontal pill with spotlight effect */}
       <div
         ref={navRef}
-        className={`relative overflow-hidden rounded-full ${poppins.variable}`}
+        className={`relative w-full max-w-full overflow-hidden rounded-full ${poppins.variable}`}
         style={{
           ...glassStyle,
           border: isOpen ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid transparent',
-          height: '60px',
-          width: isOpen ? `${width}px` : `${collapsedWidth}px`,
+          height: useShortNav ? '48px' : '60px',
+          width: isOpen ? '100%' : `${collapsedWidth}px`,
           opacity: isOpen ? 1 : 0,
           pointerEvents: isOpen ? 'auto' : 'none',
           transition: isResizing
@@ -235,30 +254,31 @@ export default function AssistPanelWeb({
       >
         {/* Nav items */}
         <ul
-          className="relative flex items-center justify-between h-full px-3 z-10"
+          className="relative z-10 flex h-full w-full min-w-0 items-center justify-between px-1.5 sm:px-3"
           style={{
-            width: `${width}px`,
-            minWidth: `${width}px`,
             opacity: isOpen ? 1 : 0,
             transition: 'opacity 0.25s ease-out',
           }}
         >
           {navItems.map((item, idx) => (
-            <li key={idx} className="relative h-full flex items-center justify-center flex-1">
+            <li key={idx} className="relative flex h-full min-w-0 flex-1 items-center justify-center">
               <button
                 data-index={idx}
+                type="button"
+                title={item.label}
                 onClick={() => {
                   setPrevTab(activeTab);
                   setActiveTab(idx);
                 }}
                 className={cn(
-                  'px-4 py-2 text-sm font-bold transition-colors duration-200 rounded-full whitespace-nowrap w-full',
+                  'w-full truncate rounded-full py-2 font-bold transition-colors duration-200',
+                  useShortNav ? 'px-1 text-[10px]' : 'px-2 text-xs xl:px-4 xl:text-sm',
                   activeTab === idx
                     ? 'text-white'
                     : 'text-white/50 hover:text-white/80'
                 )}
               >
-                {item.label}
+                {useShortNav ? item.shortLabel : item.label}
               </button>
             </li>
           ))}
@@ -283,7 +303,7 @@ export default function AssistPanelWeb({
       </div>
 
       {/* Content Panel with Chevron Button */}
-      <div className="relative">
+      <div className="relative min-h-0 w-full max-w-full flex-1">
         {/* Wider left-edge resize hit target */}
         {isOpen && (
           <div
@@ -362,20 +382,19 @@ export default function AssistPanelWeb({
           style={{
             ...glassStyle,
             border: isOpen ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid transparent',
-            height: 'calc(100vh - 160px)',
-            minHeight: '500px',
-            maxHeight: '800px',
-            width: isOpen ? `${width}px` : `${collapsedWidth}px`,
+            height: isOpen
+              ? 'min(800px, calc(100dvh - 9.5rem))'
+              : 0,
+            maxHeight: 'calc(100dvh - 9.5rem)',
+            width: isOpen ? '100%' : `${collapsedWidth}px`,
             transition: isResizing
               ? 'none'
               : 'width 700ms cubic-bezier(0.16, 1, 0.3, 1), border-color 350ms ease-out',
           }}
         >
           <div
-            className="h-full"
+            className="h-full min-h-0 w-full overflow-hidden"
             style={{
-              width: `${width}px`,
-              minWidth: `${width}px`,
               opacity: isOpen ? 1 : 0,
               transition: 'opacity 0.25s ease-out',
             }}
