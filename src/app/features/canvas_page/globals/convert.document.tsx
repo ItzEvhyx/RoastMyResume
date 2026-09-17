@@ -8,6 +8,7 @@
 
 import type { TextElement } from '@/app/features/canvas_page/context/TextContext';
 import type { DividerElement } from '@/app/features/canvas_page/context/DividerContext';
+import { estimateTextHeight } from '@/app/features/canvas_page/canvas/safe.area';
 import { text, divider } from '@/app/features/resume_templates/build';
 import { SAFE, CANVAS_W } from '@/app/features/resume_templates/types';
 
@@ -242,10 +243,9 @@ export function canvasLooksEmpty(texts: TextElement[]): boolean {
   return texts.length === 0;
 }
 
-/** Estimate text block height for layout shifts. */
+/** Estimate text block height for layout shifts (wrap-aware). */
 export function estimateBlockHeight(el: TextElement): number {
-  const lines = Math.max(1, (el.content || '').split('\n').length);
-  return Math.ceil(lines * el.fontSize * 1.35) + 4;
+  return Math.ceil(estimateTextHeight(el));
 }
 
 function entryBounds(fields: ParsedDocField[]): { minY: number; maxY: number; height: number } {
@@ -374,7 +374,7 @@ export interface AddEntryPlan {
 
 /**
  * Plan inserting a new entry below the last entry of a section.
- * Shifts later content down to make room.
+ * Shifts later content (and section rules) down to make room.
  */
 export function planAddEntry(
   texts: TextElement[],
@@ -392,16 +392,27 @@ export function planAddEntry(
   // Anchor: clone x from last entry fields when possible.
   let baseX = SAFE;
   let insertY: number;
+  /** Shift threshold — bottom of the block we insert after (not insertY). */
+  let shiftFromY: number;
   let refFields = last?.fields ?? [];
 
   if (last) {
     const bounds = entryBounds(last.fields);
+    // Shift everything below the last entry's bottom so trailing dividers move too.
+    // (Shifting from insertY skipped the contact→summary rule and caused overlaps.)
+    shiftFromY = bounds.maxY;
     insertY = bounds.maxY + ENTRY_GAP;
     baseX = Math.min(...last.fields.map((f) => f.element.x));
   } else {
     // Place under section heading or personal block.
     const heading = texts.find((t) => t.docField === `${section}.heading`);
-    insertY = heading ? heading.y + estimateBlockHeight(heading) + 12 : 280;
+    if (heading) {
+      shiftFromY = heading.y + estimateBlockHeight(heading);
+      insertY = shiftFromY + 12;
+    } else {
+      shiftFromY = 280;
+      insertY = 280;
+    }
   }
 
   // Relative layout from last entry when available.
@@ -447,10 +458,37 @@ export function planAddEntry(
   const newHeight =
     Math.max(...newTexts.map((t) => (t.y - insertY) + estimateBlockHeight(t as TextElement))) + ENTRY_GAP;
 
-  const textPatches = shiftBelowPatches(texts, insertY, newHeight);
-  const dividerPatches = shiftDividerPatches(dividers, insertY, newHeight);
+  const textPatches = shiftBelowPatches(texts, shiftFromY, newHeight);
+  const dividerPatches = shiftDividerPatches(dividers, shiftFromY, newHeight);
 
   return { newTexts, textPatches, dividerPatches };
+}
+
+/**
+ * Plan vertical reflow when a field's content grows or shrinks.
+ * Pushes (or pulls) every text/divider below the edited block's old bottom.
+ */
+export function planContentHeightChange(
+  texts: TextElement[],
+  dividers: DividerElement[],
+  textId: string,
+  nextContent: string,
+): { textPatches: TextPatch[]; dividerPatches: { id: string; updates: Partial<DividerElement> }[] } | null {
+  const el = texts.find((t) => t.id === textId);
+  if (!el) return null;
+
+  const oldH = estimateBlockHeight(el);
+  const newH = estimateBlockHeight({ ...el, content: nextContent });
+  const deltaY = newH - oldH;
+  if (Math.abs(deltaY) < 1) {
+    return { textPatches: [], dividerPatches: [] };
+  }
+
+  const fromY = el.y + oldH;
+  return {
+    textPatches: shiftBelowPatches(texts, fromY, deltaY, new Set([el.id])),
+    dividerPatches: shiftDividerPatches(dividers, fromY, deltaY),
+  };
 }
 
 export interface RemoveEntryPlan {
@@ -525,33 +563,34 @@ export function blankAtsDocumentSeed(): {
     texts: [
       text({ content: 'Your Name', x: SAFE, y: 48, width: W, fontSize: 30, fontWeight: 700, color: INK, textCategory: 'header', textAlign: 'center', docField: 'personal.name' }),
       text({ content: 'Target Job Title', x: SAFE, y: 90, width: W, fontSize: 13, fontWeight: 600, color: SUB, textCategory: 'subheader', textAlign: 'center', docField: 'personal.title' }),
+      // 20px steps so wrap-aware contact height (~19px) does not overlap.
       text({ content: 'City, Country', x: SAFE, y: 118, width: W, fontSize: 11, color: MUTE, textCategory: 'meta', textAlign: 'center', docField: 'contact.0.value' }),
-      text({ content: 'email@example.com', x: SAFE, y: 134, width: W, fontSize: 11, color: MUTE, textCategory: 'meta', textAlign: 'center', docField: 'contact.1.value' }),
-      text({ content: '(555) 000-0000', x: SAFE, y: 150, width: W, fontSize: 11, color: MUTE, textCategory: 'meta', textAlign: 'center', docField: 'contact.2.value' }),
-      text({ content: 'linkedin.com/in/you', x: SAFE, y: 166, width: W, fontSize: 11, color: MUTE, textCategory: 'meta', textAlign: 'center', docField: 'contact.3.value' }),
+      text({ content: 'email@example.com', x: SAFE, y: 138, width: W, fontSize: 11, color: MUTE, textCategory: 'meta', textAlign: 'center', docField: 'contact.1.value' }),
+      text({ content: '(555) 000-0000', x: SAFE, y: 158, width: W, fontSize: 11, color: MUTE, textCategory: 'meta', textAlign: 'center', docField: 'contact.2.value' }),
+      text({ content: 'linkedin.com/in/you', x: SAFE, y: 178, width: W, fontSize: 11, color: MUTE, textCategory: 'meta', textAlign: 'center', docField: 'contact.3.value' }),
 
-      text({ content: 'PROFESSIONAL SUMMARY', x: SAFE, y: 206, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'summary.heading' }),
-      text({ content: 'Two to three sentences summarizing your experience, core strengths, and the role you are targeting. Keep the language plain and specific so applicant tracking systems parse it cleanly.', x: SAFE, y: 228, width: W, fontSize: 11.5, color: SUB, textCategory: 'body', docField: 'summary.body' }),
+      text({ content: 'PROFESSIONAL SUMMARY', x: SAFE, y: 220, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'summary.heading' }),
+      text({ content: 'Two to three sentences summarizing your experience, core strengths, and the role you are targeting. Keep the language plain and specific so applicant tracking systems parse it cleanly.', x: SAFE, y: 244, width: W, fontSize: 11.5, color: SUB, textCategory: 'body', docField: 'summary.body' }),
 
-      text({ content: 'PROFESSIONAL EXPERIENCE', x: SAFE, y: 300, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'experience.heading' }),
-      text({ content: 'Job Title', x: SAFE, y: 326, width: 480, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'body', docField: 'experience.0.title' }),
-      text({ content: 'Month Year – Present', x: CANVAS_W - SAFE - 200, y: 326, width: 200, fontSize: 11, color: MUTE, textAlign: 'right', textCategory: 'meta', docField: 'experience.0.dates' }),
-      text({ content: 'Company Name, City, Country', x: SAFE, y: 345, width: 480, fontSize: 11.5, color: MUTE, textCategory: 'body', docField: 'experience.0.company' }),
-      text({ content: '• Led or delivered a key result — describe the impact with a number.\n• Owned a process or product area and the outcome it produced.\n• Collaborated across teams to ship something that mattered.', x: SAFE, y: 365, width: W, fontSize: 11.5, color: SUB, textCategory: 'body', docField: 'experience.0.bullets' }),
+      text({ content: 'PROFESSIONAL EXPERIENCE', x: SAFE, y: 312, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'experience.heading' }),
+      text({ content: 'Job Title', x: SAFE, y: 338, width: 480, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'body', docField: 'experience.0.title' }),
+      text({ content: 'Month Year – Present', x: CANVAS_W - SAFE - 200, y: 338, width: 200, fontSize: 11, color: MUTE, textAlign: 'right', textCategory: 'meta', docField: 'experience.0.dates' }),
+      text({ content: 'Company Name, City, Country', x: SAFE, y: 357, width: 480, fontSize: 11.5, color: MUTE, textCategory: 'body', docField: 'experience.0.company' }),
+      text({ content: '• Led or delivered a key result — describe the impact with a number.\n• Owned a process or product area and the outcome it produced.\n• Collaborated across teams to ship something that mattered.', x: SAFE, y: 377, width: W, fontSize: 11.5, color: SUB, textCategory: 'body', docField: 'experience.0.bullets' }),
 
-      text({ content: 'EDUCATION', x: SAFE, y: 450, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'education.heading' }),
-      text({ content: 'Degree, Major', x: SAFE, y: 476, width: 480, fontSize: 12, fontWeight: 700, color: INK, textCategory: 'body', docField: 'education.0.degree' }),
-      text({ content: 'Graduation Year', x: CANVAS_W - SAFE - 200, y: 476, width: 200, fontSize: 11, color: MUTE, textAlign: 'right', textCategory: 'meta', docField: 'education.0.dates' }),
-      text({ content: 'University Name, City, Country', x: SAFE, y: 495, width: 480, fontSize: 11.5, color: MUTE, textCategory: 'body', docField: 'education.0.school' }),
+      text({ content: 'EDUCATION', x: SAFE, y: 460, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'education.heading' }),
+      text({ content: 'Degree, Major', x: SAFE, y: 486, width: 480, fontSize: 12, fontWeight: 700, color: INK, textCategory: 'body', docField: 'education.0.degree' }),
+      text({ content: 'Graduation Year', x: CANVAS_W - SAFE - 200, y: 486, width: 200, fontSize: 11, color: MUTE, textAlign: 'right', textCategory: 'meta', docField: 'education.0.dates' }),
+      text({ content: 'University Name, City, Country', x: SAFE, y: 505, width: 480, fontSize: 11.5, color: MUTE, textCategory: 'body', docField: 'education.0.school' }),
 
-      text({ content: 'SKILLS', x: SAFE, y: 540, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'skills.heading' }),
-      text({ content: 'Languages: list your strongest languages\nTools: list tools, frameworks, and platforms\nStrengths: leadership, communication, problem solving', x: SAFE, y: 566, width: W, fontSize: 11.5, color: SUB, textCategory: 'body', docField: 'skills.0.body' }),
+      text({ content: 'SKILLS', x: SAFE, y: 550, width: W, fontSize: 12.5, fontWeight: 700, color: INK, textCategory: 'subheader', docField: 'skills.heading' }),
+      text({ content: 'Languages: list your strongest languages\nTools: list tools, frameworks, and platforms\nStrengths: leadership, communication, problem solving', x: SAFE, y: 576, width: W, fontSize: 11.5, color: SUB, textCategory: 'body', docField: 'skills.0.body' }),
     ],
     dividers: [
-      divider({ x: SAFE, y: 198, width: W, thickness: 1, color: RULE }),
-      divider({ x: SAFE, y: 292, width: W, thickness: 1, color: RULE }),
-      divider({ x: SAFE, y: 442, width: W, thickness: 1, color: RULE }),
-      divider({ x: SAFE, y: 532, width: W, thickness: 1, color: RULE }),
+      divider({ x: SAFE, y: 208, width: W, thickness: 1, color: RULE }),
+      divider({ x: SAFE, y: 304, width: W, thickness: 1, color: RULE }),
+      divider({ x: SAFE, y: 452, width: W, thickness: 1, color: RULE }),
+      divider({ x: SAFE, y: 542, width: W, thickness: 1, color: RULE }),
     ],
   };
 }

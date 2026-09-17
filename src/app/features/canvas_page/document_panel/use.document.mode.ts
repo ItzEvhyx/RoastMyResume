@@ -11,6 +11,7 @@ import {
   canvasHasDocFields,
   canvasLooksEmpty,
   planAddEntry,
+  planContentHeightChange,
   planRemoveEntry,
   reorderEntryPatches,
   type DocSectionId,
@@ -93,7 +94,9 @@ export function useDocumentMode() {
   const exitDocumentMode = useCallback(() => {
     setSelectedId(null);
     setActiveTool(null);
-    setToolbarExpanded(false);
+    // Re-expand the tool rail so docks (shapes/icons/image/layers) work again.
+    // Enter left toolbarExpanded false; local rail state used to desync from that.
+    setToolbarExpanded(true);
 
     // Scratch → document was a temporary ATS scaffold. Leaving document mode
     // restores the empty freeform canvas so the user can drag / drop again.
@@ -127,10 +130,27 @@ export function useDocumentMode() {
 
   const writeField = useCallback(
     (textId: string, content: string) => {
+      const plan = planContentHeightChange(
+        textElements,
+        dividerElements,
+        textId,
+        content,
+      );
+      if (plan) {
+        applyTextPatches(plan.textPatches);
+        for (const p of plan.dividerPatches) updateDivider(p.id, p.updates);
+      }
       updateElement(textId, { content });
       setSelectedId(textId);
     },
-    [updateElement, setSelectedId],
+    [
+      textElements,
+      dividerElements,
+      applyTextPatches,
+      updateDivider,
+      updateElement,
+      setSelectedId,
+    ],
   );
 
   const addEntry = useCallback(

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
@@ -49,21 +49,22 @@ function ToolButton({
 }
 
 export default function ToolSidebarWeb({ stage }: { stage: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const { addTextElement, setToolbarExpanded, activeTool, setActiveTool, setSelectedId } = useText();
+  const {
+    addTextElement,
+    toolbarExpanded,
+    setToolbarExpanded,
+    activeTool,
+    setActiveTool,
+    setSelectedId,
+  } = useText();
   const { addDividerElement, setSelectedDividerId } = useDivider();
   const { setIsPenActive } = usePen();
   const { setIsLassoActive, clearLasso } = useContainer();
 
   // Auto-expand once stage 4 is reached
   useEffect(() => {
-    if (stage >= 4) setExpanded(true);
-  }, [stage]);
-
-  // Sync expanded state to context
-  useEffect(() => {
-    setToolbarExpanded(expanded);
-  }, [expanded, setToolbarExpanded]);
+    if (stage >= 4) setToolbarExpanded(true);
+  }, [stage, setToolbarExpanded]);
 
   const handleToolClick = (toolId: string) => {
     const newTool = activeTool === toolId ? null : toolId;
@@ -144,16 +145,16 @@ export default function ToolSidebarWeb({ stage }: { stage: number }) {
 
         {/* Chevron toggle */}
         <button
-          onClick={() => setExpanded(e => !e)}
+          onClick={() => setToolbarExpanded(!toolbarExpanded)}
           className="flex h-[60px] w-[60px] items-center justify-center rounded-full text-white/60 transition-all duration-150 hover:bg-white/10 hover:text-white active:scale-90"
         >
-          {expanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+          {toolbarExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
         </button>
 
         {/* Tools */}
         <div
           className="flex flex-col items-center overflow-hidden transition-all duration-700 ease-out"
-          style={{ maxHeight: expanded ? TOOLS.length * 78 : 0 }}
+          style={{ maxHeight: toolbarExpanded ? TOOLS.length * 78 : 0 }}
         >
           <div className="my-1.5 h-px w-8 bg-white/15" />
           {TOOLS.map(tool => (

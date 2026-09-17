@@ -271,16 +271,12 @@ function DocumentModeChrome({
 
   return (
     <>
-      {/* Tool chrome — hidden (not overlapping) while document panel is active */}
+      {/* Tool chrome — display:none while document panel is active (avoid display:contents) */}
       {isMobile ? (
         mobileAssistOpen ? null : <ToolSidebarMobile stage={stage} />
       ) : (
         <div
-          className={
-            toolsHidden
-              ? 'pointer-events-none hidden'
-              : 'contents'
-          }
+          className={toolsHidden ? 'pointer-events-none hidden' : undefined}
           aria-hidden={toolsHidden}
         >
           <ToolSidebarWeb stage={stage} />
@@ -291,7 +287,7 @@ function DocumentModeChrome({
 
       {!isMobile && (
         <div
-          className={toolsHidden ? 'pointer-events-none hidden' : 'contents'}
+          className={toolsHidden ? 'pointer-events-none hidden' : undefined}
           aria-hidden={toolsHidden}
         >
           <FontSelector />
@@ -303,7 +299,7 @@ function DocumentModeChrome({
         className={
           toolsHidden || (isMobile && mobileAssistOpen)
             ? 'pointer-events-none hidden'
-            : 'contents'
+            : undefined
         }
         aria-hidden={toolsHidden || Boolean(isMobile && mobileAssistOpen)}
       >

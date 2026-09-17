@@ -31,7 +31,7 @@ const LEGAL_LINKS = [
 export default function FooterWeb() {
   return (
     <footer
-      className={`relative z-10 flex w-full min-h-[200px] items-end overflow-hidden bg-white lg:min-h-[240px] ${poppins.variable} ${futuraDisplay.variable}`}
+      className={`relative z-10 flex w-full min-h-[200px] items-end overflow-visible bg-white lg:min-h-[240px] ${poppins.variable} ${futuraDisplay.variable}`}
       style={{ borderRadius: '2.5rem 2.5rem 0 0' }}
     >
       <div className="relative z-10 flex min-w-0 flex-1 flex-col px-6 pb-5 pt-6 md:px-12 lg:px-24">
@@ -78,14 +78,14 @@ export default function FooterWeb() {
         </div>
       </div>
 
-      {/* Denise — reserved column so content never overlaps */}
-      <div className="relative hidden h-full w-[min(280px,28vw)] shrink-0 self-end lg:block xl:w-[320px]">
+      {/* Denise — breaks above the white banner; higher z so she isn’t cropped */}
+      <div className="pointer-events-none relative z-20 hidden h-full w-[min(280px,28vw)] shrink-0 self-end overflow-visible lg:block xl:w-[320px]">
         <Image
           src="/assets/images/denise_footer_img.png"
           alt="Denise from HR"
           width={320}
           height={410}
-          className="absolute bottom-0 right-0 block h-auto w-full max-w-[320px]"
+          className="absolute bottom-0 right-0 z-20 block h-auto w-full max-w-[320px]"
           style={{ objectFit: 'contain', objectPosition: 'bottom' }}
         />
       </div>

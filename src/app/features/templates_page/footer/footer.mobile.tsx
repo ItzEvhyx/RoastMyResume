@@ -19,11 +19,11 @@ const futuraDisplay = localFont({
 export default function FooterMobile() {
   return (
     <footer
-      className={`relative z-10 w-full bg-white ${poppins.variable} ${futuraDisplay.variable}`}
+      className={`relative z-10 w-full overflow-visible bg-white ${poppins.variable} ${futuraDisplay.variable}`}
       style={{ borderRadius: '1.75rem 1.75rem 0 0', height: 220 }}
     >
       {/* Left-aligned content */}
-      <div className="absolute bottom-0 left-0 flex flex-col px-6 pb-5 pt-5">
+      <div className="absolute bottom-0 left-0 z-10 flex flex-col px-6 pb-5 pt-5">
 
         {/* Wordmark */}
         <div className="mb-2 flex items-center gap-2">
@@ -79,14 +79,14 @@ export default function FooterMobile() {
         </div>
       </div>
 
-      {/* Denise — sits inside the footer, right-aligned, bottom-anchored */}
-      <div className="absolute bottom-0" style={{ right: '1%' }}>
+      {/* Denise — above the banner so she isn’t cropped by the white panel */}
+      <div className="pointer-events-none absolute bottom-0 z-20 overflow-visible" style={{ right: '1%' }}>
         <Image
           src="/assets/images/denise_footer_img.png"
           alt="Denise from HR"
           width={175}
           height={205}
-          className="block"
+          className="relative z-20 block"
           style={{ objectFit: 'contain', objectPosition: 'bottom' }}
         />
       </div>
