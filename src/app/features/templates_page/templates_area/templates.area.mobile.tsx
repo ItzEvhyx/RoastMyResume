@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Poppins } from 'next/font/google';
+import Image from 'next/image';
 import {
   TEMPLATE_CATEGORIES,
   type TemplateCategoryFilter,
@@ -11,6 +12,7 @@ import {
 import { TEMPLATE_META } from '@/app/features/resume_templates/seeds';
 import { TemplatePreview } from '@/app/features/resume_templates/preview';
 import { applyTemplateToStorage } from '@/app/features/resume_templates/apply';
+import { useResumeImport } from '@/app/features/resume_import/use.resume.import';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -113,6 +115,7 @@ function TemplateCard({
 
 export default function TemplatesAreaMobile() {
   const [active, setActive] = useState<TemplateCategoryFilter>('All');
+  const { openPicker, inputProps, error } = useResumeImport();
 
   const filtered =
     active === 'All'
@@ -144,14 +147,39 @@ export default function TemplatesAreaMobile() {
         ))}
       </div>
 
-      <div className="px-4 pb-4">
+      <div className="flex items-center justify-between px-4 pb-4">
         <span
           className="text-sm font-semibold text-white"
           style={{ fontFamily: 'var(--font-poppins)' }}
         >
           Browse Templates
         </span>
+        <button
+          type="button"
+          onClick={openPicker}
+          className="flex items-center gap-1.5 text-xs text-white/60"
+          style={{ fontFamily: 'var(--font-poppins)' }}
+        >
+          <Image
+            src="/assets/icons/folder_icon.svg"
+            alt=""
+            width={14}
+            height={14}
+            draggable={false}
+            className="pointer-events-none select-none opacity-50"
+          />
+          Upload yours
+        </button>
+        <input {...inputProps} />
       </div>
+      {error && (
+        <p
+          className="-mt-2 px-4 pb-4 text-right text-[11px] text-red-400"
+          style={{ fontFamily: 'var(--font-poppins)' }}
+        >
+          {error}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-4 px-4 pb-16">
         {filtered.map((template, i) => (

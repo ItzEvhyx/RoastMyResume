@@ -64,6 +64,8 @@ function featureLabel(feature: AiRateFeature): string {
       return 'Job Match';
     case 'ats_check':
       return 'ATS Check';
+    case 'resume_import':
+      return 'Resume Import';
   }
 }
 
@@ -88,6 +90,7 @@ function emptyUsage(day: string): AiRateUsageMap {
     help: { day, used: 0 },
     job_match: { day, used: 0 },
     ats_check: { day, used: 0 },
+    resume_import: { day, used: 0 },
   };
 }
 

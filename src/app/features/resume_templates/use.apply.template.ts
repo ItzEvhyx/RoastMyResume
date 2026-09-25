@@ -9,9 +9,10 @@ import { useGroup } from '@/app/features/canvas_page/context/GroupContext';
 import { saveCanvasState } from '@/app/features/canvas_page/services/canvas.persistence';
 import { clearDeniseState } from '@/app/features/canvas_page/services/denise.persistence';
 import { buildTemplateCanvasState, setActiveTemplateId } from './apply';
+import type { TemplateCanvasPayload } from './types';
 
-/** Apply a template copy into the live canvas contexts (layouts tab). */
-export function useApplyTemplate() {
+/** Replace the live canvas contexts with a payload and persist it. */
+export function useApplyCanvasPayload() {
   const { hydrateTextElements, setSelectedId } = useText();
   const { hydrateIconElements, setSelectedIconId } = useIcon();
   const { hydrateDividerElements, setSelectedDividerId } = useDivider();
@@ -19,10 +20,7 @@ export function useApplyTemplate() {
   const { hydrateGroupElements, setSelectedGroupId } = useGroup();
 
   return useCallback(
-    (templateId: string) => {
-      const payload = buildTemplateCanvasState(templateId);
-      if (!payload) return false;
-
+    (payload: TemplateCanvasPayload, activeTemplateId: string) => {
       clearDeniseState();
       hydrateTextElements(payload.textElements);
       hydrateIconElements(payload.iconElements);
@@ -35,8 +33,7 @@ export function useApplyTemplate() {
       setSelectedStrokeId(null);
       setSelectedGroupId(null);
       saveCanvasState(payload);
-      setActiveTemplateId(templateId);
-      return true;
+      setActiveTemplateId(activeTemplateId);
     },
     [
       hydrateTextElements,
@@ -50,5 +47,20 @@ export function useApplyTemplate() {
       setSelectedStrokeId,
       setSelectedGroupId,
     ],
+  );
+}
+
+/** Apply a template copy into the live canvas contexts (layouts tab). */
+export function useApplyTemplate() {
+  const applyPayload = useApplyCanvasPayload();
+
+  return useCallback(
+    (templateId: string) => {
+      const payload = buildTemplateCanvasState(templateId);
+      if (!payload) return false;
+      applyPayload(payload, templateId);
+      return true;
+    },
+    [applyPayload],
   );
 }

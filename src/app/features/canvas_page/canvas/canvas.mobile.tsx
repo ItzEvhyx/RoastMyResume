@@ -23,6 +23,7 @@ import { clampDividerToSafeArea, clampTextToSafeArea, clampIconToSafeArea, clamp
 import { useDeniseAnalysis } from '../context/DeniseAnalysisContext';
 import ScanAnimation from '../assist_panel/animations/scan.animation';
 import DeniseHighlightsOverlay from '../assist_panel/animations/denise.highlights';
+import ResumeImportOverlay from '@/app/features/resume_import/import.overlay';
 import { isTypingIntoField } from '../utils/keyboard';
 import {
   getClipboardImageFile,
@@ -775,6 +776,7 @@ export default function CanvasMobile() {
 
           <DeniseHighlightsOverlay />
           <ScanAnimation active={isScanning} />
+          <ResumeImportOverlay />
 
           {edgeWarning && (
             <div

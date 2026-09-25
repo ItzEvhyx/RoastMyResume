@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Poppins } from 'next/font/google';
+import Image from 'next/image';
 import SpecularButton from '@/components/specular_button';
 import {
   TEMPLATE_CATEGORIES,
@@ -12,6 +13,7 @@ import {
 import { TEMPLATE_META } from '@/app/features/resume_templates/seeds';
 import { TemplatePreview } from '@/app/features/resume_templates/preview';
 import { applyTemplateToStorage } from '@/app/features/resume_templates/apply';
+import { useResumeImport } from '@/app/features/resume_import/use.resume.import';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -116,6 +118,7 @@ function TemplateCard({
 
 export default function TemplatesAreaWeb() {
   const [active, setActive] = useState<TemplateCategoryFilter>('All');
+  const { openPicker, inputProps, error } = useResumeImport();
 
   const filtered =
     active === 'All'
@@ -148,14 +151,39 @@ export default function TemplatesAreaWeb() {
         ))}
       </div>
 
-      <div className="px-4 pb-5 sm:px-8 lg:px-16">
+      <div className="flex items-center justify-between gap-3 px-4 pb-5 sm:px-8 lg:px-16">
         <span
           className="text-sm font-semibold text-white"
           style={{ fontFamily: 'var(--font-poppins)' }}
         >
           Browse Templates
         </span>
+        <button
+          type="button"
+          onClick={openPicker}
+          className="flex shrink-0 items-center gap-2 text-sm text-white/60 transition-colors duration-200 hover:text-white"
+          style={{ fontFamily: 'var(--font-poppins)', fontWeight: 400 }}
+        >
+          <Image
+            src="/assets/icons/folder_icon.svg"
+            alt=""
+            width={16}
+            height={16}
+            draggable={false}
+            className="pointer-events-none select-none opacity-50"
+          />
+          Upload yours
+        </button>
+        <input {...inputProps} />
       </div>
+      {error && (
+        <p
+          className="-mt-3 px-4 pb-5 text-right text-xs text-red-400 sm:px-8 lg:px-16"
+          style={{ fontFamily: 'var(--font-poppins)' }}
+        >
+          {error}
+        </p>
+      )}
 
       <div
         className="grid grid-cols-2 gap-x-4 gap-y-10 px-4 pb-20 sm:grid-cols-3 sm:gap-x-6 sm:gap-y-12 sm:px-8 lg:grid-cols-4 lg:px-16"

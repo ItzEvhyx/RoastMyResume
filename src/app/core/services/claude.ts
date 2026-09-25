@@ -1,6 +1,12 @@
 // src/app/core/services/claude.ts
 import Anthropic from '@anthropic-ai/sdk';
 import { normalizeDeniseMarkdown } from '@/app/features/canvas_page/utils/denise.markdown';
+import {
+  IMPORT_FONTS,
+  type ExtractedResume,
+  type ImportedEntry,
+  type ImportedSection,
+} from '@/app/features/resume_import/types';
 
 /**
  * Claude service for RoastMyResume.
@@ -1583,4 +1589,329 @@ Rules:
   }
 
   throw new Error('ATS check failed to return a structured result.');
+}
+
+/* ------------------------------------------------------------------ */
+/* Resume import (PDF → structured content)                           */
+/* ------------------------------------------------------------------ */
+
+const RESUME_IMPORT_TOOL_NAME = 'submit_extracted_resume';
+
+const RESUME_IMPORT_TOOL: Anthropic.Tool = {
+  name: RESUME_IMPORT_TOOL_NAME,
+  description:
+    'Submit the resume content extracted verbatim from the uploaded document, grouped into sections.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      notAResume: {
+        type: 'boolean',
+        description: 'True only if the document is clearly not a resume / CV.',
+      },
+      header: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Full name exactly as written.' },
+          headline: {
+            type: 'string',
+            description: 'Line directly under the name (target role / tagline), verbatim.',
+          },
+          contactLines: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Each visual contact LINE of the header as one string, verbatim, keeping separators like " | " or " · ". Do not split a line into items.',
+          },
+          align: { type: 'string', enum: ['left', 'center'] },
+        },
+        required: ['name', 'contactLines', 'align'],
+      },
+      sections: {
+        type: 'array',
+        description: 'Every section in visual reading order (top to bottom; for a two-column row: left section, then right section).',
+        items: {
+          type: 'object',
+          properties: {
+            heading: { type: 'string', description: 'Section heading exactly as written.' },
+            kind: {
+              type: 'string',
+              enum: ['summary', 'experience', 'projects', 'education', 'skills', 'certifications', 'other'],
+            },
+            column: {
+              type: 'string',
+              enum: ['full', 'left', 'right'],
+              description:
+                'full = spans the page. left/right = the section sits side by side with another section in a two-column row.',
+            },
+            headingItalic: { type: 'boolean' },
+            paragraph: {
+              type: 'string',
+              description: 'Prose paragraph body (e.g. summary), verbatim.',
+            },
+            lines: {
+              type: 'array',
+              description:
+                'Simple lines not grouped into entries, e.g. skills rows "Languages: JavaScript, Python". Put a bold lead-in before a colon into label.',
+              items: {
+                type: 'object',
+                properties: {
+                  label: { type: 'string' },
+                  text: { type: 'string' },
+                },
+                required: ['text'],
+              },
+            },
+            linesItalic: { type: 'boolean' },
+            entries: {
+              type: 'array',
+              description: 'Grouped items (jobs, projects, schools) in original order.',
+              items: {
+                type: 'object',
+                properties: {
+                  title: {
+                    type: 'string',
+                    description: 'The bold first line of the entry, verbatim (exclude text aligned to the right on that row).',
+                  },
+                  titleRight: {
+                    type: 'string',
+                    description: 'Text right-aligned on the SAME row as the title (dates, tech stack, location).',
+                  },
+                  titleRightStyle: { type: 'string', enum: ['plain', 'bold', 'italic', 'bold-italic'] },
+                  subtitle: {
+                    type: 'string',
+                    description: 'A distinct second header line (company, school, degree), verbatim.',
+                  },
+                  subtitleRight: { type: 'string' },
+                  subtitleStyle: { type: 'string', enum: ['plain', 'bold', 'italic', 'bold-italic'] },
+                  description: {
+                    type: 'string',
+                    description: 'Non-bulleted prose directly under the entry header.',
+                  },
+                  descriptionItalic: { type: 'boolean' },
+                  bullets: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description:
+                      'Each bulleted or dashed line under the entry, in order, without the glyph. Wrapped lines of one bullet are ONE string.',
+                  },
+                  bulletGlyph: { type: 'string', enum: ['dot', 'dash', 'none'] },
+                  bulletsItalic: { type: 'boolean' },
+                },
+                required: ['bullets'],
+              },
+            },
+          },
+          required: ['heading', 'kind', 'column'],
+        },
+      },
+      style: {
+        type: 'object',
+        properties: {
+          fontFamily: {
+            type: 'string',
+            enum: [...IMPORT_FONTS],
+            description: 'Closest match to the body font.',
+          },
+          headingCase: {
+            type: 'string',
+            enum: ['upper', 'as-written'],
+            description: 'upper only if headings are rendered in ALL CAPS.',
+          },
+          headingRule: {
+            type: 'string',
+            enum: ['below', 'above', 'none'],
+            description: 'Horizontal line relative to each section heading.',
+          },
+          textColor: { type: 'string', description: 'Body text hex color.' },
+          accentColor: {
+            type: 'string',
+            description: 'Hex color of the name / headings if not black.',
+          },
+        },
+        required: ['fontFamily', 'headingCase', 'headingRule'],
+      },
+    },
+    required: ['notAResume', 'header', 'sections', 'style'],
+  },
+};
+
+export interface ResumeImportResult {
+  notAResume: boolean;
+  resume: ExtractedResume;
+}
+
+const MAX_STR = 1200;
+
+function cleanStr(value: unknown, max = MAX_STR): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/^[\s•●▪◦·*]+/, '')
+    .replace(/^[-–]\s+/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max);
+}
+
+function cleanList(value: unknown, cap: number, max = MAX_STR): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((v) => cleanStr(v, max)).filter(Boolean).slice(0, cap);
+}
+
+function objList(value: unknown, cap: number): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is Record<string, unknown> => typeof v === 'object' && v !== null)
+    .slice(0, cap);
+}
+
+function optional(value: unknown, max = MAX_STR): string | undefined {
+  return cleanStr(value, max) || undefined;
+}
+
+function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function hexColor(value: unknown): string | undefined {
+  return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value.trim())
+    ? value.trim()
+    : undefined;
+}
+
+const TEXT_STYLES = ['plain', 'bold', 'italic', 'bold-italic'] as const;
+const SECTION_KINDS = [
+  'summary',
+  'experience',
+  'projects',
+  'education',
+  'skills',
+  'certifications',
+  'other',
+] as const;
+
+function parseEntry(row: Record<string, unknown>): ImportedEntry {
+  return {
+    title: optional(row.title, 240),
+    titleRight: optional(row.titleRight, 160),
+    titleRightStyle: pick(row.titleRightStyle, TEXT_STYLES, 'plain'),
+    subtitle: optional(row.subtitle, 240),
+    subtitleRight: optional(row.subtitleRight, 160),
+    subtitleStyle: pick(row.subtitleStyle, TEXT_STYLES, 'plain'),
+    description: optional(row.description, 1500),
+    descriptionItalic: row.descriptionItalic === true,
+    bullets: cleanList(row.bullets, 15),
+    bulletGlyph: pick(row.bulletGlyph, ['dot', 'dash', 'none'] as const, 'dot'),
+    bulletsItalic: row.bulletsItalic === true,
+  };
+}
+
+function parseSection(row: Record<string, unknown>): ImportedSection {
+  return {
+    heading: cleanStr(row.heading, 80),
+    kind: pick(row.kind, SECTION_KINDS, 'other'),
+    column: pick(row.column, ['full', 'left', 'right'] as const, 'full'),
+    headingItalic: row.headingItalic === true,
+    paragraph: optional(row.paragraph, 2500),
+    lines: objList(row.lines, 20)
+      .map((l) => ({ label: optional(l.label, 80), text: cleanStr(l.text, 600) }))
+      .filter((l) => l.text || l.label),
+    linesItalic: row.linesItalic === true,
+    entries: objList(row.entries, 15)
+      .map(parseEntry)
+      .filter((e) => e.title || e.subtitle || e.description || e.bullets.length),
+  };
+}
+
+function parseResumeImportInput(input: Record<string, unknown>): ResumeImportResult {
+  const header =
+    typeof input.header === 'object' && input.header !== null
+      ? (input.header as Record<string, unknown>)
+      : {};
+  const style =
+    typeof input.style === 'object' && input.style !== null
+      ? (input.style as Record<string, unknown>)
+      : {};
+
+  const resume: ExtractedResume = {
+    header: {
+      name: cleanStr(header.name, 120),
+      headline: optional(header.headline, 200),
+      contactLines: cleanList(header.contactLines, 6, 300),
+      align: pick(header.align, ['left', 'center'] as const, 'center'),
+    },
+    sections: objList(input.sections, 14)
+      .map(parseSection)
+      .filter((s) => s.heading && (s.paragraph || s.lines.length || s.entries.length)),
+    style: {
+      fontFamily: pick(style.fontFamily, IMPORT_FONTS, 'Calibri, sans-serif'),
+      headingCase: pick(style.headingCase, ['upper', 'as-written'] as const, 'as-written'),
+      headingRule: pick(style.headingRule, ['below', 'above', 'none'] as const, 'below'),
+      textColor: hexColor(style.textColor),
+      accentColor: hexColor(style.accentColor),
+    },
+  };
+
+  const empty = !resume.header.name && resume.sections.length === 0;
+  return { notAResume: input.notAResume === true || empty, resume };
+}
+
+/**
+ * Read a resume PDF (text-based or scanned) and extract its content
+ * verbatim into structured sections.
+ */
+export async function extractResumeFromPdf(request: {
+  base64: string;
+}): Promise<ResumeImportResult> {
+  const system = `You transcribe resumes for RoastMyResume's import feature so they can be rebuilt on an editable canvas that mirrors the original.
+The user uploaded their resume as a PDF. Look at the rendered page carefully (read visually if it is scanned) and call ${RESUME_IMPORT_TOOL_NAME}.
+
+Fidelity rules:
+- Copy text VERBATIM, including punctuation, dashes, capitalization, and separators. Never rewrite, summarize, reorder, translate, or invent.
+- Keep sections in the exact visual reading order of the page, with their headings exactly as written. Do not rename, merge, or drop sections, and do not move content between sections.
+- If two sections sit side by side, mark the left one column "left" and the right one column "right", listed left first. Otherwise use "full".
+- Header: the name, the headline line under it, and each contact LINE as its own string (keep "|" separators). Record whether the header is centered.
+- Entries (jobs, projects, schools): title = the bold first line without its right-aligned part; titleRight = right-aligned text on that same row (dates, tech stack); subtitle = a distinct second header line. Record italic/bold styles you see.
+- Lines listed under an entry (bulleted or dashed) go into bullets in order, one string per bullet even if it wraps. Set bulletGlyph to match (dot, dash, none).
+- Italic description sentences under an entry header go into description (descriptionItalic true if italic).
+- Skill rows like "Languages: JavaScript, Python" go into lines with label "Languages" and the rest as text. A wrapped continuation belongs to the same line.
+- Summary / profile prose goes into paragraph.
+- Style: pick the closest font, whether headings are ALL CAPS, where the heading rule line sits, and any non-black accent color.
+- Omit fields that are not present. Never use placeholders.
+- If the document is clearly not a resume/CV, set notAResume to true.`;
+
+  const createWith = (model: string) =>
+    getClient().messages.create({
+      model,
+      max_tokens: 8000,
+      temperature: 0,
+      system,
+      tools: [RESUME_IMPORT_TOOL],
+      tool_choice: { type: 'tool', name: RESUME_IMPORT_TOOL_NAME },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: request.base64,
+              },
+            },
+            { type: 'text', text: 'Transcribe this resume.' },
+          ],
+        },
+      ],
+    });
+
+  const response = await createWith(CLAUDE_MODEL);
+
+  for (const block of response.content) {
+    if (block.type === 'tool_use' && block.name === RESUME_IMPORT_TOOL_NAME) {
+      return parseResumeImportInput(block.input as Record<string, unknown>);
+    }
+  }
+
+  throw new Error('Resume import failed to return a structured result.');
 }

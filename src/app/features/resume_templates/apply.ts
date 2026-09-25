@@ -61,6 +61,13 @@ export function applyTemplateToStorage(templateId: string): boolean {
   return true;
 }
 
+/** Start the canvas blank for an incoming resume import and reset Denise chat. */
+export function resetForImport() {
+  clearDeniseState();
+  clearCanvasState();
+  setActiveTemplateId('imported');
+}
+
 export function canvasStateFromPayload(
   payload: TemplateCanvasPayload,
 ): Omit<CanvasState, 'version' | 'timestamp'> {

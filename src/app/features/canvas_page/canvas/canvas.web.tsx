@@ -23,6 +23,7 @@ import type { PenStroke } from '../context/PenContext';
 import { useDeniseAnalysis } from '../context/DeniseAnalysisContext';
 import ScanAnimation from '../assist_panel/animations/scan.animation';
 import DeniseHighlightsOverlay from '../assist_panel/animations/denise.highlights';
+import ResumeImportOverlay from '@/app/features/resume_import/import.overlay';
 import { isTypingIntoField } from '../utils/keyboard';
 import {
   getClipboardImageFile,
@@ -696,6 +697,7 @@ export default function CanvasWeb() {
               {/* Denise analysis overlays — above content, below selection chrome */}
               <DeniseHighlightsOverlay />
               <ScanAnimation active={isScanning} />
+              <ResumeImportOverlay />
 
               {/* Safe-area warning — above highlights so the pill stays readable */}
               {edgeWarning && (

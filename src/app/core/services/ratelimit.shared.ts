@@ -2,13 +2,19 @@
 
 export const AI_DAILY_LIMIT = 3;
 
-export type AiRateFeature = 'roast' | 'help' | 'job_match' | 'ats_check';
+export type AiRateFeature =
+  | 'roast'
+  | 'help'
+  | 'job_match'
+  | 'ats_check'
+  | 'resume_import';
 
 export const AI_RATE_FEATURES: AiRateFeature[] = [
   'roast',
   'help',
   'job_match',
   'ats_check',
+  'resume_import',
 ];
 
 export const AI_RATE_ADMIN_EMAILS = new Set([
