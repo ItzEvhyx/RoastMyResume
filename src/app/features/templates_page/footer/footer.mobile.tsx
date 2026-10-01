@@ -72,10 +72,10 @@ export default function FooterMobile() {
           <span className="text-[10px] text-black/35" style={{ fontFamily: 'var(--font-poppins)' }}>
             © {new Date().getFullYear()} RoastMyResume.
           </span>
-          <a href="#" className="text-[10px] text-black/35 hover:text-black/60 transition-colors"
+          <a href="/legal_terms?doc=privacy" className="text-[10px] text-black/35 hover:text-black/60 transition-colors"
             style={{ fontFamily: 'var(--font-poppins)' }}>Privacy Policy</a>
-          <a href="#" className="text-[10px] text-black/35 hover:text-black/60 transition-colors"
-            style={{ fontFamily: 'var(--font-poppins)' }}>Terms of Use</a>
+          <a href="/legal_terms?doc=terms" className="text-[10px] text-black/35 hover:text-black/60 transition-colors"
+            style={{ fontFamily: 'var(--font-poppins)' }}>Terms of Service</a>
         </div>
       </div>
 

@@ -24,8 +24,8 @@ const NAV_LINKS = [
 ];
 
 const LEGAL_LINKS = [
-  { label: 'Privacy Policy', href: '#' },
-  { label: 'Terms of Use',   href: '#' },
+  { label: 'Privacy Policy', href: '/legal_terms?doc=privacy' },
+  { label: 'Terms of Service', href: '/legal_terms?doc=terms' },
 ];
 
 export default function FooterWeb() {

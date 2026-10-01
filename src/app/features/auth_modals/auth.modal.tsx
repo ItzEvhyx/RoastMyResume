@@ -7,8 +7,6 @@ import { Poppins } from 'next/font/google';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignInForm } from './sign.in';
 import { SignUpForm } from './sign.up';
-import Terms from '../legal_terms/terms';
-import PrivacyPolicy from '../legal_terms/privacy.policy';
 import OtpModal from './otp.modal';
 import AuthSuccessModal from './auth.success.modal';
 
@@ -55,7 +53,7 @@ export function useAuthModalOpen(): boolean {
   );
 }
 
-export type AuthModalView = 'signin' | 'signup' | 'terms' | 'privacy';
+export type AuthModalView = 'signin' | 'signup';
 
 export interface AuthModalProps {
   isOpen?: boolean;
@@ -94,11 +92,8 @@ export default function AuthModal({
   const [view, setView] = useState<AuthModalView>(initialMode);
   const [direction, setDirection] = useState<number>(1); // 1 = slide in from right, -1 = slide in from left
 
-  // Retain sign-up form info across legal terms navigation
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   // OTP Verification Modal State
   const [isOtpOpen, setIsOtpOpen] = useState(false);
@@ -240,9 +235,7 @@ export default function AuthModal({
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-8 md:gap-12 lg:gap-16">
                   {/* Left column: Denise illustration + Futura copy (row on mobile, column on desktop) */}
                   <div
-                    className={`flex flex-row md:flex-col items-center justify-center gap-3 sm:gap-6 md:gap-0 shrink-0 w-full md:w-[46%] max-w-[420px] md:max-w-[370px] ${
-                      view === 'terms' || view === 'privacy' ? 'hidden md:flex' : 'flex'
-                    }`}
+                    className="flex flex-row md:flex-col items-center justify-center gap-3 sm:gap-6 md:gap-0 shrink-0 w-full md:w-[46%] max-w-[420px] md:max-w-[370px]"
                   >
                     <div className="relative w-[160px] h-[185px] sm:w-[185px] sm:h-[210px] md:w-[300px] md:h-[350px] lg:w-[320px] lg:h-[370px] shrink-0">
                       <Image
@@ -306,36 +299,6 @@ export default function AuthModal({
                             onSwitchToSignIn={() => {
                               setDirection(-1);
                               setView('signin');
-                            }}
-                            onTermsClick={() => {
-                              setDirection(1);
-                              setView('terms');
-                            }}
-                            onPrivacyClick={() => {
-                              setDirection(1);
-                              setView('privacy');
-                            }}
-                          />
-                        )}
-
-                        {view === 'terms' && (
-                          <Terms
-                            accepted={termsAccepted}
-                            onAcceptChange={setTermsAccepted}
-                            onBack={() => {
-                              setDirection(-1);
-                              setView('signup');
-                            }}
-                          />
-                        )}
-
-                        {view === 'privacy' && (
-                          <PrivacyPolicy
-                            accepted={privacyAccepted}
-                            onAcceptChange={setPrivacyAccepted}
-                            onBack={() => {
-                              setDirection(-1);
-                              setView('signup');
                             }}
                           />
                         )}

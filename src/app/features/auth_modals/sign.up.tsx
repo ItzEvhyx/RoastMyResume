@@ -128,8 +128,6 @@ function GoogleIcon({ className = 'w-6 h-6' }: { className?: string }) {
 export interface SignUpFormProps {
   onSuccess?: () => void;
   onSwitchToSignIn?: () => void;
-  onTermsClick?: () => void;
-  onPrivacyClick?: () => void;
   onSignUpSubmit?: (email: string) => void;
   email?: string;
   setEmail?: (val: string) => void;
@@ -140,8 +138,6 @@ export interface SignUpFormProps {
 export function SignUpForm({
   onSuccess,
   onSwitchToSignIn,
-  onTermsClick,
-  onPrivacyClick,
   onSignUpSubmit,
   email: externalEmail,
   setEmail: externalSetEmail,
@@ -417,21 +413,23 @@ export function SignUpForm({
           >
             By signing up you agree to our
             <br />
-            <button
-              type="button"
-              onClick={onTermsClick}
+            <a
+              href="/legal_terms?doc=terms"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-white underline font-semibold hover:text-white/80 transition-colors"
             >
               Terms
-            </button>{' '}
+            </a>{' '}
             and{' '}
-            <button
-              type="button"
-              onClick={onPrivacyClick}
+            <a
+              href="/legal_terms?doc=privacy"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-white underline font-semibold hover:text-white/80 transition-colors"
             >
               Privacy Policy
-            </button>
+            </a>
             .
           </p>
         </div>
@@ -443,16 +441,12 @@ export function SignUpForm({
 export interface SignUpProps {
   onSuccess?: () => void;
   onSwitchToSignIn?: () => void;
-  onTermsClick?: () => void;
-  onPrivacyClick?: () => void;
   onSignUpSubmit?: (email: string) => void;
 }
 
 export default function SignUp({
   onSuccess,
   onSwitchToSignIn,
-  onTermsClick,
-  onPrivacyClick,
   onSignUpSubmit,
 }: SignUpProps = {}) {
   return (
@@ -491,8 +485,6 @@ export default function SignUp({
           <SignUpForm
             onSuccess={onSuccess}
             onSwitchToSignIn={onSwitchToSignIn}
-            onTermsClick={onTermsClick}
-            onPrivacyClick={onPrivacyClick}
             onSignUpSubmit={onSignUpSubmit}
           />
         </div>
