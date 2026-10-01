@@ -10,6 +10,7 @@ import {
   GoogleAuthNeedsSignUpError,
   isGooglePopupCancelled,
 } from './google.auth';
+import { emailFieldError, signInPasswordError } from './field.validation';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -139,6 +140,8 @@ export function SignInForm({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,12 +155,13 @@ export function SignInForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setAuthError('Please enter both email and password');
-      return;
-    }
-
+    const nextEmailError = emailFieldError(email);
+    const nextPasswordError = signInPasswordError(password);
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
     setAuthError(null);
+    if (nextEmailError || nextPasswordError) return;
+
     setGoogleError(null);
     setIsSubmitting(true);
 
@@ -174,7 +178,18 @@ export function SignInForm({
       const data = await res.json();
 
       if (!res.ok) {
-        setAuthError(data.error || 'Sign-in failed. Please try again.');
+        const message = data.error || 'Sign-in failed. Please try again.';
+        if (
+          res.status === 404 ||
+          /google/i.test(message) ||
+          /does not exist/i.test(message)
+        ) {
+          setEmailError(message);
+        } else if (res.status === 401) {
+          setPasswordError(message);
+        } else {
+          setAuthError(message);
+        }
         setIsSubmitting(false);
         return;
       }
@@ -226,12 +241,16 @@ export function SignInForm({
         Sign-in
       </h2>
 
-      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3 sm:gap-5">
+      <form noValidate onSubmit={handleSubmit} className="w-full flex flex-col gap-3 sm:gap-5">
         {/* Email Pill Field with transition border label */}
         <div className="relative w-full">
           <div
             className={`relative w-full h-[50px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
-              emailFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
+              emailError
+                ? 'border-red-500 ring-2 ring-red-500/20'
+                : emailFocused
+                  ? 'border-white ring-2 ring-white/20'
+                  : 'border-white'
             }`}
           >
             {/* Floating label that docks onto top-left border */}
@@ -250,23 +269,43 @@ export function SignInForm({
 
             <input
               id="auth-email-input"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); setAuthError(null); }}
+              aria-invalid={emailError ? true : undefined}
+              aria-describedby={emailError ? 'auth-email-error' : undefined}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailError(null);
+                setAuthError(null);
+              }}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
-              autoComplete="email"
               className="w-full h-full bg-transparent text-white px-5 sm:px-7 font-poppins text-sm sm:text-lg font-medium outline-none rounded-full"
               style={{ fontFamily: 'var(--font-poppins)' }}
             />
           </div>
+          {emailError && (
+            <p
+              id="auth-email-error"
+              className="mt-1 px-5 text-left text-xs font-semibold text-red-400 sm:px-6 sm:text-sm"
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            >
+              {emailError}
+            </p>
+          )}
         </div>
 
         {/* Password Pill Field with transition border label + show/hide toggle */}
         <div className="relative w-full">
           <div
             className={`relative w-full h-[50px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
-              passwordFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
+              passwordError
+                ? 'border-red-500 ring-2 ring-red-500/20'
+                : passwordFocused
+                  ? 'border-white ring-2 ring-white/20'
+                  : 'border-white'
             }`}
           >
             {/* Floating label that docks onto top-left border */}
@@ -287,7 +326,13 @@ export function SignInForm({
               id="auth-password-input"
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => { setPassword(e.target.value); setAuthError(null); }}
+              aria-invalid={passwordError ? true : undefined}
+              aria-describedby={passwordError ? 'auth-password-error' : undefined}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordError(null);
+                setAuthError(null);
+              }}
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               autoComplete="current-password"
@@ -305,9 +350,17 @@ export function SignInForm({
               {showPassword ? <EyeIcon className="w-5 h-5 sm:w-7 sm:h-7" /> : <EyeOffIcon className="w-5 h-5 sm:w-7 sm:h-7" />}
             </button>
           </div>
+          {passwordError && (
+            <p
+              id="auth-password-error"
+              className="mt-1 px-5 text-left text-xs font-semibold text-red-400 sm:px-6 sm:text-sm"
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            >
+              {passwordError}
+            </p>
+          )}
         </div>
 
-        {/* Inline Auth Error */}
         {authError && (
           <div
             className="w-full px-2 -mt-1 sm:-mt-0.5"

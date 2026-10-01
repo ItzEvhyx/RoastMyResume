@@ -136,7 +136,12 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
   const handleAttachFiles = useCallback(async (files: FileList | File[] | null) => {
     if (!files) return;
     const incoming = Array.from(files).filter((f) => f.type.startsWith('image/'));
-    if (!incoming.length) return;
+    if (!incoming.length) {
+      if (Array.from(files).length > 0) {
+        setAttachNotice('Only image files can be attached.');
+      }
+      return;
+    }
 
     const remaining = MAX_IMAGES - attachments.length;
     if (remaining <= 0) {
@@ -306,15 +311,6 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
               <JobMatchAnimation />
             </div>
 
-            {error && (
-              <p
-                className="mb-2 text-xs text-red-300/90"
-                style={{ fontFamily: 'var(--font-poppins)', fontWeight: 500 }}
-              >
-                {error}
-              </p>
-            )}
-
               <div className="mt-auto space-y-2">
               {/* Attachment thumbnails */}
               {attachments.length > 0 && (
@@ -430,6 +426,14 @@ export default function JobMatch({ onBack: _onBack }: JobMatchProps) {
                   </svg>
                 </button>
               </div>
+              {error && (
+                <p
+                  className="px-2 text-xs text-red-300/90"
+                  style={{ fontFamily: 'var(--font-poppins)', fontWeight: 500 }}
+                >
+                  {error}
+                </p>
+              )}
             </div>
           </>
         )}

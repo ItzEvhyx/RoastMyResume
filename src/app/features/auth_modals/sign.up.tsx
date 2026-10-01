@@ -10,6 +10,7 @@ import {
   signUpWithGoogle,
   isGooglePopupCancelled,
 } from './google.auth';
+import { emailFieldError, signUpPasswordError } from './field.validation';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -155,6 +156,7 @@ export function SignUpForm({
 
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isCheckingAccount, setIsCheckingAccount] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
@@ -167,9 +169,12 @@ export function SignUpForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    const nextEmailError = emailFieldError(email);
+    const nextPasswordError = signUpPasswordError(password);
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    if (nextEmailError || nextPasswordError) return;
 
-    setEmailError(null);
     setGoogleError(null);
     setIsCheckingAccount(true);
 
@@ -276,7 +281,7 @@ export function SignUpForm({
         <div className="flex-1 h-[2px] bg-white" />
       </div>
 
-      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-3 sm:gap-5">
+      <form noValidate onSubmit={handleSubmit} className="w-full flex flex-col gap-3 sm:gap-5">
         {/* Email Pill Field */}
         <div className="relative w-full">
           <div
@@ -304,15 +309,18 @@ export function SignUpForm({
 
             <input
               id="signup-email-input"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="email"
               value={email}
+              aria-invalid={emailError ? true : undefined}
+              aria-describedby={emailError ? 'signup-email-error' : undefined}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (emailError) setEmailError(null);
               }}
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
-              autoComplete="email"
               className="w-full h-full bg-transparent text-white px-5 sm:px-7 font-poppins text-sm sm:text-lg font-medium outline-none rounded-full"
               style={{ fontFamily: 'var(--font-poppins)' }}
             />
@@ -321,6 +329,7 @@ export function SignUpForm({
           {/* Inline error at the bottom of the input field */}
           {emailError && (
             <p
+              id="signup-email-error"
               className="text-red-400 text-xs sm:text-sm font-semibold mt-1 px-5 sm:px-6 text-left"
               style={{ fontFamily: 'var(--font-poppins)' }}
             >
@@ -333,7 +342,11 @@ export function SignUpForm({
         <div className="relative w-full">
           <div
             className={`relative w-full h-[50px] sm:h-[64px] rounded-full border-2 transition-colors duration-200 bg-[#17171a] ${
-              passwordFocused ? 'border-white ring-2 ring-white/20' : 'border-white'
+              passwordError
+                ? 'border-red-500 ring-2 ring-red-500/20'
+                : passwordFocused
+                  ? 'border-white ring-2 ring-white/20'
+                  : 'border-white'
             }`}
           >
             {/* Floating label that docks onto top-left border */}
@@ -354,7 +367,12 @@ export function SignUpForm({
               id="signup-password-input"
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={passwordError ? true : undefined}
+              aria-describedby={passwordError ? 'signup-password-error' : undefined}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (passwordError) setPasswordError(null);
+              }}
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               autoComplete="new-password"
@@ -372,6 +390,15 @@ export function SignUpForm({
               {showPassword ? <EyeIcon className="w-5 h-5 sm:w-7 sm:h-7" /> : <EyeOffIcon className="w-5 h-5 sm:w-7 sm:h-7" />}
             </button>
           </div>
+          {passwordError && (
+            <p
+              id="signup-password-error"
+              className="mt-1 px-5 text-left text-xs font-semibold text-red-400 sm:px-6 sm:text-sm"
+              style={{ fontFamily: 'var(--font-poppins)' }}
+            >
+              {passwordError}
+            </p>
+          )}
         </div>
 
         {/* Sign - up Submit Button */}

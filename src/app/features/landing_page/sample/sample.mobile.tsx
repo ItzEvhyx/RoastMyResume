@@ -217,7 +217,12 @@ export default function SampleMobile() {
     const incoming = Array.from(files).filter((f) =>
       f.type.startsWith('image/')
     );
-    if (incoming.length === 0) return;
+    if (incoming.length === 0) {
+      if (Array.from(files).length > 0) {
+        setImageNotice('Only image files can be attached.');
+      }
+      return;
+    }
 
     const remaining = MAX_IMAGES - images.length;
     if (remaining <= 0) {
