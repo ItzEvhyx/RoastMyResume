@@ -21,14 +21,6 @@
   <img src="public/assets/images/canvas_snapshot.png" alt="RoastMyResume resume canvas editor" width="720" />
 </p>
 
-## <img src="https://img.icons8.com/ios-filled/50/FFFFFF/video.png" alt="Video icon" width="22" /> Video Demonstration
-
-<p align="center">
-  <img src="public/assets/images/roastmyresume-demo.gif" alt="Full animated demonstration of RoastMyResume in use" width="720" />
-  <br />
-  <sub>Full website walkthrough — plays inline, loops automatically, and requires no download.</sub>
-</p>
-
 > [!NOTE]
 > **RoastMyResume** is an AI-powered resume builder and reviewer. Create or import a resume, shape it on a visual canvas, choose a professional template, then get direct AI feedback—from a playful roast to practical rewrites—alongside ATS and job-match analysis.
 
