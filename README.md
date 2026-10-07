@@ -24,11 +24,9 @@
 ## <img src="https://img.icons8.com/ios-filled/50/FFFFFF/video.png" alt="Video icon" width="22" /> Video Demonstration
 
 <p align="center">
-  <a href="public/assets/videos/roastmyresume.mp4">
-    <img src="public/assets/images/roastmyresume-demo.gif" alt="Animated preview of RoastMyResume in use; select to watch the full demonstration" width="720" />
-  </a>
+  <img src="public/assets/images/roastmyresume-demo.gif" alt="Full animated demonstration of RoastMyResume in use" width="720" />
   <br />
-  <sub>Select the preview to watch the complete 3-minute, 20-second website demonstration.</sub>
+  <sub>Full website walkthrough — plays inline, loops automatically, and requires no download.</sub>
 </p>
 
 > [!NOTE]
