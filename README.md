@@ -26,24 +26,30 @@
 
 ---
 
-## <img src="https://img.icons8.com/ios-filled/50/EF4444/resume.png" alt="Resume icon" width="22" /> What it does
+## <img src="https://img.icons8.com/ios-filled/50/FFFFFF/resume.png" alt="Resume icon" width="22" /> What it does
 
 RoastMyResume blends a serious job-search tool with an entertaining personality. It gives users a hands-on way to design a resume while **Denise**, the built-in AI companion, calls out vague writing, helps rewrite weak content, and keeps the focus on a stronger application.
+
+<p align="center">
+  <img src="public/assets/images/denise-thinking.gif" alt="Denise thinking animation" width="154" />
+  <br />
+  <sub>Denise is thinking.</sub>
+</p>
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <h3><img src="https://img.icons8.com/ios-filled/50/EF4444/design.png" alt="Design icon" width="20" /> Design without limits</h3>
+      <h3><img src="https://img.icons8.com/ios-filled/50/FFFFFF/design.png" alt="Design icon" width="20" /> Design without limits</h3>
       <p>Arrange text, images, icons, shapes, dividers, and handwritten marks on a freeform resume canvas.</p>
     </td>
     <td width="50%" valign="top">
-      <h3><img src="https://img.icons8.com/ios-filled/50/EF4444/sparkles.png" alt="Sparkles icon" width="20" /> Improve with personality</h3>
+      <h3><img src="https://img.icons8.com/ios-filled/50/FFFFFF/sparkles.png" alt="Sparkles icon" width="20" /> Improve with personality</h3>
       <p>Turn vague claims into clear, measurable statements through AI reviews, resume roasts, and actionable suggestions.</p>
     </td>
   </tr>
 </table>
 
-## <img src="https://img.icons8.com/ios-filled/50/EF4444/list.png" alt="Feature list icon" width="22" /> Main features
+## <img src="https://img.icons8.com/ios-filled/50/FFFFFF/list.png" alt="Feature list icon" width="22" /> Main features
 
 - **Freeform resume canvas** — Drag, resize, group, lock, flip, layer, align, and style resume elements. The editor includes text controls, image support, shapes, dividers, icons, a pen tool, snapping, zoom, copy/paste, and undo/redo.
 - **Professional templates** — Start from a blank page or choose from seven layouts across ATS-friendly, business, tech, and generic styles.
@@ -57,7 +63,7 @@ RoastMyResume blends a serious job-search tool with an entertaining personality.
 - **Accounts and safeguards** — Sign up using email OTP verification or Google, with per-feature daily AI usage limits.
 - **Icon library** — Search and add resume-relevant icons, with CDN-backed caching for fast canvas rendering.
 
-## <img src="https://img.icons8.com/ios-filled/50/EF4444/code.png" alt="Code icon" width="22" /> Technology stack
+## <img src="https://img.icons8.com/ios-filled/50/FFFFFF/code.png" alt="Code icon" width="22" /> Technology stack
 
 ### Front end
 
@@ -85,7 +91,7 @@ RoastMyResume blends a serious job-search tool with an entertaining personality.
 | **Cloudinary** | Cached SVG icon storage and CDN delivery |
 | **Iconify + jsDelivr fallbacks** | Icon search and resilient SVG retrieval |
 
-## <img src="https://img.icons8.com/ios-filled/50/EF4444/user-manual.png" alt="User guide icon" width="22" /> How to use the website
+## <img src="https://img.icons8.com/ios-filled/50/FFFFFF/user-manual.png" alt="User guide icon" width="22" /> How to use the website
 
 1. **Create an account or sign in.** Use Google sign-in or email registration. Email registration sends a six-digit verification code.
 2. **Choose your starting point.** Open **Templates** and select a layout, start from a blank canvas, or import an existing PDF resume.
@@ -97,7 +103,7 @@ RoastMyResume blends a serious job-search tool with an entertaining personality.
 > [!TIP]
 > The AI is most useful when your resume includes specific outcomes: measurable results, scale, tools used, and the context behind each accomplishment.
 
-## <img src="https://img.icons8.com/ios-filled/50/EF4444/console.png" alt="Terminal icon" width="22" /> Run locally
+## <img src="https://img.icons8.com/ios-filled/50/FFFFFF/console.png" alt="Terminal icon" width="22" /> Run locally
 
 ```bash
 # 1. Install dependencies
